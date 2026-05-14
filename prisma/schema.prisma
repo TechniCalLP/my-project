@@ -15,7 +15,10 @@ model Student {
   lastName       String
   year           String
   department     String
+  email          String?
+  phone          String?
   password       String
+  isActive       Boolean         @default(true)
   isFirstLogin   Boolean         @default(true)
   participations Participation[]
   createdAt      DateTime        @default(now())

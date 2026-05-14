@@ -1,0 +1,177 @@
+# Import Students from Attendance Sheet (Extract Names Only)
+
+## Problem
+
+College attendance sheet has format:
+- Column 1: เลขที่ (Number) - SKIP
+- Column 2: รหัสนักศึกษา (Student ID) - USE
+- Column 3: ชื่อ (First Name) - USE
+- Column 4: นามสกุล (Last Name) - USE
+- Column 5: แผนก (Department) - USE
+- Columns 6-25: คาบ1-20 (Attendance) - SKIP
+
+We need columns 2-5 only and calculate year from studentId.
+
+## Solution
+
+Update file: `components/admin/import-students-form.tsx`
+
+Replace the `parseCSV` function:
+
+```typescript
+  const parseCSV = (text: string): StudentRow[] => {
+    const lines = text.trim().split('\n')
+    if (lines.length < 2) {
+      throw new Error('ไฟล์ต้องมีอย่างน้อย 2 บรรทัด (Header + Data)')
+    }
+
+    // Skip header
+    const dataLines = lines.slice(1)
+    
+    return dataLines
+      .map((line, index) => {
+        const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''))
+        
+        // ข้ามบรรทัดว่าง
+        if (values.length === 0 || !values[0]) {
+          return null
+        }
+
+        let studentId: string
+        let firstName: string
+        let lastName: string
+        let department: string
+        let year: number
+
+        // ตรวจสอบรูปแบบไฟล์
+        if (values.length === 5) {
+          // รูปแบบ 1: ไฟล์มาตรฐาน (studentId, firstName, lastName, department, year)
+          studentId = values[0]
+          firstName = values[1]
+          lastName = values[2]
+          department = values[3]
+          year = parseInt(values[4])
+          
+          if (!studentId || !firstName || !lastName || !department || isNaN(year)) {
+            throw new Error(`บรรทัดที่ ${index + 2}: ข้อมูลไม่ครบ`)
+          }
+        } else if (values.length > 5) {
+          // รูปแบบ 2: ไฟล์เช็คชื่อ (เลขที่, studentId, firstName, lastName, department, คาบ1-20...)
+          // ข้ามคอลัมน์แรก (เลขที่)
+          studentId = values[1]   // คอลัมน์ที่ 2
+          firstName = values[2]   // คอลัมน์ที่ 3
+          lastName = values[3]    // คอลัมน์ที่ 4
+          department = values[4]  // คอลัมน์ที่ 5
+          // ข้ามคอลัมน์ 6 ขึ้นไป (คาบเรียน)
+          
+          if (!studentId || !firstName || !lastName || !department) {
+            throw new Error(`บรรทัดที่ ${index + 2}: ข้อมูลไม่ครบ (ต้องมีรหัส, ชื่อ, นามสกุล, แผนก)`)
+          }
+          
+          // คำนวณชั้นปีจากรหัสนักศึกษา
+          year = calculateYearFromStudentId(studentId)
+        } else {
+          throw new Error(`บรรทัดที่ ${index + 2}: รูปแบบไฟล์ไม่ถูกต้อง`)
+        }
+
+        return {
+          studentId,
+          firstName,
+          lastName,
+          department,
+          year,
+          email: undefined,
+          phone: undefined,
+          status: 'pending' as const,
+        }
+      })
+      .filter((row): row is StudentRow => row !== null)
+  }
+
+  // คำนวณชั้นปีจากรหัสนักศึกษา (2 หลักแรก)
+  const calculateYearFromStudentId = (studentId: string): number => {
+    if (!studentId || studentId.length < 2) return 1
+    
+    // ดึง 2 หลักแรก (ปีที่เข้า เช่น 66, 65, 64)
+    const enrollYear = parseInt(studentId.substring(0, 2))
+    
+    // ปีปัจจุบัน พ.ศ. (เช่น 2567 -> 67)
+    const currentDate = new Date()
+    const currentYear = currentDate.getFullYear() + 543
+    const currentYearShort = currentYear % 100
+    
+    // คำนวณว่าเรียนมากี่ปี
+    let yearsStudied = currentYearShort - enrollYear
+    
+    // ถ้าข้ามศตวรรษ (เช่น 67 - 99 = -32)
+    if (yearsStudied < 0) {
+      yearsStudied += 100
+    }
+    
+    // ชั้นปี = ปีที่เรียนมา + 1
+    const studentYear = yearsStudied + 1
+    
+    // จำกัดช่วง 1-5
+    if (studentYear < 1) return 1
+    if (studentYear > 5) return 5
+    
+    return studentYear
+  }
+```
+
+Update the instructions in `app/(admin)/admin/students/import/page.tsx`:
+
+Replace the blue info box with:
+
+```typescript
+          
+            รูปแบบไฟล์ที่รองรับ
+            
+            
+              
+                1. ไฟล์มาตรฐาน (5 คอลัมน์):
+                
+                  studentId,firstName,lastName,department,year
+                
+              
+
+              
+                2. ไฟล์เช็คชื่อจากวิทยาลัย:
+                
+                  เลขที่,รหัสนักศึกษา,ชื่อ,นามสกุล,แผนก,คาบ1,คาบ2,...
+                
+                
+                  ✓ ระบบจะดึงเฉพาะคอลัมน์ที่ 2-5 (รหัส, ชื่อ, นามสกุล, แผนก)
+                  ✓ คำนวณชั้นปีจากรหัสนักศึกษาอัตโนมัติ
+                  ✓ ข้ามเลขที่และคาบเรียนทั้งหมด
+                
+              
+            
+          
+
+          
+            ตัวอย่างการคำนวณชั้นปี
+            
+              • รหัส 67011234 → เข้าปี 67 (2567) → ชั้นปีที่ 1
+              • รหัส 66011234 → เข้าปี 66 (2566) → ชั้นปีที่ 2
+              • รหัส 65011234 → เข้าปี 65 (2565) → ชั้นปีที่ 3
+              • รหัส 64011234 → เข้าปี 64 (2564) → ชั้นปีที่ 4 (ปวส. 1)
+            
+          
+```
+
+## Summary
+
+✅ Automatically detects file format
+✅ For attendance sheets: extracts ONLY columns 2-5 (studentId, firstName, lastName, department)
+✅ SKIPS column 1 (เลขที่)
+✅ SKIPS columns 6+ (คาบ1-20)
+✅ Auto-calculates year from studentId (first 2 digits)
+✅ Works with Excel export from college attendance system
+
+Example:
+
+Input (attendance sheet):
+เลขที่,รหัสนักศึกษา,ชื่อ,นามสกุล,แผนก,คาบ1,คาบ2,...,คาบ20
+1,66011234,สมชาย,ใจดี,คอมพิวเตอร์,มา,มา,ขาด,...
+2,66011235,สมหญิง,รักเรียน,ช่างยนต์,มา,มา,มา,...

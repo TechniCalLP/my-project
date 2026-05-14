@@ -1,0 +1,1325 @@
+# Student Activity System - Part 3.3: Student Management
+
+## Overview
+
+Build complete student management system for admin with list, import CSV/Excel, add/edit, reset password, and view activity history.
+
+## Brand Colors
+
+- Primary (Navy): #2E3192
+- Secondary (Red): #C52833
+- Success: #2E9283
+- Warning: #F59E0B
+
+## Database Schema Reference
+
+```prisma
+model Student {
+  id            String   @id @default(cuid())
+  studentId     String   @unique
+  password      String
+  firstName     String
+  lastName      String
+  email         String?
+  phone         String?
+  department    String
+  year          Int
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  participations Participation[]
+}
+```
+
+## Files to Create
+
+This prompt will create 8 files for complete student management:
+
+1. app/(admin)/admin/students/page.tsx - List page
+2. app/(admin)/admin/students/create/page.tsx - Create page
+3. app/(admin)/admin/students/[id]/page.tsx - Detail page
+4. app/(admin)/admin/students/[id]/edit/page.tsx - Edit page
+5. app/(admin)/admin/students/import/page.tsx - Import page
+6. components/admin/students-table.tsx - Table component
+7. components/admin/student-form.tsx - Form component
+8. components/admin/student-filters.tsx - Filter component
+9. components/admin/reset-password-button.tsx - Reset password component
+10. components/admin/toggle-student-status-button.tsx - Enable/Disable component
+11. app/api/admin/students/route.ts - Create/Import API
+12. app/api/admin/students/[id]/route.ts - Update/Delete API
+13. app/api/admin/students/[id]/reset-password/route.ts - Reset password API
+
+## 1. Students List Page
+
+Path: `/admin/students`
+
+File: `app/(admin)/admin/students/page.tsx`
+
+```typescript
+import { prisma } from "@/lib/prisma"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Plus, Upload, Users } from "lucide-react"
+import Link from "next/link"
+import StudentsTable from "@/components/admin/students-table"
+import StudentFilters from "@/components/admin/student-filters"
+
+export default async function StudentsPage({
+  searchParams,
+}: {
+  searchParams: { year?: string; department?: string; status?: string; search?: string }
+}) {
+  // Build filter conditions
+  const where: any = { }
+
+  if (searchParams.year) {
+    where.year = parseInt(searchParams.year)
+  }
+
+  if (searchParams.department) {
+    where.department = searchParams.department
+  }
+
+  if (searchParams.status) {
+    where.isActive = searchParams.status === 'active'
+  }
+
+  if (searchParams.search) {
+    where.OR = [
+      { studentId: { contains: searchParams.search } },
+      { firstName: { contains: searchParams.search } },
+      { lastName: { contains: searchParams.search } },
+    ]
+  }
+
+  // Fetch students
+  const students = await prisma.student.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    include: {
+      _count: {
+        select: { participations: true }
+      }
+    }
+  })
+
+  const totalStudents = students.length
+  const activeStudents = students.filter(s => s.isActive).length
+  const inactiveStudents = totalStudents - activeStudents
+  const totalParticipations = students.reduce((sum, s) => sum + s._count.participations, 0)
+
+  return (
+    
+      {/* Header */}
+      
+        
+          
+            
+            จัดการนักศึกษา
+          
+          
+            เพิ่ม แก้ไข และจัดการข้อมูลนักศึกษา
+          
+        
+        
+          
+            
+              
+              Import CSV/Excel
+            
+          
+          
+            
+              
+              เพิ่มนักศึกษา
+            
+          
+        
+      
+
+      {/* Stats */}
+      
+        
+          
+            {totalStudents}
+            นักศึกษาทั้งหมด
+          
+        
+        
+          
+            {activeStudents}
+            ใช้งาน
+          
+        
+        
+          
+            {inactiveStudents}
+            ปิดการใช้งาน
+          
+        
+        
+          
+            {totalParticipations}
+            การเข้าร่วมกิจกรรม
+          
+        
+      
+
+      {/* Filters */}
+      
+
+      {/* Table */}
+      
+    
+  )
+}
+```
+
+## 2. Student Filters Component
+
+File: `components/admin/student-filters.tsx`
+
+```typescript
+"use client"
+
+import { useRouter, useSearchParams } from "next/navigation"
+import { Card, CardContent } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
+import { X, Search } from "lucide-react"
+import { useState } from "react"
+
+export default function StudentFilters() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '')
+  const currentYear = searchParams.get('year') || ''
+  const currentDepartment = searchParams.get('department') || ''
+  const currentStatus = searchParams.get('status') || ''
+
+  const updateFilter = (key: string, value: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (value) {
+      params.set(key, value)
+    } else {
+      params.delete(key)
+    }
+    router.push(`/admin/students?${params.toString()}`)
+  }
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    updateFilter('search', searchTerm)
+  }
+
+  const clearFilters = () => {
+    setSearchTerm('')
+    router.push('/admin/students')
+  }
+
+  const hasFilters = currentYear || currentDepartment || currentStatus || searchTerm
+
+  return (
+    
+      
+        
+          {/* Search */}
+          
+            <Input
+              placeholder="ค้นหา รหัส, ชื่อ, นามสกุล"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1"
+            />
+            
+              
+            
+          
+
+          {/* Year */}
+          <Select value={currentYear} onValueChange={(v) => updateFilter('year', v)}>
+            
+              
+            
+            
+              ทั้งหมด
+              ปวช. 1
+              ปวช. 2
+              ปวช. 3
+              ปวส. 1
+              ปวส. 2
+            
+          
+
+          {/* Department */}
+          <Select value={currentDepartment} onValueChange={(v) => updateFilter('department', v)}>
+            
+              
+            
+            
+              ทั้งหมด
+              คอมพิวเตอร์
+              ช่างยนต์
+              ช่างไฟฟ้า
+              อิเล็กทรอนิกส์
+              ก่อสร้าง
+            
+          
+
+          {/* Status */}
+          <Select value={currentStatus} onValueChange={(v) => updateFilter('status', v)}>
+            
+              
+            
+            
+              ทั้งหมด
+              ใช้งาน
+              ปิดการใช้งาน
+            
+          
+
+          {/* Clear */}
+          {hasFilters && (
+            
+              
+              ล้างตัวกรอง
+            
+          )}
+        
+      
+    
+  )
+}
+```
+
+## 3. Students Table Component
+
+File: `components/admin/students-table.tsx`
+
+```typescript
+import Link from "next/link"
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Eye, Edit, Key } from "lucide-react"
+import ToggleStudentStatusButton from "./toggle-student-status-button"
+
+interface StudentsTableProps {
+  students: any[]
+}
+
+export default function StudentsTable({ students }: StudentsTableProps) {
+  if (students.length === 0) {
+    return (
+      
+        ไม่พบนักศึกษา
+      
+    )
+  }
+
+  return (
+    
+      
+        
+          
+            
+              
+                รหัสนักศึกษา
+              
+              
+                ชื่อ-นามสกุล
+              
+              
+                แผนก
+              
+              
+                ชั้นปี
+              
+              
+                กิจกรรม
+              
+              
+                สถานะ
+              
+              
+                จัดการ
+              
+            
+          
+          
+            {students.map((student) => (
+              
+                
+                  
+                    {student.studentId}
+                  
+                
+
+                
+                  
+                    {student.firstName} {student.lastName}
+                  
+                  {student.email && (
+                    {student.email}
+                  )}
+                
+
+                
+                  {student.department}
+                
+
+                
+                  
+                    {student.year <= 3 ? `ปวช.${student.year}` : `ปวส.${student.year - 3}`}
+                  
+                
+
+                
+                  
+                    {student._count.participations}
+                  
+                
+
+                
+                  {student.isActive ? (
+                    ใช้งาน
+                  ) : (
+                    ปิดใช้งาน
+                  )}
+                
+
+                
+                  
+                    {/* ดู */}
+                    
+                      
+                        
+                        ดู
+                      
+                    
+
+                    {/* แก้ไข */}
+                    
+                      
+                        
+                        แก้ไข
+                      
+                    
+
+                    {/* Enable/Disable */}
+                    
+                  
+                
+              
+            ))}
+          
+        
+      
+    
+  )
+}
+```
+
+## 4. Create Student Page
+
+Path: `/admin/students/create`
+
+File: `app/(admin)/admin/students/create/page.tsx`
+
+```typescript
+import StudentForm from "@/components/admin/student-form"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ArrowLeft } from "lucide-react"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+
+export default function CreateStudentPage() {
+  return (
+    
+      {/* Header */}
+      
+        
+          
+            
+          
+        
+        
+          
+            เพิ่มนักศึกษาใหม่
+          
+          
+            กรอกข้อมูลนักศึกษา (รหัสผ่านเริ่มต้นคือรหัสนักศึกษา)
+          
+        
+      
+
+      {/* Form */}
+      
+        
+          ข้อมูลนักศึกษา
+        
+        
+          
+        
+      
+    
+  )
+}
+```
+
+## 5. Student Form Component
+
+File: `components/admin/student-form.tsx`
+
+```typescript
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useToast } from "@/components/ui/use-toast"
+import { Loader2 } from "lucide-react"
+
+interface StudentFormProps {
+  initialData?: any
+  isEdit?: boolean
+}
+
+export default function StudentForm({ initialData, isEdit = false }: StudentFormProps) {
+  const router = useRouter()
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+
+    const formData = new FormData(e.currentTarget)
+    const data = {
+      studentId: formData.get('studentId'),
+      firstName: formData.get('firstName'),
+      lastName: formData.get('lastName'),
+      email: formData.get('email'),
+      phone: formData.get('phone'),
+      department: formData.get('department'),
+      year: parseInt(formData.get('year') as string),
+      isActive: formData.get('isActive') === 'true',
+    }
+
+    try {
+      const url = isEdit 
+        ? `/api/admin/students/${initialData.id}`
+        : '/api/admin/students'
+      
+      const method = isEdit ? 'PUT' : 'POST'
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed')
+      }
+
+      toast({
+        title: isEdit ? "แก้ไขสำเร็จ" : "เพิ่มสำเร็จ",
+        description: isEdit 
+          ? "แก้ไขข้อมูลนักศึกษาเรียบร้อยแล้ว" 
+          : "เพิ่มนักศึกษาเรียบร้อยแล้ว (รหัสผ่านเริ่มต้นคือรหัสนักศึกษา)",
+      })
+
+      router.push('/admin/students')
+      router.refresh()
+    } catch (error: any) {
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: error.message || "กรุณาลองใหม่อีกครั้ง",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    
+      {/* Student ID */}
+      
+        รหัสนักศึกษา *
+        
+        {!isEdit && (
+          
+            รหัสผ่านเริ่มต้นจะเป็นรหัสนักศึกษา
+          
+        )}
+      
+
+      {/* Name */}
+      
+        
+          ชื่อ *
+          
+        
+        
+          นามสกุล *
+          
+        
+      
+
+      {/* Contact */}
+      
+        
+          อีเมล
+          
+        
+        
+          เบอร์โทร
+          
+        
+      
+
+      {/* Department & Year */}
+      
+        
+          แผนก *
+          
+            
+              
+            
+            
+              คอมพิวเตอร์
+              ช่างยนต์
+              ช่างไฟฟ้า
+              อิเล็กทรอนิกส์
+              ก่อสร้าง
+            
+          
+        
+        
+          ชั้นปี *
+          
+            
+              
+            
+            
+              ปวช. 1
+              ปวช. 2
+              ปวช. 3
+              ปวส. 1
+              ปวส. 2
+            
+          
+        
+      
+
+      {/* Status (Edit only) */}
+      {isEdit && (
+        
+          สถานะการใช้งาน *
+          
+            
+              
+            
+            
+              ใช้งาน
+              ปิดการใช้งาน
+            
+          
+        
+      )}
+
+      {/* Actions */}
+      
+        
+          {loading && }
+          {isEdit ? 'บันทึกการแก้ไข' : 'เพิ่มนักศึกษา'}
+        
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => router.back()}
+          disabled={loading}
+        >
+          ยกเลิก
+        
+      
+    
+  )
+}
+```
+
+## 6. Toggle Student Status Button
+
+File: `components/admin/toggle-student-status-button.tsx`
+
+```typescript
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { UserCheck, UserX, Loader2 } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+
+interface ToggleStudentStatusButtonProps {
+  studentId: string
+  currentStatus: boolean
+  studentName: string
+}
+
+export default function ToggleStudentStatusButton({ 
+  studentId, 
+  currentStatus,
+  studentName 
+}: ToggleStudentStatusButtonProps) {
+  const router = useRouter()
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(false)
+
+  const handleToggle = async () => {
+    const action = currentStatus ? 'ปิดการใช้งาน' : 'เปิดใช้งาน'
+    
+    if (!confirm(`ต้องการ${action}บัญชี ${studentName} ใช่หรือไม่?`)) {
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const response = await fetch(`/api/admin/students/${studentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !currentStatus }),
+      })
+
+      if (!response.ok) throw new Error('Failed')
+
+      toast({
+        title: "สำเร็จ",
+        description: `${action}บัญชีเรียบร้อยแล้ว`,
+      })
+
+      router.refresh()
+    } catch (error) {
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถเปลี่ยนสถานะได้",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    
+      {loading ? (
+        
+      ) : currentStatus ? (
+        
+      ) : (
+        
+      )}
+      {currentStatus ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}
+    
+  )
+}
+```
+
+## 7. Edit Student Page
+
+Path: `/admin/students/[id]/edit`
+
+File: `app/(admin)/admin/students/[id]/edit/page.tsx`
+
+```typescript
+import { prisma } from "@/lib/prisma"
+import StudentForm from "@/components/admin/student-form"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ArrowLeft } from "lucide-react"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { notFound } from "next/navigation"
+
+export default async function EditStudentPage({
+  params,
+}: {
+  params: { id: string }
+}) {
+  const student = await prisma.student.findUnique({
+    where: { id: params.id }
+  })
+
+  if (!student) {
+    notFound()
+  }
+
+  return (
+    
+      {/* Header */}
+      
+        
+          
+            
+          
+        
+        
+          
+            แก้ไขข้อมูลนักศึกษา
+          
+          
+            {student.firstName} {student.lastName} ({student.studentId})
+          
+        
+      
+
+      {/* Form */}
+      
+        
+          ข้อมูลนักศึกษา
+        
+        
+          
+        
+      
+    
+  )
+}
+```
+
+## 8. Student Detail Page
+
+Path: `/admin/students/[id]`
+
+File: `app/(admin)/admin/students/[id]/page.tsx`
+
+```typescript
+import { prisma } from "@/lib/prisma"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { ArrowLeft, Mail, Phone, Calendar } from "lucide-react"
+import Link from "next/link"
+import { notFound } from "next/navigation"
+import ResetPasswordButton from "@/components/admin/reset-password-button"
+
+function formatThaiDate(date: Date): string {
+  return new Date(date).toLocaleDateString('th-TH', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+}
+
+function getCategoryLabel(category: string) {
+  const labels: Record = {
+    ACADEMIC: "วิชาการ",
+    SPORTS: "กีฬา",
+    ARTS: "ศิลปะ-วัฒนธรรม",
+    VOLUNTEER: "บำเพ็ญประโยชน์",
+    MORALITY: "คุณธรรม-จริยธรรม",
+    HEALTH: "สุขภาพ",
+  }
+  return labels[category] || category
+}
+
+export default async function StudentDetailPage({
+  params,
+}: {
+  params: { id: string }
+}) {
+  const student = await prisma.student.findUnique({
+    where: { id: params.id },
+    include: {
+      participations: {
+        include: {
+          activity: true
+        },
+        orderBy: { joinedAt: 'desc' }
+      }
+    }
+  })
+
+  if (!student) {
+    notFound()
+  }
+
+  return (
+    
+      {/* Header */}
+      
+        
+          
+            
+          
+        
+        
+          
+            {student.firstName} {student.lastName}
+          
+          
+            รหัสนักศึกษา: {student.studentId}
+          
+        
+        
+          
+          
+            แก้ไข
+          
+        
+      
+
+      {/* Info */}
+      
+        
+          ข้อมูลส่วนตัว
+        
+        
+          
+            
+              รหัสนักศึกษา
+              {student.studentId}
+            
+            
+              สถานะ
+              
+                {student.isActive ? (
+                  ใช้งาน
+                ) : (
+                  ปิดการใช้งาน
+                )}
+              
+            
+            
+              แผนก
+              {student.department}
+            
+            
+              ชั้นปี
+              
+                {student.year <= 3 ? `ปวช. ${student.year}` : `ปวส. ${student.year - 3}`}
+              
+            
+            {student.email && (
+              
+                อีเมล
+                
+                  
+                  {student.email}
+                
+              
+            )}
+            {student.phone && (
+              
+                เบอร์โทร
+                
+                  
+                  {student.phone}
+                
+              
+            )}
+          
+        
+      
+
+      {/* Activity History */}
+      
+        
+          ประวัติการเข้าร่วมกิจกรรม ({student.participations.length})
+        
+        
+          {student.participations.length === 0 ? (
+            ยังไม่มีการเข้าร่วมกิจกรรม
+          ) : (
+            
+              
+                
+                  
+                    
+                      ชื่อกิจกรรม
+                    
+                    
+                      หมวดหมู่
+                    
+                    
+                      ปีการศึกษา
+                    
+                    
+                      วันที่เข้าร่วม
+                    
+                  
+                
+                
+                  {student.participations.map((p) => (
+                    
+                      
+                        
+                          {p.activity.title}
+                        
+                      
+                      
+                        
+                          {getCategoryLabel(p.activity.category)}
+                        
+                      
+                      
+                        {p.activity.year} / {p.activity.semester}
+                      
+                      
+                        {formatThaiDate(p.joinedAt)}
+                      
+                    
+                  ))}
+                
+              
+            
+          )}
+        
+      
+    
+  )
+}
+```
+
+## 9. Reset Password Button
+
+File: `components/admin/reset-password-button.tsx`
+
+```typescript
+"use client"
+
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Key, Loader2 } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+
+interface ResetPasswordButtonProps {
+  studentId: string
+  studentName: string
+}
+
+export default function ResetPasswordButton({ studentId, studentName }: ResetPasswordButtonProps) {
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(false)
+
+  const handleReset = async () => {
+    if (!confirm(`ต้องการรีเซ็ตรหัสผ่านของ ${studentName} ใช่หรือไม่?\n\nรหัสผ่านใหม่จะเป็นรหัสนักศึกษา`)) {
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const response = await fetch(`/api/admin/students/${studentId}/reset-password`, {
+        method: 'POST',
+      })
+
+      if (!response.ok) throw new Error('Failed')
+
+      toast({
+        title: "รีเซ็ตรหัสผ่านสำเร็จ",
+        description: "รหัสผ่านใหม่คือรหัสนักศึกษา",
+      })
+    } catch (error) {
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถรีเซ็ตรหัสผ่านได้",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    
+      {loading ? (
+        
+      ) : (
+        
+      )}
+      รีเซ็ตรหัสผ่าน
+    
+  )
+}
+```
+
+## 10. Create/Import Student API
+
+File: `app/api/admin/students/route.ts`
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { prisma } from '@/lib/prisma'
+import bcrypt from 'bcryptjs'
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const data = await req.json()
+
+    // Check if student already exists
+    const existing = await prisma.student.findUnique({
+      where: { studentId: data.studentId }
+    })
+
+    if (existing) {
+      return NextResponse.json({ error: 'รหัสนักศึกษานี้มีอยู่แล้ว' }, { status: 400 })
+    }
+
+    // Hash password (default is studentId)
+    const hashedPassword = await bcrypt.hash(data.studentId, 10)
+
+    // Create student
+    const student = await prisma.student.create({
+      data: {
+        studentId: data.studentId,
+        password: hashedPassword,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email || null,
+        phone: data.phone || null,
+        department: data.department,
+        year: data.year,
+        isActive: true,
+      }
+    })
+
+    return NextResponse.json(student)
+  } catch (error) {
+    console.error('Create student error:', error)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  }
+}
+```
+
+## 11. Update Student API
+
+File: `app/api/admin/students/[id]/route.ts`
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { prisma } from '@/lib/prisma'
+
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const data = await req.json()
+
+    const student = await prisma.student.update({
+      where: { id: params.id },
+      data: {
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email || null,
+        phone: data.phone || null,
+        department: data.department,
+        year: data.year,
+        isActive: data.isActive,
+      }
+    })
+
+    return NextResponse.json(student)
+  } catch (error) {
+    console.error('Update student error:', error)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  }
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    await prisma.student.delete({
+      where: { id: params.id }
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Delete student error:', error)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  }
+}
+```
+
+## 12. Reset Password API
+
+File: `app/api/admin/students/[id]/reset-password/route.ts`
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { prisma } from '@/lib/prisma'
+import bcrypt from 'bcryptjs'
+
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Get student
+    const student = await prisma.student.findUnique({
+      where: { id: params.id }
+    })
+
+    if (!student) {
+      return NextResponse.json({ error: 'Student not found' }, { status: 404 })
+    }
+
+    // Reset password to studentId
+    const hashedPassword = await bcrypt.hash(student.studentId, 10)
+
+    await prisma.student.update({
+      where: { id: params.id },
+      data: { password: hashedPassword }
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Reset password error:', error)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  }
+}
+```
+
+## 13. Import Students Page (Simple Version)
+
+Path: `/admin/students/import`
+
+File: `app/(admin)/admin/students/import/page.tsx`
+
+```typescript
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ArrowLeft, Download } from "lucide-react"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+
+export default function ImportStudentsPage() {
+  return (
+    
+      {/* Header */}
+      
+        
+          
+            
+          
+        
+        
+          
+            Import นักศึกษา
+          
+          
+            Import ข้อมูลนักศึกษาจาก CSV/Excel
+          
+        
+      
+
+      {/* Instructions */}
+      
+        
+          คำแนะนำ
+        
+        
+          
+            รูปแบบไฟล์ CSV/Excel
+            
+              ไฟล์ต้องมีคอลัมน์ต่อไปนี้ (ตามลำดับ):
+            
+            
+              รหัสนักศึกษา (studentId)
+              ชื่อ (firstName)
+              นามสกุล (lastName)
+              แผนก (department)
+              ชั้นปี (year: 1-5)
+              อีเมล (email) - ไม่บังคับ
+              เบอร์โทร (phone) - ไม่บังคับ
+            
+          
+
+          
+            ตัวอย่างข้อมูล
+            
+              
+{`studentId,firstName,lastName,department,year,email,phone
+66011234,สมชาย,ใจดี,คอมพิวเตอร์,1,somchai@email.com,0812345678
+66011235,สมหญิง,รักเรียน,ช่างยนต์,2,somying@email.com,0823456789`}
+              
+            
+          
+
+          
+            
+              
+              ดาวน์โหลดไฟล์ตัวอย่าง
+            
+          
+
+          
+            
+              หมายเหตุ: ฟีเจอร์ Import จะพัฒนาใน Part 3.4 (Export Features)
+            
+            
+              ขณะนี้สามารถเพิ่มนักศึกษาทีละคนได้ที่หน้า "เพิ่มนักศึกษา"
+            
+          
+        
+      
+    
+  )
+}
+```
+
+## Summary
+
+Part 3.3 Complete - Student Management System:
+
+Files created: 13 files
+- 5 Pages (list, create, edit, detail, import)
+- 5 Components (table, form, filters, reset password, toggle status)
+- 3 API routes (create, update/delete, reset password)
+
+Features:
+✅ Students list with filters (year, department, status, search)
+✅ Stats cards (total, active, inactive, participations)
+✅ Add student (auto password = studentId)
+✅ Edit student
+✅ View student detail with activity history
+✅ Reset password
+✅ Enable/Disable student account
+✅ Import page (placeholder for Part 3.4)

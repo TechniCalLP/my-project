@@ -1,0 +1,97 @@
+# Fix Import Students - Support 5 Columns Only (No Email/Phone)
+
+## Problem
+Import students page requires 6 columns but should accept 5 columns only:
+- studentId
+- firstName
+- lastName
+- department
+- year
+
+Email and phone are NOT needed.
+
+## Fix Required
+
+Update file: `components/admin/import-students-form.tsx`
+
+Replace the `parseCSV` function with this code:
+
+```typescript
+  const parseCSV = (text: string): StudentRow[] => {
+    const lines = text.trim().split('\n')
+    if (lines.length < 2) {
+      throw new Error('ไฟล์ต้องมีอย่างน้อย 2 บรรทัด (Header + Data)')
+    }
+
+    // Skip header
+    const dataLines = lines.slice(1)
+    
+    return dataLines
+      .map((line, index) => {
+        // ลบ whitespace และ quote
+        const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''))
+        
+        // ข้ามบรรทัดว่าง
+        if (values.length === 0 || values[0] === '') {
+          return null
+        }
+
+        // ต้องมีอย่างน้อย 5 คอลัมน์
+        if (values.length < 5) {
+          throw new Error(`บรรทัดที่ ${index + 2}: ข้อมูลไม่ครบ (พบ ${values.length} คอลัมน์, ต้องการ 5 คอลัมน์)`)
+        }
+
+        // ตรวจสอบข้อมูลที่จำเป็น
+        if (!values[0] || !values[1] || !values[2] || !values[3] || !values[4]) {
+          throw new Error(`บรรทัดที่ ${index + 2}: มีข้อมูลว่างในคอลัมน์ที่จำเป็น`)
+        }
+
+        return {
+          studentId: values[0],
+          firstName: values[1],
+          lastName: values[2],
+          department: values[3],
+          year: parseInt(values[4]),
+          email: undefined,
+          phone: undefined,
+          status: 'pending' as const,
+        }
+      })
+      .filter((row): row is StudentRow => row !== null)
+  }
+```
+
+Also replace the `downloadTemplate` function with:
+
+```typescript
+  const downloadTemplate = () => {
+    const template = `studentId,firstName,lastName,department,year
+66011234,สมชาย,ใจดี,คอมพิวเตอร์,1
+66011235,สมหญิง,รักเรียน,ช่างยนต์,2
+66011236,สมศักดิ์,มานะ,ช่างไฟฟ้า,1
+66011237,สมปอง,ขยัน,อิเล็กทรอนิกส์,4
+66011238,สมบัติ,เรียบร้อย,ก่อสร้าง,5`
+
+    const blob = new Blob([template], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = 'students_template.csv'
+    link.click()
+  }
+```
+
+## Summary
+
+Changes:
+- Accept exactly 5 columns (studentId, firstName, lastName, department, year)
+- Remove email and phone columns completely
+- Set email and phone to undefined in parsed data
+- Update template to 5 columns only
+- Better error messages showing column count
+
+Expected CSV format:
+```
+studentId,firstName,lastName,department,year
+66011234,สมชาย,ใจดี,คอมพิวเตอร์,1
+66011235,สมหญิง,รักเรียน,ช่างยนต์,2
+```

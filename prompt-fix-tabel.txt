@@ -1,0 +1,51 @@
+# Fix Table Column Widths - Use Inline Styles
+
+## Problem
+
+Tailwind width classes (w-1/4, w-1/6) may not be working due to cache or build issues.
+
+## Solution
+
+Use inline styles for guaranteed column widths.
+
+File: `components/admin/recent-activities.tsx`
+
+## Change Required
+
+Update TableHead elements to use inline styles:
+
+### Find (line 64-68):
+
+```typescript
+
+  
+    ชื่อกิจกรรม
+    ประเภท
+    สถานะ
+    ผู้เข้าร่วม
+    จัดการ
+  
+
+```
+
+### Replace with:
+
+```typescript
+
+  
+    ชื่อกิจกรรม
+    ประเภท
+    สถานะ
+    ผู้เข้าร่วม
+    จัดการ
+  
+
+```
+
+## Summary
+
+Changed from Tailwind classes to inline styles:
+- w-1/4 → style={{ width: "25%" }}
+- w-1/6 → style={{ width: "16.67%" }}
+
+This ensures the widths work regardless of Tailwind configuration or cache issues.

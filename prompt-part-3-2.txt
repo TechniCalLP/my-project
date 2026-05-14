@@ -1,0 +1,1008 @@
+# Student Activity System - Part 3.2: Activity Management
+
+## Overview
+
+Build complete activity management system for admin:
+- List all activities with filters
+- Create new activities with code generation
+- Edit existing activities
+- View participants per activity
+- Delete activities
+
+## Brand Colors
+
+- Primary (Navy): #2E3192
+- Secondary (Red): #C52833
+- Success: #2E9283
+- Warning: #F59E0B
+
+## 1. Activities List Page
+
+Path: `/admin/activities`
+
+File: `app/(admin)/admin/activities/page.tsx`
+
+```typescript
+import { prisma } from "@/lib/prisma"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Plus, Calendar } from "lucide-react"
+import Link from "next/link"
+import ActivitiesTable from "@/components/admin/activities-table"
+import ActivityFilters from "@/components/admin/activity-filters"
+
+export default async function ActivitiesPage({
+  searchParams,
+}: {
+  searchParams: { year?: string; semester?: string; category?: string; status?: string }
+}) {
+  // Build filter conditions
+  const where: any = {}
+  
+  if (searchParams.year) {
+    where.year = searchParams.year
+  }
+  
+  if (searchParams.semester) {
+    where.semester = parseInt(searchParams.semester)
+  }
+  
+  if (searchParams.category) {
+    where.category = searchParams.category
+  }
+  
+  if (searchParams.status) {
+    where.status = searchParams.status
+  }
+
+  // Fetch activities with filters
+  const activities = await prisma.activity.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    include: {
+      _count: {
+        select: { participations: true, activityCodes: true }
+      }
+    }
+  })
+
+  return (
+    
+      {/* Header */}
+      
+        
+          
+            
+            จัดการกิจกรรม
+          
+          
+            สร้าง แก้ไข และจัดการกิจกรรมทั้งหมด
+          
+        
+        
+          
+            
+            สร้างกิจกรรมใหม่
+          
+        
+      
+
+      {/* Stats */}
+      
+        
+          
+            {activities.length}
+            กิจกรรมทั้งหมด
+          
+        
+        
+          
+            
+              {activities.filter(a => a.status === 'ACTIVE').length}
+            
+            เปิดรับสมัคร
+          
+        
+        
+          
+            
+              {activities.filter(a => a.status === 'COMPLETED').length}
+            
+            เสร็จสิ้น
+          
+        
+        
+          
+            
+              {activities.reduce((sum, a) => sum + a._count.participations, 0)}
+            
+            ผู้เข้าร่วมทั้งหมด
+          
+        
+      
+
+      {/* Filters */}
+      
+
+      {/* Table */}
+      
+    
+  )
+}
+```
+
+## 2. Activity Filters Component
+
+File: `components/admin/activity-filters.tsx`
+
+```typescript
+"use client"
+
+import { useRouter, useSearchParams } from "next/navigation"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
+import { X } from "lucide-react"
+
+export default function ActivityFilters() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  const currentYear = searchParams.get('year') || ''
+  const currentSemester = searchParams.get('semester') || ''
+  const currentCategory = searchParams.get('category') || ''
+  const currentStatus = searchParams.get('status') || ''
+
+  const updateFilter = (key: string, value: string) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (value) {
+      params.set(key, value)
+    } else {
+      params.delete(key)
+    }
+    router.push(`/admin/activities?${params.toString()}`)
+  }
+
+  const clearFilters = () => {
+    router.push('/admin/activities')
+  }
+
+  const hasFilters = currentYear || currentSemester || currentCategory || currentStatus
+
+  return (
+    
+      
+        
+          {/* Year */}
+          <Select value={currentYear} onValueChange={(v) => updateFilter('year', v)}>
+            
+              
+            
+            
+              2567
+              2568
+            
+          
+
+          {/* Semester */}
+          <Select value={currentSemester} onValueChange={(v) => updateFilter('semester', v)}>
+            
+              
+            
+            
+              ภาคเรียนที่ 1
+              ภาคเรียนที่ 2
+            
+          
+
+          {/* Category */}
+          <Select value={currentCategory} onValueChange={(v) => updateFilter('category', v)}>
+            
+              
+            
+            
+              วิชาการ
+              กีฬา
+              ศิลปะ-วัฒนธรรม
+              บำเพ็ญประโยชน์
+              คุณธรรม-จริยธรรม
+              สุขภาพ
+            
+          
+
+          {/* Status */}
+          <Select value={currentStatus} onValueChange={(v) => updateFilter('status', v)}>
+            
+              
+            
+            
+              เปิดรับสมัคร
+              เสร็จสิ้น
+              ยกเลิก
+            
+          
+
+          {/* Clear */}
+          {hasFilters && (
+            
+              
+              ล้างตัวกรอง
+            
+          )}
+        
+      
+    
+  )
+}
+```
+
+## 3. Activities Table Component
+
+File: `components/admin/activities-table.tsx`
+
+```typescript
+import Link from "next/link"
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Eye, Edit, Trash2, Users, Code } from "lucide-react"
+import { DeleteActivityButton } from "./delete-activity-button"
+
+function getCategoryLabel(category: string) {
+  const labels: Record = {
+    ACADEMIC: "วิชาการ",
+    SPORTS: "กีฬา",
+    ARTS: "ศิลปะ-วัฒนธรรม",
+    VOLUNTEER: "บำเพ็ญประโยชน์",
+    MORALITY: "คุณธรรม-จริยธรรม",
+    HEALTH: "สุขภาพ",
+  }
+  return labels[category] || category
+}
+
+export default function ActivitiesTable({ activities }: { activities: any[] }) {
+  if (activities.length === 0) {
+    return (
+      
+        ไม่พบกิจกรรม
+      
+    )
+  }
+
+  return (
+    
+      
+        
+          
+            
+              
+                ชื่อกิจกรรม
+              
+              
+                ประเภท
+              
+              
+                สถานะ
+              
+              
+                โค้ด
+              
+              
+                ผู้เข้าร่วม
+              
+              
+                จัดการ
+              
+            
+          
+          
+            {activities.map((activity) => (
+              
+                
+                  
+                    {activity.title}
+                    
+                      {activity.year} / ภาคเรียนที่ {activity.semester}
+                    
+                  
+                
+                
+                  
+                    {getCategoryLabel(activity.category)}
+                  
+                
+                
+                  <Badge 
+                    className={
+                      activity.status === 'ACTIVE' 
+                        ? 'bg-primary text-white' 
+                        : 'bg-gray-400 text-white'
+                    }
+                  >
+                    {activity.status === 'ACTIVE' ? 'เปิดรับสมัคร' : 'ปิดแล้ว'}
+                  
+                
+                
+                  
+                    
+                    
+                      {activity._count.activityCodes}
+                    
+                  
+                
+                
+                  
+                    
+                    
+                      {activity._count.participations}
+                    
+                    คน
+                  
+                
+                
+                  
+                    
+                      
+                        
+                        ดู
+                      
+                    
+                    
+                      
+                        
+                        แก้ไข
+                      
+                    
+                    
+                  
+                
+              
+            ))}
+          
+        
+      
+    
+  )
+}
+```
+
+## 4. Create Activity Page
+
+Path: `/admin/activities/create`
+
+File: `app/(admin)/admin/activities/create/page.tsx`
+
+```typescript
+import ActivityForm from "@/components/admin/activity-form"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ArrowLeft } from "lucide-react"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+
+export default function CreateActivityPage() {
+  return (
+    
+      {/* Header */}
+      
+        
+          
+            
+          
+        
+        
+          
+            สร้างกิจกรรมใหม่
+          
+          
+            กรอกข้อมูลกิจกรรมและระบบจะสร้างโค้ดให้อัตโนมัติ
+          
+        
+      
+
+      {/* Form */}
+      
+        
+          ข้อมูลกิจกรรม
+        
+        
+          
+        
+      
+    
+  )
+}
+```
+
+## 5. Activity Form Component
+
+File: `components/admin/activity-form.tsx`
+
+```typescript
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useToast } from "@/components/ui/use-toast"
+import { Loader2 } from "lucide-react"
+
+interface ActivityFormProps {
+  initialData?: any
+  isEdit?: boolean
+}
+
+export default function ActivityForm({ initialData, isEdit = false }: ActivityFormProps) {
+  const router = useRouter()
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+
+    const formData = new FormData(e.currentTarget)
+    const data = {
+      title: formData.get('title'),
+      description: formData.get('description'),
+      category: formData.get('category'),
+      year: formData.get('year'),
+      semester: parseInt(formData.get('semester') as string),
+      startDate: formData.get('startDate'),
+      endDate: formData.get('endDate'),
+      status: formData.get('status'),
+      codeCount: isEdit ? 0 : parseInt(formData.get('codeCount') as string || '5'),
+    }
+
+    try {
+      const url = isEdit 
+        ? `/api/admin/activities/${initialData.id}`
+        : '/api/admin/activities'
+      
+      const method = isEdit ? 'PUT' : 'POST'
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+
+      if (!response.ok) throw new Error('Failed')
+
+      toast({
+        title: isEdit ? "แก้ไขสำเร็จ" : "สร้างสำเร็จ",
+        description: isEdit 
+          ? "แก้ไขกิจกรรมเรียบร้อยแล้ว" 
+          : "สร้างกิจกรรมและโค้ดเรียบร้อยแล้ว",
+      })
+
+      router.push('/admin/activities')
+      router.refresh()
+    } catch (error) {
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "กรุณาลองใหม่อีกครั้ง",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    
+      {/* Title */}
+      
+        ชื่อกิจกรรม *
+        
+      
+
+      {/* Description */}
+      
+        รายละเอียด
+        
+      
+
+      {/* Category */}
+      
+        หมวดหมู่ *
+        
+          
+            
+          
+          
+            วิชาการ
+            กีฬา
+            ศิลปะ-วัฒนธรรม
+            บำเพ็ญประโยชน์
+            คุณธรรม-จริยธรรม
+            สุขภาพ
+          
+        
+      
+
+      {/* Year & Semester */}
+      
+        
+          ปีการศึกษา *
+          
+            
+              
+            
+            
+              2567
+              2568
+            
+          
+        
+        
+          ภาคเรียน *
+          
+            
+              
+            
+            
+              ภาคเรียนที่ 1
+              ภาคเรียนที่ 2
+            
+          
+        
+      
+
+      {/* Dates */}
+      
+        
+          วันที่เริ่ม *
+          <Input
+            id="startDate"
+            name="startDate"
+            type="date"
+            defaultValue={initialData?.startDate?.split('T')[0]}
+            required
+          />
+        
+        
+          วันที่สิ้นสุด *
+          <Input
+            id="endDate"
+            name="endDate"
+            type="date"
+            defaultValue={initialData?.endDate?.split('T')[0]}
+            required
+          />
+        
+      
+
+      {/* Status */}
+      
+        สถานะ *
+        
+          
+            
+          
+          
+            เปิดรับสมัคร
+            เสร็จสิ้น
+            ยกเลิก
+          
+        
+      
+
+      {/* Code Count (Create only) */}
+      {!isEdit && (
+        
+          จำนวนโค้ดที่ต้องการ
+          
+          
+            ระบบจะสร้างโค้ด 6 หลักให้อัตโนมัติ
+          
+        
+      )}
+
+      {/* Actions */}
+      
+        
+          {loading && }
+          {isEdit ? 'บันทึกการแก้ไข' : 'สร้างกิจกรรม'}
+        
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => router.back()}
+          disabled={loading}
+        >
+          ยกเลิก
+        
+      
+    
+  )
+}
+```
+
+## 6. Create Activity API
+
+File: `app/api/admin/activities/route.ts`
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { prisma } from '@/lib/prisma'
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const data = await req.json()
+
+    // Create activity
+    const activity = await prisma.activity.create({
+      data: {
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        year: data.year,
+        semester: data.semester,
+        startDate: new Date(data.startDate),
+        endDate: new Date(data.endDate),
+        status: data.status,
+      }
+    })
+
+    // Generate activity codes
+    const codeCount = data.codeCount || 5
+    const codes = []
+    
+    for (let i = 0; i < codeCount; i++) {
+      const code = Math.floor(100000 + Math.random() * 900000).toString()
+      codes.push({
+        code,
+        activityId: activity.id,
+        isUsed: false,
+      })
+    }
+
+    await prisma.activityCode.createMany({
+      data: codes
+    })
+
+    return NextResponse.json(activity)
+  } catch (error) {
+    console.error('Create activity error:', error)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  }
+}
+```
+
+## 7. Edit Activity Page
+
+Path: `/admin/activities/[id]/edit`
+
+File: `app/(admin)/admin/activities/[id]/edit/page.tsx`
+
+```typescript
+import { prisma } from "@/lib/prisma"
+import ActivityForm from "@/components/admin/activity-form"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ArrowLeft } from "lucide-react"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { notFound } from "next/navigation"
+
+export default async function EditActivityPage({
+  params,
+}: {
+  params: { id: string }
+}) {
+  const activity = await prisma.activity.findUnique({
+    where: { id: params.id }
+  })
+
+  if (!activity) {
+    notFound()
+  }
+
+  return (
+    
+      {/* Header */}
+      
+        
+          
+            
+          
+        
+        
+          
+            แก้ไขกิจกรรม
+          
+          {activity.title}
+        
+      
+
+      {/* Form */}
+      
+        
+          ข้อมูลกิจกรรม
+        
+        
+          
+        
+      
+    
+  )
+}
+```
+
+## 8. Update Activity API
+
+File: `app/api/admin/activities/[id]/route.ts`
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { prisma } from '@/lib/prisma'
+
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const data = await req.json()
+
+    const activity = await prisma.activity.update({
+      where: { id: params.id },
+      data: {
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        year: data.year,
+        semester: data.semester,
+        startDate: new Date(data.startDate),
+        endDate: new Date(data.endDate),
+        status: data.status,
+      }
+    })
+
+    return NextResponse.json(activity)
+  } catch (error) {
+    console.error('Update activity error:', error)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  }
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    await prisma.activity.delete({
+      where: { id: params.id }
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Delete activity error:', error)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  }
+}
+```
+
+## 9. View Activity Details (Participants)
+
+Path: `/admin/activities/[id]`
+
+File: `app/(admin)/admin/activities/[id]/page.tsx`
+
+```typescript
+import { prisma } from "@/lib/prisma"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { ArrowLeft, Users, Code, Calendar, FileText } from "lucide-react"
+import Link from "next/link"
+import { notFound } from "next/navigation"
+import { formatThaiDate } from "@/lib/utils"
+
+export default async function ActivityDetailPage({
+  params,
+}: {
+  params: { id: string }
+}) {
+  const activity = await prisma.activity.findUnique({
+    where: { id: params.id },
+    include: {
+      participations: {
+        include: {
+          student: true
+        },
+        orderBy: { joinedAt: 'desc' }
+      },
+      activityCodes: true,
+      _count: {
+        select: { participations: true, activityCodes: true }
+      }
+    }
+  })
+
+  if (!activity) {
+    notFound()
+  }
+
+  return (
+    
+      {/* Header */}
+      
+        
+          
+            
+          
+        
+        
+          {activity.title}
+          
+            {activity.year} / ภาคเรียนที่ {activity.semester}
+          
+        
+        
+          แก้ไข
+        
+      
+
+      {/* Info Cards */}
+      
+        
+          
+            
+              
+              
+                {activity._count.participations}
+                ผู้เข้าร่วม
+              
+            
+          
+        
+        
+          
+            
+              
+              
+                {activity._count.activityCodes}
+                โค้ดทั้งหมด
+              
+            
+          
+        
+        
+          
+            
+              
+              
+                
+                  {formatThaiDate(activity.startDate)} - {formatThaiDate(activity.endDate)}
+                
+                ระยะเวลา
+              
+            
+          
+        
+      
+
+      {/* Details */}
+      
+        
+          รายละเอียด
+        
+        
+          
+            หมวดหมู่
+            {activity.category}
+          
+          
+            คำอธิบาย
+            {activity.description || '-'}
+          
+          
+            สถานะ
+            
+              <Badge className={activity.status === 'ACTIVE' ? 'bg-primary' : 'bg-gray-400'}>
+                {activity.status === 'ACTIVE' ? 'เปิดรับสมัคร' : 'ปิดแล้ว'}
+              
+            
+          
+        
+      
+
+      {/* Participants */}
+      
+        
+          รายชื่อผู้เข้าร่วม ({activity._count.participations})
+        
+        
+          {activity.participations.length === 0 ? (
+            ยังไม่มีผู้เข้าร่วม
+          ) : (
+            
+              
+                
+                  
+                    
+                      รหัสนักศึกษา
+                    
+                    
+                      ชื่อ-นามสกุล
+                    
+                    
+                      ชั้นปี
+                    
+                    
+                      แผนก
+                    
+                    
+                      วันที่เข้าร่วม
+                    
+                  
+                
+                
+                  {activity.participations.map((p) => (
+                    
+                      {p.student.studentId}
+                      
+                        {p.student.firstName} {p.student.lastName}
+                      
+                      {p.student.year}
+                      {p.student.department}
+                      {formatThaiDate(p.joinedAt)}
+                    
+                  ))}
+                
+              
+            
+          )}
+        
+      
+    
+  )
+}
+```
+
+## Summary
+
+Part 3.2 Complete:
+
+✅ Activities List with filters (year, semester, category, status)
+✅ Stats cards (total, active, completed, participations)
+✅ Create activity form with auto code generation
+✅ Edit activity form
+✅ View activity details with participants
+✅ Delete activity (using existing component)
+✅ Responsive table with balanced columns
+✅ Activity codes auto-generation (6-digit)
+✅ Full CRUD operations
+
+Files created:
+- app/(admin)/admin/activities/page.tsx
+- app/(admin)/admin/activities/create/page.tsx
+- app/(admin)/admin/activities/[id]/page.tsx
+- app/(admin)/admin/activities/[id]/edit/page.tsx
+- components/admin/activity-filters.tsx
+- components/admin/activities-table.tsx
+- components/admin/activity-form.tsx
+- app/api/admin/activities/route.ts
+- app/api/admin/activities/[id]/route.ts

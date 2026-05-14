@@ -1,0 +1,109 @@
+# Fix: Random Unique Code Generation
+
+แก้ไขไฟล์เดียว: `app/api/admin/activities/route.ts`
+
+Replace ทั้งไฟล์ด้วยโค้ดนี้:
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { prisma } from '@/lib/prisma'
+
+// Category prefix mapping
+const CATEGORY_PREFIX: Record = {
+  ACADEMIC: 'ACT',
+  SPORTS: 'SPT',
+  ARTS: 'ART',
+  VOLUNTEER: 'VOL',
+  MORALITY: 'MOR',
+  HEALTH: 'HLT',
+}
+
+// Generate random 3-digit number
+function generateRandomNumber(): string {
+  return Math.floor(Math.random() * 1000).toString().padStart(3, '0')
+}
+
+// Generate unique random code
+async function generateUniqueCode(prefix: string): Promise {
+  let attempts = 0
+  const maxAttempts = 100
+
+  while (attempts < maxAttempts) {
+    const randomNum = generateRandomNumber()
+    const code = `${prefix}${randomNum}`
+
+    // Check if code already exists in database
+    const existingCode = await prisma.activityCode.findUnique({
+      where: { code }
+    })
+
+    if (!existingCode) {
+      return code
+    }
+
+    attempts++
+  }
+
+  throw new Error('Unable to generate unique code')
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const data = await req.json()
+
+    // Create activity
+    const activity = await prisma.activity.create({
+      data: {
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        year: data.year,
+        semester: data.semester,
+        startDate: new Date(data.startDate),
+        endDate: new Date(data.endDate),
+        status: data.status,
+      }
+    })
+
+    // Generate random unique activity codes
+    const codeCount = data.codeCount || 5
+    const prefix = CATEGORY_PREFIX[data.category] || 'ACT'
+    const codes = []
+    
+    for (let i = 0; i < codeCount; i++) {
+      const uniqueCode = await generateUniqueCode(prefix)
+      codes.push({
+        code: uniqueCode,
+        activityId: activity.id,
+        isUsed: false,
+      })
+    }
+
+    await prisma.activityCode.createMany({
+      data: codes
+    })
+
+    return NextResponse.json(activity)
+  } catch (error) {
+    console.error('Create activity error:', error)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  }
+}
+```
+
+---
+
+## 🎯 **วิธีทำงาน:**
+❌ เดิม (เรียงลำดับ):
+ACT001, ACT002, ACT003, ACT004, ACT005
+→ เดาง่ายมาก!
+✅ ใหม่ (สุ่ม):
+ACT347, ACT082, ACT591, ACT123, ACT849
+→ เดายาก! ไม่มีลำดับ

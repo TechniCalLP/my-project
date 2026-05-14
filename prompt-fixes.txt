@@ -1,0 +1,220 @@
+# Fixes for Student Activity System Part 2
+
+## 1. Dashboard Fixes
+
+### Mobile Profile Button
+Add profile button to mobile header (currently only on desktop):
+
+```typescript
+// components/layout/mobile-header.tsx
+
+  
+  
+  
+    
+     {/* ADD THIS */}
+  
+
+```
+
+### Activity Cards - Use Real Dates & Status
+
+Cards must show:
+- ✅ Activity status (ACTIVE = เปิดรับสมัคร, COMPLETED = ปิดแล้ว, CANCELLED = ยกเลิก)
+- ✅ Date range from database (startDate - endDate)
+- ✅ Thai date format: "11 พฤศจิกายน 2569"
+- ✅ Clear visual indicator (green badge = open, gray badge = closed)
+- ✅ Button text: "เข้าร่วมด้วยโค้ด" (if ACTIVE), hide button (if not ACTIVE)
+
+```typescript
+// components/dashboard/activity-card.tsx
+export function ActivityCard({ activity }) {
+  const isOpen = activity.status === 'ACTIVE'
+  const dateRange = formatThaiDateRange(activity.startDate, activity.endDate)
+  
+  return (
+    
+      
+        
+        
+          
+            {activity.title}
+            
+              {isOpen ? "เปิดรับสมัคร" : "ปิดแล้ว"}
+            
+          
+          
+          
+            {getCategoryLabel(activity.category)}
+            {activity.year}/{activity.semester}
+          
+          
+          
+            📅 {dateRange}
+          
+          
+          {isOpen && (
+            <Button 
+              className="w-full mt-2"
+              onClick={() => router.push('/join')}
+            >
+              เข้าร่วมด้วยโค้ด
+            
+          )}
+        
+      
+    
+  )
+}
+
+function formatThaiDateRange(startDate: Date, endDate: Date) {
+  const thaiMonths = [
+    'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+    'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+  ]
+  
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  
+  const startDay = start.getDate()
+  const startMonth = thaiMonths[start.getMonth()]
+  const startYear = start.getFullYear() + 543
+  
+  const endDay = end.getDate()
+  const endMonth = thaiMonths[end.getMonth()]
+  const endYear = end.getFullYear() + 543
+  
+  if (start.toDateString() === end.toDateString()) {
+    return `${startDay} ${startMonth} ${startYear}`
+  }
+  
+  if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
+    return `${startDay}-${endDay} ${startMonth} ${startYear}`
+  }
+  
+  return `${startDay} ${startMonth} ${startYear} - ${endDay} ${endMonth} ${endYear}`
+}
+```
+
+### Dashboard Query - Include Dates
+
+```typescript
+// app/(student)/dashboard/page.tsx
+const upcomingActivities = await prisma.activity.findMany({
+  where: {
+    year: student.year,
+    // Remove status filter - show all
+    OR: [
+      { targetDepartments: { isEmpty: true } },
+      { targetDepartments: { has: student.department } }
+    ],
+    NOT: {
+      participations: {
+        some: { studentId: student.studentId }
+      }
+    }
+  },
+  take: 5,
+  orderBy: { startDate: 'asc' } // Order by start date
+})
+```
+
+## 2. Activities Page Fixes
+
+### Remove All Filters
+
+```typescript
+// app/(student)/activities/page.tsx
+export default async function ActivitiesPage() {
+  const session = await getServerSession()
+  const student = session.user
+  
+  // No filters - show ALL activities for student's year
+  const activities = await prisma.activity.findMany({
+    where: {
+      year: student.year,
+      OR: [
+        { targetDepartments: { isEmpty: true } },
+        { targetDepartments: { has: student.department } }
+      ]
+    },
+    include: {
+      participations: {
+        where: { studentId: student.studentId }
+      }
+    },
+    orderBy: { startDate: 'asc' }
+  })
+  
+  return (
+    
+      {/* Header with wording */}
+      
+        กิจกรรมสำหรับ {student.year}
+        
+          กิจกรรมทั้งหมด {activities.length} รายการ
+        
+      
+      
+      {/* NO FILTERS - Remove ActivityFilters component */}
+      
+      {/* Activity Grid */}
+      
+        {activities.map(activity => (
+           0}
+          />
+        ))}
+      
+    
+  )
+}
+```
+
+### Activity Card - Same as Dashboard
+
+Use the same `ActivityCard` component from dashboard. Show:
+- Status badge (เปิดรับสมัคร / ปิดแล้ว / ยกเลิก)
+- Date range in Thai
+- "เข้าร่วมด้วยโค้ด" button (only if ACTIVE)
+- Checkmark if already joined
+
+## 3. Database Schema Check
+
+Ensure Activity model has date fields:
+
+```prisma
+model Activity {
+  id                String   @id @default(cuid())
+  title             String
+  description       String?
+  year              String
+  semester          String
+  category          Category
+  targetDepartments String[]
+  status            ActivityStatus @default(ACTIVE)
+  startDate         DateTime  // Required
+  endDate           DateTime  // Required
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  codes            ActivityCode[]
+  participations   Participation[]
+  admin            Admin?    @relation(fields: [adminId], references: [id])
+  adminId          String?
+}
+
+enum ActivityStatus {
+  ACTIVE      // เปิดรับสมัคร
+  COMPLETED   // ปิดแล้ว
+  CANCELLED   // ยกเลิก
+}
+```
+
+## Summary of Changes
+
+✅ Mobile: Add profile button to header
+✅ Dashboard cards: Show real dates, status, "เข้าร่วมด้วยโค้ด" button
+✅ Activities page: Remove filters, show all activities for year
+✅ Activities page: Add wording "กิจกรรมสำหรับ ปวช.1"
+✅ All cards: Use Thai date format
+✅ Status-based UI: Green = open, Gray = closed, Hide button if not active

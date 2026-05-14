@@ -1,0 +1,108 @@
+# Fix Login Pages - Logo Display Issue
+
+## Problem
+
+Logo image is too large and covering the white circle background on both student and admin login pages.
+
+## Solution
+
+Use fixed width/height instead of fill prop, with proper object positioning.
+
+## Files to Update
+
+### 1. Student Login Page
+
+File: `app/(auth)/login/page.tsx`
+
+Find the logo section (around line 48-56) and replace with:
+
+```typescript
+{/* Logo */}
+
+  
+    
+  
+
+```
+
+Mobile logo section (around line 75):
+
+```typescript
+{/* Mobile Logo */}
+
+  
+    
+  
+  
+    วิทยาลัยเทคนิคลำปาง
+  
+  
+    ระบบบันทึกกิจกรรมนักศึกษา
+  
+
+```
+
+### 2. Admin Login Page
+
+File: `app/(auth)/admin/login/page.tsx`
+
+Desktop logo section (around line 48-56):
+
+```typescript
+{/* Logo */}
+
+  
+    
+  
+
+```
+
+Mobile logo section (around line 75):
+
+```typescript
+{/* Mobile Logo */}
+
+  
+    
+  
+  
+    ระบบจัดการกิจกรรม
+  
+  
+    สำหรับเจ้าหน้าที่
+  
+
+```
+
+## Key Changes
+
+✅ Remove `fill` prop - causes image to expand
+✅ Use fixed `width={120}` and `height={120}` for desktop
+✅ Use fixed `width={64}` and `height={64}` for mobile
+✅ Add `object-contain` - keeps aspect ratio, fits inside container
+✅ Remove `unoptimized` - not needed for local images
+✅ Remove wrapper `<div className="relative">` - not needed without fill
+
+## Result
+
+Desktop:
+- White circle: 160px (w-40 h-40)
+- Logo image: 120px (fits inside with padding)
+- Border: 4px white with 20% opacity
+- Shadow: 2xl
+
+Mobile:
+- Circle: 80px (w-20 h-20)  
+- Logo image: 64px (fits inside with padding)
+- Student: Gradient background (Navy → Red)
+- Admin: Solid Navy background
+
+## Summary
+
+The issue was using `fill` prop which makes the image expand to fill its parent container, covering the white circle background. By using fixed width/height with `object-contain`, the logo stays properly sized within the white circle.
+
+✅ White circle visible
+✅ Logo properly sized
+✅ Border shows correctly
+✅ Shadow displays
+✅ Responsive on mobile

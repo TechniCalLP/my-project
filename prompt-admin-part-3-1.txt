@@ -1,0 +1,636 @@
+# Student Activity System - Part 3.1: Admin Login + Dashboard
+
+## Overview
+
+Build admin authentication and dashboard:
+1. Admin login page (separate from student)
+2. Admin layout with sidebar
+3. Admin dashboard with statistics
+4. Role-based access control
+
+## Brand Colors
+
+- Primary (Navy): #2E3192
+- Secondary (Red): #C52833
+- Success: #2E9283
+- Warning: #F59E0B
+
+## 1. Update NextAuth Configuration
+
+File: `app/api/auth/[...nextauth]/route.ts`
+
+Add admin login support:
+
+```typescript
+import NextAuth, { NextAuthOptions } from "next-auth"
+import CredentialsProvider from "next-auth/providers/credentials"
+import { PrismaAdapter } from "@next-auth/prisma-adapter"
+import { prisma } from "@/lib/prisma"
+import bcrypt from "bcryptjs"
+
+export const authOptions: NextAuthOptions = {
+  adapter: PrismaAdapter(prisma),
+  providers: [
+    CredentialsProvider({
+      id: "student-credentials",
+      name: "Student Login",
+      credentials: {
+        studentId: { label: "Student ID", type: "text" },
+        password: { label: "Password", type: "password" }
+      },
+      async authorize(credentials) {
+        if (!credentials?.studentId || !credentials?.password) {
+          return null
+        }
+
+        const student = await prisma.student.findUnique({
+          where: { studentId: credentials.studentId }
+        })
+
+        if (!student) {
+          return null
+        }
+
+        const isPasswordValid = await bcrypt.compare(
+          credentials.password,
+          student.password
+        )
+
+        if (!isPasswordValid) {
+          return null
+        }
+
+        return {
+          id: student.id,
+          studentId: student.studentId,
+          name: `${student.firstName} ${student.lastName}`,
+          email: student.email,
+          role: "student",
+          year: student.year,
+          department: student.department,
+          isFirstLogin: student.isFirstLogin,
+        }
+      }
+    }),
+    CredentialsProvider({
+      id: "admin-credentials",
+      name: "Admin Login",
+      credentials: {
+        username: { label: "Username", type: "text" },
+        password: { label: "Password", type: "password" }
+      },
+      async authorize(credentials) {
+        if (!credentials?.username || !credentials?.password) {
+          return null
+        }
+
+        const admin = await prisma.admin.findUnique({
+          where: { username: credentials.username }
+        })
+
+        if (!admin) {
+          return null
+        }
+
+        const isPasswordValid = await bcrypt.compare(
+          credentials.password,
+          admin.password
+        )
+
+        if (!isPasswordValid) {
+          return null
+        }
+
+        return {
+          id: admin.id,
+          username: admin.username,
+          name: `${admin.firstName} ${admin.lastName}`,
+          email: admin.email,
+          role: "admin",
+        }
+      }
+    }),
+  ],
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.role = user.role
+        token.studentId = user.studentId
+        token.username = user.username
+        token.year = user.year
+        token.department = user.department
+        token.isFirstLogin = user.isFirstLogin
+      }
+      return token
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.role = token.role
+        session.user.studentId = token.studentId
+        session.user.username = token.username
+        session.user.year = token.year
+        session.user.department = token.department
+        session.user.isFirstLogin = token.isFirstLogin
+      }
+      return session
+    }
+  },
+  pages: {
+    signIn: "/login",
+  },
+  session: {
+    strategy: "jwt",
+  },
+}
+
+const handler = NextAuth(authOptions)
+export { handler as GET, handler as POST }
+```
+
+## 2. Admin Login Page
+
+File: `app/(auth)/admin/login/page.tsx`
+
+```typescript
+"use client"
+
+import { useState } from "react"
+import { signIn } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import Image from "next/image"
+import { Eye, EyeOff, Shield } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { useToast } from "@/components/ui/use-toast"
+
+export default function AdminLoginPage() {
+  const router = useRouter()
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+
+    const formData = new FormData(e.currentTarget)
+    const username = formData.get("username") as string
+    const password = formData.get("password") as string
+
+    try {
+      const result = await signIn("admin-credentials", {
+        username,
+        password,
+        redirect: false,
+      })
+
+      if (result?.ok) {
+        router.push("/admin/dashboard")
+        router.refresh()
+      } else {
+        toast({
+          title: "เข้าสู่ระบบไม่สำเร็จ",
+          description: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "กรุณาลองใหม่อีกครั้ง",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    
+      
+        
+          {/* Admin Icon */}
+          
+            
+          
+          
+          {/* Title */}
+          
+            
+              ระบบจัดการกิจกรรม
+            
+            
+              สำหรับผู้ดูแลระบบ
+            
+          
+        
+
+        
+          
+            {/* Username */}
+            
+              
+                ชื่อผู้ใช้
+              
+              
+            
+
+            {/* Password */}
+            
+              
+                รหัสผ่าน
+              
+              
+                
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showPassword ? (
+                    
+                  ) : (
+                    
+                  )}
+                
+              
+            
+
+            {/* Submit Button */}
+            
+              {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
+            
+          
+        
+
+        {/* Footer */}
+        
+          
+            Admin Panel • วิทยาลัยเทคนิคลำปาง
+          
+        
+      
+    
+  )
+}
+```
+
+## 3. Admin Layout with Sidebar
+
+File: `app/(admin)/layout.tsx`
+
+```typescript
+import { getServerSession } from "next-auth"
+import { redirect } from "next/navigation"
+import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+import AdminSidebar from "@/components/admin/sidebar"
+
+export default async function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const session = await getServerSession(authOptions)
+  
+  if (!session) {
+    redirect("/admin/login")
+  }
+  
+  if (session.user.role !== "admin") {
+    redirect("/dashboard")
+  }
+
+  return (
+    
+      {/* Sidebar */}
+      
+      
+      {/* Main Content */}
+      
+        
+          {children}
+        
+      
+    
+  )
+}
+```
+
+File: `components/admin/sidebar.tsx`
+
+```typescript
+"use client"
+
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { signOut } from "next-auth/react"
+import { 
+  LayoutDashboard, 
+  Calendar, 
+  Users, 
+  ClipboardList, 
+  Settings, 
+  LogOut,
+  Menu,
+  X
+} from "lucide-react"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { useState } from "react"
+
+const navItems = [
+  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/activities", label: "กิจกรรม", icon: Calendar },
+  { href: "/admin/students", label: "นักศึกษา", icon: Users },
+  { href: "/admin/participations", label: "การเข้าร่วม", icon: ClipboardList },
+  { href: "/admin/settings", label: "ตั้งค่า", icon: Settings },
+]
+
+export default function AdminSidebar({ user }) {
+  const pathname = usePathname()
+  const [mobileOpen, setMobileOpen] = useState(false)
+
+  const SidebarContent = () => (
+    <>
+      {/* Header */}
+      
+        
+          
+            Admin
+          
+          
+            ระบบจัดการ
+            {user.name}
+          
+        
+      
+
+      {/* Navigation */}
+      
+        {navItems.map((item) => {
+          const Icon = item.icon
+          const isActive = pathname === item.href
+          
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setMobileOpen(false)}
+              className={cn(
+                "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-primary text-white"
+                  : "text-gray-700 hover:bg-gray-100"
+              )}
+            >
+              
+              {item.label}
+            
+          )
+        })}
+      
+
+      {/* Logout */}
+      
+        <Button
+          variant="ghost"
+          className="w-full justify-start text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+          onClick={() => signOut({ callbackUrl: "/admin/login" })}
+        >
+          
+          ออกจากระบบ
+        
+      
+    </>
+  )
+
+  return (
+    <>
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setMobileOpen(!mobileOpen)}
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-lg"
+      >
+        {mobileOpen ? (
+          
+        ) : (
+          
+        )}
+      
+
+      {/* Mobile Sidebar */}
+      {mobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+      
+        
+          
+        
+      
+
+      {/* Desktop Sidebar */}
+      
+        
+      
+    </>
+  )
+}
+```
+
+## 4. Admin Dashboard
+
+File: `app/(admin)/admin/dashboard/page.tsx`
+
+```typescript
+import { prisma } from "@/lib/prisma"
+import StatsCards from "@/components/admin/stats-cards"
+import RecentActivities from "@/components/admin/recent-activities"
+import { LayoutDashboard } from "lucide-react"
+
+export default async function AdminDashboardPage() {
+  // Get statistics
+  const [
+    totalStudents,
+    totalActivities,
+    totalParticipations,
+    activeActivities,
+  ] = await Promise.all([
+    prisma.student.count(),
+    prisma.activity.count(),
+    prisma.participation.count(),
+    prisma.activity.count({ where: { status: 'ACTIVE' } }),
+  ])
+
+  // Calculate participation rate
+  const participationRate = totalActivities > 0 
+    ? Math.round((totalParticipations / (totalStudents * totalActivities)) * 100)
+    : 0
+
+  // Get recent activities
+  const recentActivities = await prisma.activity.findMany({
+    take: 5,
+    orderBy: { createdAt: 'desc' },
+    include: {
+      _count: {
+        select: { participations: true }
+      }
+    }
+  })
+
+  const stats = [
+    {
+      label: "นักศึกษาทั้งหมด",
+      value: totalStudents,
+      icon: "users",
+      color: "primary"
+    },
+    {
+      label: "กิจกรรมทั้งหมด",
+      value: totalActivities,
+      icon: "calendar",
+      color: "secondary"
+    },
+    {
+      label: "การเข้าร่วม",
+      value: totalParticipations,
+      icon: "clipboard",
+      color: "success"
+    },
+    {
+      label: "อัตราการเข้าร่วม",
+      value: `${participationRate}%`,
+      icon: "trending",
+      color: "warning"
+    }
+  ]
+
+  return (
+    
+      {/* Header */}
+      
+        
+          
+          Dashboard
+        
+        
+          ภาพรวมระบบบันทึกกิจกรรมนักศึกษา
+        
+      
+
+      {/* Stats Cards */}
+      
+
+      {/* Recent Activities */}
+      
+    
+  )
+}
+```
+
+File: `components/admin/stats-cards.tsx`
+
+```typescript
+import { Users, Calendar, ClipboardList, TrendingUp } from "lucide-react"
+import { Card } from "@/components/ui/card"
+
+const iconMap = {
+  users: Users,
+  calendar: Calendar,
+  clipboard: ClipboardList,
+  trending: TrendingUp,
+}
+
+const colorMap = {
+  primary: "text-primary-600 bg-primary-50",
+  secondary: "text-secondary-600 bg-secondary-50",
+  success: "text-success bg-success/10",
+  warning: "text-warning-600 bg-warning-50",
+}
+
+export default function StatsCards({ stats }) {
+  return (
+    
+      {stats.map((stat) => {
+        const Icon = iconMap[stat.icon]
+        const colorClass = colorMap[stat.color]
+        
+        return (
+          
+            
+              
+                
+                  {stat.label}
+                
+                
+                  {stat.value}
+                
+              
+              
+                
+              
+            
+          
+        )
+      })}
+    
+  )
+}
+```
+
+File: `components/admin/recent-activities.tsx`
+
+```typescript
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { formatThaiDateRange, getCategoryLabel } from "@/lib/utils"
+
+export default function RecentActivities({ activities }) {
+  return (
+    
+      
+        กิจกรรมล่าสุด
+      
+      
+      
+        {activities.map((activity) => (
+          
+            
+              {activity.title}
+              
+                
+                  {getCategoryLabel(activity.category)}
+                
+                
+                  {activity.year}/{activity.semester}
+                
+              
+            
+            
+              
+                {activity._count.participations} คน
+              
+              เข้าร่วม
+            
+          
+        ))}
+      
+    
+  )
+}
+```
+
+## Summary
+
+✅ Admin login page (separate from student)
+✅ Admin layout with sidebar navigation
+✅ Admin dashboard with statistics
+✅ Role-based access control
+✅ Responsive design (mobile sidebar)
+✅ Brand colors (Navy + Red)
+✅ Stats cards with icons
+✅ Recent activities lis

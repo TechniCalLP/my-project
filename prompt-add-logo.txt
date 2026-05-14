@@ -1,0 +1,114 @@
+# Add College Logo to Login & Navigation
+
+## Requirements
+
+Replace placeholder icons with actual college logo image in 2 places:
+1. Login page
+2. Top navigation header
+
+## File Location
+
+User will provide logo image. Place it in:
+public/logo-college.png
+
+## Changes Needed
+
+### 1. Login Page
+
+File: `app/(auth)/login/page.tsx`
+
+Replace the icon with logo:
+
+```typescript
+// Before:
+<div className="mx-auto w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center">
+  <School className="w-10 h-10 text-blue-600" />
+</div>
+
+// After:
+import Image from "next/image"
+
+<div className="mx-auto w-24 h-24 relative">
+  <Image 
+    src="/logo-college.png" 
+    alt="วิทยาลัยเทคนิคลำปาง"
+    width={96}
+    height={96}
+    className="rounded-full object-cover"
+    priority
+  />
+</div>
+```
+
+### 2. Top Navigation
+
+File: `components/layout/top-nav.tsx`
+
+Replace text logo with image:
+
+```typescript
+// Before:
+<div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+  <span className="text-white font-bold text-sm">วทล</span>
+</div>
+
+// After:
+import Image from "next/image"
+
+<div className="relative w-10 h-10">
+  <Image 
+    src="/logo-college.png"
+    alt="วิทยาลัยเทคนิคลำปาง"
+    width={40}
+    height={40}
+    className="rounded-lg object-cover"
+  />
+</div>
+```
+
+### 3. Mobile Header
+
+File: `components/layout/mobile-header.tsx`
+
+If exists, add logo:
+
+```typescript
+<div className="relative w-8 h-8">
+  <Image 
+    src="/logo-college.png"
+    alt="Logo"
+    width={32}
+    height={32}
+    className="rounded-lg object-cover"
+  />
+</div>
+```
+
+## Logo Specs
+
+- Format: PNG (with transparency recommended)
+- Size: 200x200px minimum, 500x500px recommended
+- Aspect ratio: 1:1 (square)
+- Background: Transparent or white
+
+## Fallback
+
+If logo not provided yet, use enhanced placeholder:
+
+```typescript
+// Temporary SVG logo
+<svg className="w-10 h-10" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="12" fill="#3b82f6"/>
+  <text x="50" y="65" fontSize="48" fontWeight="bold" fill="white" textAnchor="middle">
+    ว
+  </text>
+</svg>
+```
+
+## Summary
+
+✅ Login page: Large logo (96x96px)
+✅ Top nav: Medium logo (40x40px)  
+✅ Mobile: Small logo (32x32px)
+✅ All use Next.js Image component
+✅ Optimized with priority loading

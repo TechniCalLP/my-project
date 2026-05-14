@@ -1,0 +1,360 @@
+# Student Activity System - Part 2.5: Remaining Student Pages
+
+## Pages to Build
+
+### 1. Join Page (`/join`)
+User enters 6-digit code to join activity.
+
+### 2. History Page (`/history`)
+Shows all activities student has joined.
+
+### 3. Settings Page (`/settings`)
+Student profile + change password.
+
+## 1. Join Page
+
+Layout:
+┌─────────────────────────────────┐
+│ เข้าร่วมกิจกรรมด้วยรหัส        │
+│                                 │
+│ กรอกรหัสกิจกรรม 6 หลัก         │
+│                                 │
+│ ┌───┐ ┌───┐ ┌───┐              │
+│ │ 1 │ │ 2 │ │ 3 │              │
+│ └───┘ └───┘ └───┘              │
+│ ┌───┐ ┌───┐ ┌───┐              │
+│ │ 4 │ │ 5 │ │ 6 │              │
+│ └───┘ └───┘ └───┘              │
+│                                 │
+│      [ยืนยันการเข้าร่วม]       │
+│                                 │
+│ กิจกรรมที่เข้าร่วมล่าสุด:       │
+│ • ✅ พิธีไหว้ครู (5 นาทีที่แล้ว)│
+│ • ✅ ปฐมนิเทศ (2 ชม.ที่แล้ว)   │
+└─────────────────────────────────┘
+
+Code:
+```typescript
+"use client"
+
+export default function JoinPage() {
+  const [code, setCode] = useState(['', '', '', '', '', ''])
+  const [loading, setLoading] = useState(false)
+  const inputRefs = useRef([])
+  
+  const handleChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return
+    
+    const newCode = [...code]
+    newCode[index] = value
+    setCode(newCode)
+    
+    // Auto-advance
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus()
+    }
+  }
+  
+  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !code[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus()
+    }
+  }
+  
+  const handleSubmit = async () => {
+    const codeString = code.join('')
+    if (codeString.length !== 6) return
+    
+    setLoading(true)
+    
+    const res = await fetch('/api/activities/join', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: codeString })
+    })
+    
+    if (res.ok) {
+      toast.success('เข้าร่วมกิจกรรมสำเร็จ!')
+      router.push('/history')
+    } else {
+      const error = await res.json()
+      toast.error(error.message || 'รหัสไม่ถูกต้อง')
+    }
+    
+    setLoading(false)
+  }
+  
+  return (
+    
+      
+      
+      {/* 6-Digit Input */}
+      
+        
+          {[0, 1, 2, 3, 4, 5].map(i => (
+            <input
+              key={i}
+              ref={el => inputRefs.current[i] = el}
+              type="text"
+              inputMode="numeric"
+              maxLength={1}
+              value={code[i]}
+              onChange={e => handleChange(i, e.target.value)}
+              onKeyDown={e => handleKeyDown(i, e)}
+              className="w-14 h-16 text-center text-2xl font-bold border-2 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+            />
+          ))}
+        
+        
+        <Button 
+          onClick={handleSubmit}
+          disabled={code.join('').length !== 6 || loading}
+          className="w-full h-12"
+        >
+          {loading ? 'กำลังตรวจสอบ...' : 'ยืนยันการเข้าร่วม'}
+        
+      
+      
+      {/* Recent Joins */}
+      
+    
+  )
+}
+```
+
+API:
+```typescript
+// app/api/activities/join/route.ts
+export async function POST(req: Request) {
+  const session = await getServerSession()
+  const { code } = await req.json()
+  
+  // Find code
+  const activityCode = await prisma.activityCode.findUnique({
+    where: { code },
+    include: { activity: true }
+  })
+  
+  if (!activityCode) {
+    return NextResponse.json({ message: 'รหัสไม่ถูกต้อง' }, { status: 404 })
+  }
+  
+  // Check already joined
+  const existing = await prisma.participation.findUnique({
+    where: {
+      studentId_activityId: {
+        studentId: session.user.studentId,
+        activityId: activityCode.activityId
+      }
+    }
+  })
+  
+  if (existing) {
+    return NextResponse.json({ message: 'คุณเข้าร่วมกิจกรรมนี้แล้ว' }, { status: 400 })
+  }
+  
+  // Create participation
+  await prisma.participation.create({
+    data: {
+      studentId: session.user.studentId,
+      activityId: activityCode.activityId,
+      codeUsed: code
+    }
+  })
+  
+  return NextResponse.json({ success: true })
+}
+```
+
+## 2. History Page
+
+Shows all joined activities with semester tabs.
+
+Layout:
+┌─────────────────────────────────┐
+│ ประวัติการเข้าร่วมกิจกรรม       │
+│                                 │
+│ [ภาคเรียนที่ 1] [ภาคเรียนที่ 2]│
+│                                 │
+│ รวม 3 กิจกรรม                   │
+│                                 │
+│ [Activity Cards with joined info]│
+└─────────────────────────────────┘
+
+Code:
+```typescript
+export default async function HistoryPage() {
+  const session = await getServerSession()
+  
+  const participations = await prisma.participation.findMany({
+    where: { studentId: session.user.studentId },
+    include: { activity: true },
+    orderBy: { joinedAt: 'desc' }
+  })
+  
+  const semester1 = participations.filter(p => p.activity.semester === "1")
+  const semester2 = participations.filter(p => p.activity.semester === "2")
+  
+  return (
+    
+      
+      
+      
+        
+          ภาคเรียนที่ 1 ({semester1.length})
+          ภาคเรียนที่ 2 ({semester2.length})
+        
+        
+        
+          
+        
+        
+        
+          
+        
+      
+    
+  )
+}
+
+function HistoryList({ participations }) {
+  return (
+    
+      {participations.map(p => (
+        
+          
+            
+            
+              {p.activity.title}
+              
+                {getCategoryLabel(p.activity.category)}
+                {p.activity.year}/{p.activity.semester}
+              
+              
+                เข้าร่วมเมื่อ: {formatThaiDateTime(p.joinedAt)}
+              
+              
+                รหัส: {p.codeUsed}
+              
+            
+          
+        
+      ))}
+    
+  )
+}
+```
+
+## 3. Settings Page
+
+Profile info + change password.
+
+Layout:
+┌─────────────────────────────────┐
+│ ตั้งค่าบัญชี                   │
+│                                 │
+│ ข้อมูลของคุณ                   │
+│ ┌─────────────────────────────┐│
+│ │ รหัส: 68301010016           ││
+│ │ ชื่อ: ทดสอบ ระบบ           ││
+│ │ ชั้นปี: ปวช.1               ││
+│ │ แผนก: เทคนิคคอมพิวเตอร์    ││
+│ └─────────────────────────────┘│
+│                                 │
+│ เปลี่ยนรหัสผ่าน                 │
+│ [Form]                          │
+└─────────────────────────────────┘
+
+Code:
+```typescript
+export default function SettingsPage({ student }) {
+  return (
+    
+      
+      
+      {/* Profile Info */}
+      
+        ข้อมูลของคุณ
+        
+          
+            รหัสนักศึกษา
+            {student.studentId}
+          
+          
+            ชื่อ-นามสกุล
+            {student.firstName} {student.lastName}
+          
+          
+            ชั้นปี
+            {student.year}
+          
+          
+            แผนก
+            {student.department}
+          
+        
+      
+      
+      {/* Change Password */}
+      
+    
+  )
+}
+
+function PasswordChangeForm() {
+  const { register, handleSubmit } = useForm()
+  
+  const onSubmit = async (data) => {
+    const res = await fetch('/api/password', {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    })
+    
+    if (res.ok) {
+      toast.success('เปลี่ยนรหัสผ่านสำเร็จ')
+      reset()
+    } else {
+      toast.error('รหัสผ่านปัจจุบันไม่ถูกต้อง')
+    }
+  }
+  
+  return (
+    
+      เปลี่ยนรหัสผ่าน
+      
+        
+          รหัสผ่านปัจจุบัน
+          
+        
+        
+          รหัสผ่านใหม่
+          
+        
+        
+          ยืนยันรหัสผ่านใหม่
+          
+        
+        
+          บันทึกการเปลี่ยนแปลง
+        
+      
+    
+  )
+}
+```
+
+## Install Dependencies
+
+```bash
+npm install react-hook-form
+```
+
+## Summary
+
+✅ Join Page: 6-digit code input + validation
+✅ History Page: Semester tabs + activity list
+✅ Settings Page: Profile info + change password
+✅ All pages responsive
+✅ Thai fonts throughout
+
+Student features complete!

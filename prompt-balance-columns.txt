@@ -1,0 +1,79 @@
+# Fix Admin Dashboard Table - Balanced Column Widths (Option A)
+
+## Problem
+
+Table columns have uneven widths, making the layout look unbalanced.
+
+## Solution
+
+Add width classes to table headers for balanced column distribution:
+- ชื่อกิจกรรม: 25% (w-1/4)
+- ประเภท: 16.67% (w-1/6)
+- สถานะ: 16.67% (w-1/6)
+- ผู้เข้าร่วม: 16.67% (w-1/6)
+- จัดการ: 25% (w-1/4)
+
+File: `components/admin/recent-activities.tsx`
+
+## Changes Required
+
+Update the `<thead>` section with width classes:
+
+### Find (around line 30-55):
+
+```typescript
+
+  
+    
+      ชื่อกิจกรรม
+    
+    
+      ประเภท
+    
+    
+      สถานะ
+    
+    
+      ผู้เข้าร่วม
+    
+    
+      จัดการ
+    
+  
+
+```
+
+### Replace with:
+
+```typescript
+
+  
+    
+      ชื่อกิจกรรม
+    
+    
+      ประเภท
+    
+    
+      สถานะ
+    
+    
+      ผู้เข้าร่วม
+    
+    
+      จัดการ
+    
+  
+
+```
+
+## Summary
+
+Added width classes to each `<th>`:
+- Column 1 (ชื่อกิจกรรม): `w-1/4` added
+- Column 2 (ประเภท): `w-1/6` added
+- Column 3 (สถานะ): `w-1/6` added
+- Column 4 (ผู้เข้าร่วม): `w-1/6` added
+- Column 5 (จัดการ): `w-1/4` added
+
+Result: Balanced, professional-looking table with appropriate space for activity names and action buttons

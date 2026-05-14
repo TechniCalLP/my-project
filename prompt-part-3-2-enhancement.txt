@@ -1,0 +1,702 @@
+# Part 3.2 Enhancement: Mixed Language Codes + Code Management Page
+
+## Overview
+
+Enhance activity management with:
+1. Mixed English code generation (e.g., ACT001, SPT001, ART001)
+2. New code management page with stats cards and delete functionality
+3. Printable code sheet layout
+
+## 1. Update Code Generation Logic
+
+File: `app/api/admin/activities/route.ts`
+
+Replace the code generation section with:
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { prisma } from '@/lib/prisma'
+
+// Category prefix mapping
+const CATEGORY_PREFIX: Record = {
+  ACADEMIC: 'ACT',
+  SPORTS: 'SPT',
+  ARTS: 'ART',
+  VOLUNTEER: 'VOL',
+  MORALITY: 'MOR',
+  HEALTH: 'HLT',
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const data = await req.json()
+
+    // Create activity
+    const activity = await prisma.activity.create({
+      data: {
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        year: data.year,
+        semester: data.semester,
+        startDate: new Date(data.startDate),
+        endDate: new Date(data.endDate),
+        status: data.status,
+      }
+    })
+
+    // Generate activity codes with mixed language format
+    const codeCount = data.codeCount || 5
+    const prefix = CATEGORY_PREFIX[data.category] || 'ACT'
+    const codes = []
+    
+    for (let i = 0; i < codeCount; i++) {
+      // Generate unique code: PREFIX + 3-digit number (e.g., ACT001, SPT045)
+      const number = String(i + 1).padStart(3, '0')
+      const code = `${prefix}${number}`
+      
+      codes.push({
+        code,
+        activityId: activity.id,
+        isUsed: false,
+      })
+    }
+
+    await prisma.activityCode.createMany({
+      data: codes
+    })
+
+    return NextResponse.json(activity)
+  } catch (error) {
+    console.error('Create activity error:', error)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  }
+}
+```
+
+## 2. Update Activities Table - Add Codes Link
+
+File: `components/admin/activities-table.tsx`
+
+Add "Codes" button in the action column:
+
+```typescript
+import Link from "next/link"
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Eye, Edit, Code, Users, Ticket } from "lucide-react"
+import { DeleteActivityButton } from "./delete-activity-button"
+
+function getCategoryLabel(category: string) {
+  const labels: Record = {
+    ACADEMIC: "วิชาการ",
+    SPORTS: "กีฬา",
+    ARTS: "ศิลปะ-วัฒนธรรม",
+    VOLUNTEER: "บำเพ็ญประโยชน์",
+    MORALITY: "คุณธรรม-จริยธรรม",
+    HEALTH: "สุขภาพ",
+  }
+  return labels[category] || category
+}
+
+interface ActivitiesTableProps {
+  activities: any[]
+}
+
+export default function ActivitiesTable({ activities }: ActivitiesTableProps) {
+  if (activities.length === 0) {
+    return (
+      
+        ไม่พบกิจกรรม
+      
+    )
+  }
+
+  return (
+    
+      
+        
+          
+            
+              
+                ชื่อกิจกรรม
+              
+              
+                ประเภท
+              
+              
+                สถานะ
+              
+              
+                โค้ด
+              
+              
+                ผู้เข้าร่วม
+              
+              
+                จัดการ
+              
+            
+          
+          
+            {activities.map((activity) => (
+              
+                
+                  
+                    {activity.title}
+                    
+                      {activity.year} / ภาคเรียนที่ {activity.semester}
+                    
+                  
+                
+
+                
+                  
+                    {getCategoryLabel(activity.category)}
+                  
+                
+
+                
+                  <Badge 
+                    className={
+                      activity.status === 'ACTIVE' 
+                        ? 'bg-primary text-white' 
+                        : activity.status === 'COMPLETED'
+                        ? 'bg-success text-white'
+                        : 'bg-gray-400 text-white'
+                    }
+                  >
+                    {activity.status === 'ACTIVE' ? 'เปิดรับสมัคร' : activity.status === 'COMPLETED' ? 'เสร็จสิ้น' : 'ยกเลิก'}
+                  
+                
+
+                
+                  
+                    
+                    
+                      {activity._count.activityCodes}
+                    
+                  
+                
+
+                
+                  
+                    
+                    
+                      {activity._count.participations}
+                    
+                    คน
+                  
+                
+
+                
+                  
+                    {/* ดูรายละเอียด */}
+                    
+                      
+                        
+                        ดู
+                      
+                    
+
+                    {/* จัดการรหัส */}
+                    
+                      
+                        
+                        รหัส
+                      
+                    
+
+                    {/* แก้ไข */}
+                    
+                      
+                        
+                        แก้ไข
+                      
+                    
+
+                    {/* ลบ */}
+                    
+                  
+                
+              
+            ))}
+          
+        
+      
+    
+  )
+}
+```
+
+## 3. Create Code Management Page
+
+Path: `/admin/activities/[id]/codes`
+
+File: `app/(admin)/admin/activities/[id]/codes/page.tsx`
+
+```typescript
+import { prisma } from "@/lib/prisma"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { ArrowLeft, Printer, Ticket, CheckCircle2, XCircle } from "lucide-react"
+import Link from "next/link"
+import { notFound } from "next/navigation"
+import DeleteCodeButton from "@/components/admin/delete-code-button"
+import PrintCodesButton from "@/components/admin/print-codes-button"
+
+export default async function ActivityCodesPage({
+  params,
+}: {
+  params: { id: string }
+}) {
+  const activity = await prisma.activity.findUnique({
+    where: { id: params.id },
+    include: {
+      activityCodes: {
+        orderBy: { code: 'asc' }
+      }
+    }
+  })
+
+  if (!activity) {
+    notFound()
+  }
+
+  const totalCodes = activity.activityCodes.length
+  const usedCodes = activity.activityCodes.filter(c => c.isUsed).length
+  const unusedCodes = totalCodes - usedCodes
+
+  return (
+    
+      {/* Header */}
+      
+        
+          
+            
+              
+            
+          
+          
+            
+              จัดการรหัสกิจกรรม
+            
+            {activity.title}
+          
+        
+        
+      
+
+      {/* Stats Cards */}
+      
+        
+          
+            
+              
+              
+                {totalCodes}
+                รหัสทั้งหมด
+              
+            
+          
+        
+        
+          
+            
+              
+              
+                {usedCodes}
+                ใช้ไปแล้ว
+              
+            
+          
+        
+        
+          
+            
+              
+              
+                {unusedCodes}
+                ยังไม่ได้ใช้
+              
+            
+          
+        
+      
+
+      {/* Codes Table */}
+      
+        
+          รายการรหัส
+        
+        
+          {activity.activityCodes.length === 0 ? (
+            ยังไม่มีรหัส
+          ) : (
+            
+              
+                
+                  
+                    
+                      รหัส
+                    
+                    
+                      สถานะ
+                    
+                    
+                      วันที่ใช้
+                    
+                    
+                      จัดการ
+                    
+                  
+                
+                
+                  {activity.activityCodes.map((code) => (
+                    
+                      
+                        
+                          {code.code}
+                        
+                      
+                      
+                        {code.isUsed ? (
+                          
+                            
+                            ใช้แล้ว
+                          
+                        ) : (
+                          
+                            
+                            ยังไม่ได้ใช้
+                          
+                        )}
+                      
+                      
+                        {code.usedAt 
+                          ? new Date(code.usedAt).toLocaleDateString('th-TH', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })
+                          : '-'
+                        }
+                      
+                      
+                        {!code.isUsed && (
+                          
+                        )}
+                      
+                    
+                  ))}
+                
+              
+            
+          )}
+        
+      
+    
+  )
+}
+```
+
+## 4. Delete Code Button Component
+
+File: `components/admin/delete-code-button.tsx`
+
+```typescript
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Trash2, Loader2 } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+
+interface DeleteCodeButtonProps {
+  codeId: string
+  code: string
+  activityId: string
+}
+
+export default function DeleteCodeButton({ codeId, code, activityId }: DeleteCodeButtonProps) {
+  const router = useRouter()
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(false)
+
+  const handleDelete = async () => {
+    if (!confirm(`ต้องการลบรหัส ${code} ใช่หรือไม่?`)) {
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const response = await fetch(`/api/admin/codes/${codeId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) throw new Error('Failed')
+
+      toast({
+        title: "ลบสำเร็จ",
+        description: `ลบรหัส ${code} เรียบร้อยแล้ว`,
+      })
+
+      router.refresh()
+    } catch (error) {
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถลบรหัสได้",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    
+      {loading ? (
+        
+      ) : (
+        
+      )}
+      ลบ
+    
+  )
+}
+```
+
+## 5. Print Codes Button Component
+
+File: `components/admin/print-codes-button.tsx`
+
+```typescript
+"use client"
+
+import { Button } from "@/components/ui/button"
+import { Printer } from "lucide-react"
+
+interface PrintCodesButtonProps {
+  codes: Array
+  activityTitle: string
+}
+
+export default function PrintCodesButton({ codes, activityTitle }: PrintCodesButtonProps) {
+  const handlePrint = () => {
+    const printWindow = window.open('', '', 'width=800,height=600')
+    if (!printWindow) return
+
+    const printContent = `
+      
+      
+      
+        
+        รหัสกิจกรรม - ${activityTitle}
+        
+          @page {
+            size: A4;
+            margin: 10mm;
+          }
+          body {
+            font-family: 'Sarabun', sans-serif;
+            margin: 0;
+            padding: 20px;
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #2E3192;
+            padding-bottom: 15px;
+          }
+          .header h1 {
+            color: #2E3192;
+            margin: 0 0 5px 0;
+            font-size: 24px;
+          }
+          .header p {
+            color: #666;
+            margin: 0;
+            font-size: 14px;
+          }
+          .codes-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+          }
+          .code-card {
+            border: 2px dashed #ccc;
+            padding: 15px;
+            text-align: center;
+            background: #f9f9f9;
+            border-radius: 8px;
+            page-break-inside: avoid;
+          }
+          .code-card.used {
+            background: #e5e5e5;
+            opacity: 0.6;
+          }
+          .code-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+            font-weight: bold;
+          }
+          .code-value {
+            font-family: 'Courier New', monospace;
+            font-size: 28px;
+            font-weight: bold;
+            color: #2E3192;
+            letter-spacing: 2px;
+            margin: 10px 0;
+          }
+          .code-status {
+            font-size: 11px;
+            color: #999;
+            margin-top: 8px;
+          }
+          .cut-line {
+            border-top: 1px dashed #999;
+            margin: 15px 0 0 0;
+            padding-top: 5px;
+            font-size: 10px;
+            color: #999;
+            text-align: center;
+          }
+          @media print {
+            .code-card {
+              break-inside: avoid;
+            }
+          }
+        
+      
+      
+        
+          รหัสกิจกรรม
+          ${activityTitle}
+        
+        
+          ${codes.map(c => `
+            
+              รหัสเข้าร่วมกิจกรรม
+              ${c.code}
+              
+                ${c.isUsed ? '✓ ใช้แล้ว' : '○ ยังไม่ได้ใช้'}
+              
+              ✂ ตัดตามเส้นประ
+            
+          `).join('')}
+        
+      
+      
+    `
+
+    printWindow.document.write(printContent)
+    printWindow.document.close()
+    printWindow.focus()
+    
+    setTimeout(() => {
+      printWindow.print()
+      printWindow.close()
+    }, 250)
+  }
+
+  return (
+    
+      
+      พิมพ์รหัส
+    
+  )
+}
+```
+
+## 6. Delete Code API
+
+File: `app/api/admin/codes/[id]/route.ts`
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { prisma } from '@/lib/prisma'
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session || session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check if code is already used
+    const code = await prisma.activityCode.findUnique({
+      where: { id: params.id }
+    })
+
+    if (!code) {
+      return NextResponse.json({ error: 'Code not found' }, { status: 404 })
+    }
+
+    if (code.isUsed) {
+      return NextResponse.json({ error: 'Cannot delete used code' }, { status: 400 })
+    }
+
+    await prisma.activityCode.delete({
+      where: { id: params.id }
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Delete code error:', error)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  }
+}
+```
+
+## Summary
+
+Enhancements made:
+
+✅ Mixed English code generation (ACT001, SPT045, etc.)
+   - ACADEMIC → ACT
+   - SPORTS → SPT
+   - ARTS → ART
+   - VOLUNTEER → VOL
+   - MORALITY → MOR
+   - HEALTH → HLT
+
+✅ New Code Management Page (/admin/activities/[id]/codes)
+   - Stats cards: Total, Used, Unused
+   - Code list table
+   - Delete unused codes
+   - Print codes functionality
+
+✅ Printable Code Sheet
+   - 3-column grid layout
+   - Dashed borders for cutting
+   - Shows code status
+   - Clean print layout
+
+✅ Added "รหัส" button in activities table
+
+Files created/modified: 5 files
+- Updated: activities/route.ts (code generation)
+- Updated: activities-table.tsx (add codes button)
+- New: activities/[id]/codes/page.tsx
+- New: delete-code-button.tsx
+- New: print-codes-button.tsx
+- New: api/admin/codes/[id]/route.ts

@@ -1,0 +1,51 @@
+# Fix Semester Tabs - Better Visual Design
+
+Replace current TabsList with this improved design:
+
+## Option 1: Card Style (Recommended)
+
+```typescript
+
+  
+    ภาคเรียนที่ 1
+    
+      {semester1Activities.length}
+      กิจกรรม
+    
+  
+  
+  
+    ภาคเรียนที่ 2
+    
+      {semester2Activities.length}
+      กิจกรรม
+    
+  
+
+```
+
+Key improvements:
+- ✅ Larger, card-like tabs
+- ✅ Clear visual distinction (active = blue background + white text)
+- ✅ Number displayed prominently
+- ✅ Better spacing and padding
+- ✅ Hover effects
+- ✅ Shadow on active tab
+
+## Visual Design:
+
+Active state (selected):
+- Background: Blue (#3b82f6)
+- Text: White
+- Border: Blue
+- Shadow: Large
+
+Inactive state:
+- Background: White
+- Text: Gray
+- Border: Light gray
+- Hover: Blue tint border
+
+Apply this to both:
+- Dashboard (กิจกรรมที่ยังไม่ได้เข้าร่วม section)
+- Activities page (main tabs)

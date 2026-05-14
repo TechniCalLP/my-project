@@ -1,0 +1,672 @@
+# Student Activity System - Part 2: Student Features with Modern UI
+
+## Context
+Part 1 complete: Database schema, seeded data, NextAuth configured, Thai fonts loaded.
+Now implement STUDENT-ONLY features with modern, card-based UI inspired by the reference design.
+
+## Target User
+- Student (ปวช.1, เทคนิคคอมพิวเตอร์)
+- Login: 68301010016 / 1234
+- Auto-filter activities by student's year
+
+## Project Structure (Student Pages Only)
+student-activity-system/
+├── src/
+│   ├── app/
+│   │   ├── (auth)/
+│   │   │   └── login/
+│   │   │       └── page.tsx                    # Student login
+│   │   ├── (student)/
+│   │   │   ├── layout.tsx                      # Student layout with nav
+│   │   │   ├── dashboard/
+│   │   │   │   └── page.tsx                    # Modern dashboard
+│   │   │   ├── activities/
+│   │   │   │   └── page.tsx                    # Browse activities (filtered)
+│   │   │   ├── join/
+│   │   │   │   └── page.tsx                    # Join with code
+│   │   │   ├── history/
+│   │   │   │   └── page.tsx                    # My activities
+│   │   │   └── settings/
+│   │   │       └── page.tsx                    # Change password
+│   │   └── api/
+│   │       ├── activities/
+│   │       │   ├── route.ts                    # GET /api/activities
+│   │       │   └── [id]/
+│   │       │       └── join/
+│   │       │           └── route.ts            # POST /api/activities/:id/join
+│   │       ├── student/
+│   │       │   ├── stats/
+│   │       │   │   └── route.ts                # GET /api/student/stats
+│   │       │   └── history/
+│   │       │       └── route.ts                # GET /api/student/history
+│   │       └── password/
+│   │           └── route.ts                    # PATCH /api/password
+│   ├── components/
+│   │   ├── ui/                                 # shadcn/ui
+│   │   ├── layout/
+│   │   │   ├── student-nav.tsx                 # Side navigation
+│   │   │   └── header.tsx                      # Top header with profile
+│   │   ├── dashboard/
+│   │   │   ├── stats-cards.tsx                 # 3 stat cards
+│   │   │   ├── activity-card-horizontal.tsx    # Upcoming activities
+│   │   │   └── quick-actions.tsx               # Action buttons
+│   │   ├── activities/
+│   │   │   ├── activity-grid.tsx               # Grid of activity cards
+│   │   │   ├── activity-card.tsx               # Individual card
+│   │   │   └── activity-filters.tsx            # Filter dropdowns
+│   │   └── forms/
+│   │       ├── login-form.tsx
+│   │       ├── join-code-form.tsx
+│   │       └── password-form.tsx
+│   └── lib/
+│       ├── utils.ts
+│       └── validations.ts
+
+## Design System
+
+### Colors
+```css
+:root {
+  --primary: #3b82f6;           /* Blue */
+  --primary-foreground: #ffffff;
+  --secondary: #f3f4f6;         /* Light gray */
+  --accent: #10b981;            /* Green */
+  --danger: #ef4444;            /* Red */
+  --warning: #f59e0b;           /* Orange */
+  
+  /* Category colors */
+  --category-academic: #8b5cf6;     /* Purple */
+  --category-service: #10b981;      /* Green */
+  --category-health: #ef4444;       /* Red */
+  --category-scout: #f59e0b;        /* Orange */
+}
+```
+
+### Typography
+```css
+font-family: 'Noto Sans Thai', 'Inter', sans-serif;
+
+Headings:
+  h1: 2rem (32px), font-weight: 700
+  h2: 1.5rem (24px), font-weight: 600
+  h3: 1.25rem (20px), font-weight: 600
+
+Body: 1rem (16px), font-weight: 400
+Small: 0.875rem (14px)
+```
+
+### Spacing
+Container: max-w-7xl, mx-auto, px-4
+Card padding: p-6
+Card gap: gap-6
+Section gap: space-y-8
+
+## 1. Login Page (`app/(auth)/login/page.tsx`)
+
+### Design
+┌────────────────────────────────────────┐
+│                                        │
+│         🏫 Logo/Icon                   │
+│                                        │
+│     ระบบบันทึกกิจกรรมนักศึกษา         │
+│   วิทยาลัยเทคนิคลำปาง                 │
+│                                        │
+│   ┌──────────────────────────────┐    │
+│   │  รหัสนักศึกษา                │    │
+│   │  []       │    │
+│   │                              │    │
+│   │  รหัสผ่าน                    │    │
+│   │  []  👁   │    │
+│   │                              │    │
+│   │  [  เข้าสู่ระบบ  ] →        │    │
+│   └──────────────────────────────┘    │
+│                                        │
+└────────────────────────────────────────┘
+
+### Features
+- Centered card on gradient background
+- Input validation: studentId (11 digits), password (min 4)
+- Show/hide password toggle
+- Loading state on submit
+- Error toast notifications
+- On success: redirect to /dashboard
+- If isFirstLogin: redirect to /settings with message
+
+### Implementation
+```typescript
+"use client"
+
+import { signIn } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { useState } from "react"
+
+export default function LoginPage() {
+  const [loading, setLoading] = useState(false)
+  
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    
+    const result = await signIn("credentials", {
+      studentId: e.target.studentId.value,
+      password: e.target.password.value,
+      redirect: false
+    })
+    
+    if (result?.ok) {
+      router.push("/dashboard")
+    } else {
+      // Show error toast
+    }
+    setLoading(false)
+  }
+  
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        {/* Form */}
+      </Card>
+    </div>
+  )
+}
+```
+
+## 2. Dashboard (`app/(student)/dashboard/page.tsx`)
+
+### Layout
+┌─────────────────────────────────────────────────┐
+│ Header                                          │
+│ ┌─────────┐  Welcome                 🔔  ⚙️   │
+│ │ Profile │  ทดสอบ ระบบ                        │
+│ └─────────┘  ปวช.1 • เทคนิคคอมพิวเตอร์        │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│ สถิติของคุณ                                    │
+│ ┌──────────┐ ┌──────────┐ ┌──────────┐        │
+│ │    3     │ │    5     │ │   37%    │        │
+│ │ เข้าร่วม │ │ คงเหลือ  │ │ ความคืบหน้า│      │
+│ │ กิจกรรม  │ │ กิจกรรม  │ │          │        │
+│ └──────────┘ └──────────┘ └──────────┘        │
+│                                                 │
+│ กิจกรรมใกล้วันที่              [ดูทั้งหมด →] │
+│ ┌────────────────────────────────────────┐     │
+│ │ 📚 ปฐมนิเทศนักศึกษาใหม่              │     │
+│ │ วิชาการ • ปวช.1/1                     │     │
+│ │ เหลือ 8 วัน                           │     │
+│ │                       [ดูรายละเอียด]  │     │
+│ └────────────────────────────────────────┘     │
+│ ┌────────────────────────────────────────┐     │
+│ │ ✨ อบรมคุณธรรมจริยธรรม               │     │
+│ │ บริการ • ปวช.1/1                      │     │
+│ │ เหลือ 15 วัน                          │     │
+│ │                       [ดูรายละเอียด]  │     │
+│ └────────────────────────────────────────┘     │
+│                                                 │
+│ Quick Actions                                   │
+│ ┌────────────────┐ ┌────────────────┐          │
+│ │ 🎫 เข้าร่วม    │ │ 📋 ดูกิจกรรม  │          │
+│ │ ด้วยโค้ด       │ │ ทั้งหมด       │          │
+│ └────────────────┘ └────────────────┘          │
+│                                                 │
+└─────────────────────────────────────────────────┘
+
+### Features
+- Header: Profile pic (placeholder), name, year, department
+- Stats cards: joined count, remaining count, progress %
+- Upcoming activities: Auto-filtered by student.year
+  - Show 3-5 activities (not yet joined)
+  - Horizontal cards with icon, title, category badge, days left
+  - "ดูรายละเอียด" button
+- Quick Actions: Large buttons for Join Code & Browse
+- Responsive: Stack on mobile
+
+### Data Fetching
+```typescript
+export default async function Dashboard() {
+  const session = await getServerSession(authOptions)
+  const student = session.user
+  
+  // Stats
+  const joined = await prisma.participation.count({
+    where: { studentId: student.studentId }
+  })
+  
+  const total = await prisma.activity.count({
+    where: {
+      year: student.year,
+      status: 'ACTIVE',
+      OR: [
+        { targetDepartments: { isEmpty: true } },
+        { targetDepartments: { has: student.department } }
+      ]
+    }
+  })
+  
+  const remaining = total - joined
+  const progress = Math.round((joined / total) * 100)
+  
+  // Upcoming activities (not joined yet)
+  const upcoming = await prisma.activity.findMany({
+    where: {
+      year: student.year,
+      status: 'ACTIVE',
+      OR: [
+        { targetDepartments: { isEmpty: true } },
+        { targetDepartments: { has: student.department } }
+      ],
+      NOT: {
+        participations: {
+          some: { studentId: student.studentId }
+        }
+      }
+    },
+    take: 5,
+    orderBy: { createdAt: 'desc' }
+  })
+  
+  return <DashboardView stats={{ joined, remaining, progress }} upcoming={upcoming} />
+}
+```
+
+## 3. Activities Page (`app/(student)/activities/page.tsx`)
+
+### Layout
+┌─────────────────────────────────────────────────┐
+│ กิจกรรมสำหรับ ปวช.1                            │
+│                                                 │
+│ Filters:                                        │
+│ [เทอม ▼] [หมวดหมู่ ▼] [สถานะ ▼] [🔍 ค้นหา]  │
+│                                                 │
+│ พบ 8 กิจกรรม                                    │
+│                                                 │
+│ ┌──────────┐ ┌──────────┐ ┌──────────┐        │
+│ │  Card 1  │ │  Card 2  │ │  Card 3  │        │
+│ │          │ │          │ │          │        │
+│ └──────────┘ └──────────┘ └──────────┘        │
+│ ┌──────────┐ ┌──────────┐ ┌──────────┐        │
+│ │  Card 4  │ │  Card 5  │ │  Card 6  │        │
+│ │          │ │          │ │          │        │
+│ └──────────┘ └──────────┘ └──────────┘        │
+│                                                 │
+└─────────────────────────────────────────────────┘
+
+### Activity Card Design
+┌────────────────────────────────────┐
+│ 📚 (Icon based on category)        │
+│                                    │
+│ ปฐมนิเทศนักศึกษาใหม่              │
+│                                    │
+│ รายละเอียด: Lorem ipsum dolor...  │
+│                                    │
+│ [วิชาการ] ปวช.1/1                 │
+│                                    │
+│ ✅ เข้าร่วมแล้ว                    │
+│ หรือ                               │
+│ [ดูรายละเอียด →]                   │
+└────────────────────────────────────┘
+
+### Features
+- **Auto-filter by student.year**: Default shows only student's year
+- Filters: Semester, Category, Status, Search
+- Grid layout: 3 columns desktop, 2 tablet, 1 mobile
+- Card shows: Icon, title, description (truncated), category badge, year/semester, status
+- If joined: Show checkmark badge
+- If not joined: Show "ดูรายละเอียด" button
+- Click card: Show modal/drawer with full details + join option
+
+### Implementation
+```typescript
+export default async function ActivitiesPage({ searchParams }) {
+  const session = await getServerSession(authOptions)
+  const student = session.user
+  
+  const semester = searchParams.semester || 'all'
+  const category = searchParams.category || 'all'
+  const status = searchParams.status || 'ACTIVE'
+  
+  const activities = await prisma.activity.findMany({
+    where: {
+      year: student.year, // Always filter by student year
+      ...(semester !== 'all' && { semester }),
+      ...(category !== 'all' && { category }),
+      status,
+      OR: [
+        { targetDepartments: { isEmpty: true } },
+        { targetDepartments: { has: student.department } }
+      ]
+    },
+    include: {
+      participations: {
+        where: { studentId: student.studentId }
+      }
+    }
+  })
+  
+  return <ActivitiesGrid activities={activities} />
+}
+```
+
+## 4. Join Activity (`app/(student)/join/page.tsx`)
+
+### Layout
+┌─────────────────────────────────────┐
+│ เข้าร่วมกิจกรรมด้วยโค้ด            │
+│                                     │
+│ กรอกรหัสกิจกรรม 6 หลัก              │
+│                                     │
+│ ┌─┐ ┌─┐ ┌─┐ ┌─┐ ┌─┐ ┌─┐          │
+│ │ │ │ │ │ │ │ │ │ │ │ │          │
+│ └─┘ └─┘ └─┘ └─┘ └─┘ └─┘          │
+│                                     │
+│      [ยืนยัน]                       │
+│                                     │
+│ ───────────────────────────────     │
+│                                     │
+│ กิจกรรมที่เข้าร่วมล่าสุด            │
+│ ✅ พิธีไหว้ครู (5 นาทีที่แล้ว)     │
+│ ✅ ปฐมนิเทศ (2 ชม.ที่แล้ว)         │
+│                                     │
+└─────────────────────────────────────┘
+
+### Features
+- Large 6-digit input (auto-focus, auto-advance)
+- Validate code on submit:
+  - Code exists
+  - Not expired
+  - Not already joined
+- On success: Show success animation + redirect to history
+- Recent joins: Last 5 with relative time
+
+### Implementation
+```typescript
+"use client"
+
+export default function JoinPage() {
+  const [code, setCode] = useState(['', '', '', '', '', ''])
+  const [loading, setLoading] = useState(false)
+  
+  const handleSubmit = async () => {
+    const codeString = code.join('')
+    
+    const res = await fetch('/api/activities/join', {
+      method: 'POST',
+      body: JSON.stringify({ code: codeString })
+    })
+    
+    if (res.ok) {
+      // Success toast
+      router.push('/history')
+    } else {
+      // Error toast
+    }
+  }
+  
+  return (
+    <div className="max-w-2xl mx-auto">
+      <CodeInput value={code} onChange={setCode} />
+      <Button onClick={handleSubmit}>ยืนยัน</Button>
+      <RecentJoins />
+    </div>
+  )
+}
+```
+
+## 5. History (`app/(student)/history/page.tsx`)
+
+### Layout
+┌─────────────────────────────────────────────────┐
+│ ประวัติการเข้าร่วมกิจกรรม                      │
+│                                                 │
+│ Filters: [เทอม ▼] [หมวดหมู่ ▼]               │
+│                                                 │
+│ รวม 3 กิจกรรม                                  │
+│                                                 │
+│ ┌──────────────────────────────────────────┐   │
+│ │ ✅ ปฐมนิเทศนักศึกษาใหม่                │   │
+│ │ วิชาการ • ปวช.1/1                        │   │
+│ │ เข้าร่วมเมื่อ: 15 พ.ค. 2567              │   │
+│ │ โค้ด: 123456                             │   │
+│ └──────────────────────────────────────────┘   │
+│ ┌──────────────────────────────────────────┐   │
+│ │ ✅ พิธีไหว้ครู                           │   │
+│ │ บริการ • ปวช.1/1                         │   │
+│ │ เข้าร่วมเมื่อ: 14 พ.ค. 2567              │   │
+│ │ โค้ด: 789012                             │   │
+│ └──────────────────────────────────────────┘   │
+│                                                 │
+│ [📥 ดาวน์โหลดประกาศนียบัตร] (Part 3)          │
+│                                                 │
+└─────────────────────────────────────────────────┘
+
+### Features
+- List all joined activities
+- Filter by semester, category
+- Sort by date (newest first)
+- Show: Activity name, category, date joined, code used
+- Download certificate button (placeholder for Part 3)
+
+## 6. Settings (`app/(student)/settings/page.tsx`)
+
+### Layout
+┌─────────────────────────────────────┐
+│ ตั้งค่าบัญชี                       │
+│                                     │
+│ ข้อมูลส่วนตัว                       │
+│ ┌────────────────────────────────┐ │
+│ │ รหัสนักศึกษา: 68301010016     │ │
+│ │ ชื่อ: ทดสอบ ระบบ              │ │
+│ │ ชั้นปี: ปวช.1                 │ │
+│ │ แผนก: เทคนิคคอมพิวเตอร์       │ │
+│ └────────────────────────────────┘ │
+│                                     │
+│ เปลี่ยนรหัสผ่าน                     │
+│ ┌────────────────────────────────┐ │
+│ │ รหัสผ่านปัจจุบัน              │ │
+│ │ []           │ │
+│ │                                │ │
+│ │ รหัสผ่านใหม่                   │ │
+│ │ []           │ │
+│ │                                │ │
+│ │ ยืนยันรหัสผ่านใหม่             │ │
+│ │ [__________________]           │ │
+│ │                                │ │
+│ │     [บันทึก]                   │ │
+│ └────────────────────────────────┘ │
+│                                     │
+└─────────────────────────────────────┘
+
+### Features
+- Show read-only profile info
+- Change password form
+- Validate: current password, new password match, min 4 chars
+- On success: Update password, set isFirstLogin = false
+- Show success message
+
+## 7. Layout & Navigation (`app/(student)/layout.tsx`)
+
+### Desktop Layout
+┌────┬──────────────────────────────────┐
+│    │ Header                           │
+│ N  ├──────────────────────────────────┤
+│ A  │                                  │
+│ V  │                                  │
+│    │         Content                  │
+│ I  │                                  │
+│ G  │                                  │
+│ A  │                                  │
+│ T  │                                  │
+│ I  │                                  │
+│ O  │                                  │
+│ N  │                                  │
+│    │                                  │
+└────┴──────────────────────────────────┘
+
+### Navigation Items
+Dashboard    (/)
+กิจกรรม      (/activities)
+เข้าร่วม     (/join)
+ประวัติ      (/history)
+ตั้งค่า      (/settings)
+────────────
+ออกจากระบบ
+
+### Mobile Layout
+- Bottom tab bar
+- Hamburger menu for profile & settings
+
+## 8. API Routes
+
+### GET /api/student/stats
+```typescript
+export async function GET(req: Request) {
+  const session = await getServerSession(authOptions)
+  
+  const joined = await prisma.participation.count({
+    where: { studentId: session.user.studentId }
+  })
+  
+  const total = await prisma.activity.count({
+    where: { year: session.user.year, status: 'ACTIVE' }
+  })
+  
+  return Response.json({ joined, remaining: total - joined, progress: (joined/total)*100 })
+}
+```
+
+### POST /api/activities/join
+```typescript
+export async function POST(req: Request) {
+  const { code } = await req.json()
+  const session = await getServerSession(authOptions)
+  
+  // Find code
+  const activityCode = await prisma.activityCode.findUnique({
+    where: { code },
+    include: { activity: true }
+  })
+  
+  if (!activityCode) {
+    return Response.json({ error: 'รหัสไม่ถูกต้อง' }, { status: 404 })
+  }
+  
+  // Check already joined
+  const existing = await prisma.participation.findUnique({
+    where: {
+      studentId_activityId: {
+        studentId: session.user.studentId,
+        activityId: activityCode.activityId
+      }
+    }
+  })
+  
+  if (existing) {
+    return Response.json({ error: 'คุณเข้าร่วมกิจกรรมนี้แล้ว' }, { status: 400 })
+  }
+  
+  // Create participation
+  const participation = await prisma.participation.create({
+    data: {
+      studentId: session.user.studentId,
+      activityId: activityCode.activityId,
+      codeUsed: code
+    }
+  })
+  
+  return Response.json(participation)
+}
+```
+
+### GET /api/activities
+```typescript
+export async function GET(req: Request) {
+  const session = await getServerSession(authOptions)
+  const { searchParams } = new URL(req.url)
+  
+  const semester = searchParams.get('semester')
+  const category = searchParams.get('category')
+  
+  const activities = await prisma.activity.findMany({
+    where: {
+      year: session.user.year, // Auto-filter
+      ...(semester && { semester }),
+      ...(category && { category }),
+      status: 'ACTIVE',
+      OR: [
+        { targetDepartments: { isEmpty: true } },
+        { targetDepartments: { has: session.user.department } }
+      ]
+    },
+    include: {
+      participations: {
+        where: { studentId: session.user.studentId }
+      }
+    }
+  })
+  
+  return Response.json(activities)
+}
+```
+
+## 9. shadcn/ui Components to Install
+
+```bash
+npx shadcn@latest add button card input label select dialog badge avatar dropdown-menu toast separator progress tabs
+```
+
+## 10. Additional Dependencies
+
+```bash
+npm install react-hook-form zod @hookform/resolvers date-fns lucide-react
+```
+
+## Technical Requirements
+
+### Authentication
+- Protect all /dashboard, /activities, /join, /history, /settings with middleware
+- Redirect to /login if not authenticated
+- Check isFirstLogin on dashboard load → redirect to /settings
+
+### Data Fetching
+- Server components for initial data
+- Client components for interactivity
+- Use React Query/SWR for client-side fetching (optional)
+
+### Performance
+- Image optimization (Next.js Image)
+- Lazy load activity cards
+- Skeleton loading states
+
+### Responsive
+- Mobile-first design
+- Breakpoints: sm: 640px, md: 768px, lg: 1024px, xl: 1280px
+- Stack cards on mobile
+
+### Accessibility
+- ARIA labels
+- Keyboard navigation
+- Focus states
+- Screen reader friendly
+
+## Testing Credentials
+
+Student: 68301010016 / 1234
+- First login → redirect to /settings
+- After password change → full access
+
+## Success Criteria
+
+✅ Student can login with studentId/password
+✅ Dashboard shows personalized stats and upcoming activities (auto-filtered by year)
+✅ Activities page shows only relevant activities (ปวช.1)
+✅ Student can join activity with 6-digit code
+✅ History shows all joined activities
+✅ Student can change password
+✅ UI is modern, responsive, uses Thai fonts
+✅ No console errors
+
+## Part 3 Preview (Not Included)
+- Admin features
+- Excel export
+- PDF certificate generation
+
+Ready to implement Student Features with Modern UI!

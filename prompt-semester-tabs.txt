@@ -1,0 +1,337 @@
+# Additional Fixes - Semester Tabs
+
+## 1. Activities Page - Add Semester Tabs
+
+```typescript
+// app/(student)/activities/page.tsx
+"use client"
+
+import { useState } from "react"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+
+export default function ActivitiesPage({ activities, student }) {
+  const semester1Activities = activities.filter(a => a.semester === "1")
+  const semester2Activities = activities.filter(a => a.semester === "2")
+  
+  return (
+    
+      {/* Header */}
+      
+        กิจกรรมสำหรับ {student.year}
+      
+      
+      {/* Semester Tabs */}
+      
+        
+          
+            ภาคเรียนที่ 1 ({semester1Activities.length})
+          
+          
+            ภาคเรียนที่ 2 ({semester2Activities.length})
+          
+        
+        
+        {/* Semester 1 */}
+        
+          
+            กิจกรรมทั้งหมด {semester1Activities.length} รายการ
+          
+          
+            {semester1Activities.map(activity => (
+               0}
+              />
+            ))}
+          
+          {semester1Activities.length === 0 && (
+            
+          )}
+        
+        
+        {/* Semester 2 */}
+        
+          
+            กิจกรรมทั้งหมด {semester2Activities.length} รายการ
+          
+          
+            {semester2Activities.map(activity => (
+               0}
+              />
+            ))}
+          
+          {semester2Activities.length === 0 && (
+            
+          )}
+        
+      
+    
+  )
+}
+```
+
+## 2. Dashboard - Add Semester Tabs & Use Same Cards
+
+```typescript
+// app/(student)/dashboard/page.tsx
+"use client"
+
+import { useState } from "react"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { ActivityCard } from "@/components/activities/activity-card" // Same component!
+
+export default function DashboardPage({ 
+  stats, 
+  upcomingActivities, 
+  recentHistory,
+  student 
+}) {
+  // Separate by semester
+  const semester1 = upcomingActivities.filter(a => a.semester === "1")
+  const semester2 = upcomingActivities.filter(a => a.semester === "2")
+  
+  return (
+    
+      {/* Welcome Header */}
+      
+
+      {/* Progress Hero */}
+      
+
+      {/* Stats Cards */}
+      
+
+      {/* Upcoming Activities with Semester Tabs */}
+      <Section
+        title="กิจกรรมที่ยังไม่ได้เข้าร่วม"
+        action={{ label: "ดูทั้งหมด", href: "/activities" }}
+      >
+        
+          
+            
+              ภาคเรียนที่ 1 ({semester1.length})
+            
+            
+              ภาคเรียนที่ 2 ({semester2.length})
+            
+          
+          
+          {/* Semester 1 */}
+          
+            
+              {semester1.slice(0, 5).map(activity => (
+                <ActivityCard 
+                  key={activity.id} 
+                  activity={activity}
+                  variant="compact" // Optional: compact for dashboard
+                />
+              ))}
+              {semester1.length === 0 && (
+                
+                  ไม่มีกิจกรรมในภาคเรียนนี้
+                
+              )}
+            
+          
+          
+          {/* Semester 2 */}
+          
+            
+              {semester2.slice(0, 5).map(activity => (
+                
+              ))}
+              {semester2.length === 0 && (
+                
+                  ไม่มีกิจกรรมในภาคเรียนนี้
+                
+              )}
+            
+          
+        
+      
+
+      {/* Recent History */}
+      {recentHistory.length > 0 && (
+        <Section
+          title="กิจกรรมที่เข้าร่วมล่าสุด"
+          action={{ label: "ดูประวัติ", href: "/history" }}
+        >
+          
+        
+      )}
+    
+  )
+}
+```
+
+## 3. Shared ActivityCard Component
+
+Create ONE component used by both Dashboard and Activities page:
+
+```typescript
+// components/activities/activity-card.tsx
+"use client"
+
+import { useRouter } from "next/navigation"
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { CheckCircle } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { formatThaiDateRange, getCategoryLabel, getCategoryIcon } from "@/lib/utils"
+
+interface ActivityCardProps {
+  activity: Activity
+  isJoined?: boolean
+  variant?: "default" | "compact"
+}
+
+export function ActivityCard({ activity, isJoined, variant = "default" }: ActivityCardProps) {
+  const router = useRouter()
+  const isOpen = activity.status === 'ACTIVE'
+  const dateRange = formatThaiDateRange(activity.startDate, activity.endDate)
+  const Icon = getCategoryIcon(activity.category)
+  
+  return (
+    <Card className={cn(
+      "p-4 border-l-4 transition-shadow hover:shadow-md",
+      isOpen ? "border-l-green-500" : "border-l-gray-300",
+      isJoined && "bg-green-50/50"
+    )}>
+      
+        {/* Icon */}
+        
+          
+        
+        
+        {/* Content */}
+        
+          {/* Title & Status */}
+          
+            
+              {activity.title}
+            
+            {isJoined ? (
+              
+            ) : (
+              
+                {isOpen ? "เปิดรับสมัคร" : "ปิดแล้ว"}
+              
+            )}
+          
+          
+          {/* Badges */}
+          
+            
+              {getCategoryLabel(activity.category)}
+            
+            
+              {activity.year}/{activity.semester}
+            
+          
+          
+          {/* Date */}
+          
+            📅 {dateRange}
+          
+          
+          {/* Participants count (optional) */}
+          {variant === "default" && (
+            
+              👥 {activity._count?.participations || 0} คน
+            
+          )}
+          
+          {/* Action Button */}
+          {!isJoined && isOpen && (
+            <Button 
+              className="w-full"
+              onClick={() => router.push('/join')}
+              size={variant === "compact" ? "sm" : "default"}
+            >
+              เข้าร่วมด้วยโค้ด
+            
+          )}
+          
+          {isJoined && (
+            
+              ✅ เข้าร่วมแล้ว
+            
+          )}
+        
+      
+    
+  )
+}
+```
+
+## 4. Utility Functions
+
+```typescript
+// lib/utils.ts
+
+export function formatThaiDateRange(startDate: Date, endDate: Date) {
+  const thaiMonths = [
+    'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+    'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+  ]
+  
+  const start = new Date(startDate)
+  const end = new Date(endDate)
+  
+  const startDay = start.getDate()
+  const startMonth = thaiMonths[start.getMonth()]
+  const startYear = start.getFullYear() + 543
+  
+  const endDay = end.getDate()
+  const endMonth = thaiMonths[end.getMonth()]
+  
+  // Same day
+  if (start.toDateString() === end.toDateString()) {
+    return `${startDay} ${startMonth} ${startYear}`
+  }
+  
+  // Same month
+  if (start.getMonth() === end.getMonth()) {
+    return `${startDay}-${endDay} ${startMonth} ${startYear}`
+  }
+  
+  // Different months
+  return `${startDay} ${startMonth} - ${endDay} ${endMonth} ${startYear}`
+}
+
+export function getCategoryLabel(category: string) {
+  const labels = {
+    ACADEMIC: 'วิชาการ',
+    COMMUNITY_SERVICE: 'บริการ',
+    HEALTH: 'สุขภาพ',
+    SCOUT: 'ลูกเสือ'
+  }
+  return labels[category] || category
+}
+
+export function getCategoryIcon(category: string) {
+  const icons = {
+    ACADEMIC: BookOpen,
+    COMMUNITY_SERVICE: Users,
+    HEALTH: Heart,
+    SCOUT: Flag
+  }
+  return icons[category] || Calendar
+}
+```
+
+## 5. Install Tabs Component
+
+```bash
+npx shadcn@latest add tabs
+```
+
+## Summary
+
+✅ Dashboard: Semester tabs + same ActivityCard component
+✅ Activities page: Semester tabs + same ActivityCard component
+✅ One shared ActivityCard component for both pages
+✅ Shows status (เปิดรับสมัคร/ปิดแล้ว)
+✅ Shows Thai dates
+✅ Button: "เข้าร่วมด้วยโค้ด" (only if ACTIVE)
+✅ Checkmark if already joined
+✅ Tab counts: "ภาคเรียนที่ 1 (4)" shows number of activities	

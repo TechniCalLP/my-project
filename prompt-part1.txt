@@ -1,0 +1,347 @@
+# Student Activity Management System - Part 1/3: Core Setup
+
+โปรเจคนี้อยู่ใน: C:\Users\usEr\Projects\student-activity-system
+
+มี Next.js 15 + TypeScript + Tailwind + shadcn/ui ติดตั้งไว้แล้ว
+
+---
+
+## 📊 STEP 1: DATABASE SCHEMA
+
+สร้างไฟล์ prisma/schema.prisma:
+
+```prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Student {
+  id            String   @id @default(cuid())
+  studentId     String   @unique
+  prefix        String
+  firstName     String
+  lastName      String
+  year          String
+  department    String
+  password      String
+  isFirstLogin  Boolean  @default(true)
+  participations Participation[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([studentId])
+  @@index([year])
+  @@index([department])
+}
+
+model Activity {
+  id                String           @id @default(cuid())
+  name              String
+  description       String?
+  category          ActivityCategory
+  targetYear        String
+  targetSemester    String
+  targetDepartments String[]  @default([])
+  startDate         DateTime
+  endDate           DateTime
+  location          String?
+  maxSlots          Int?
+  status            ActivityStatus   @default(DRAFT)
+  adminId           String
+  admin             Admin            @relation(fields: [adminId], references: [id])
+  activityCodes     ActivityCode[]
+  participations    Participation[]
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@index([targetYear])
+  @@index([targetSemester])
+  @@index([status])
+}
+
+enum ActivityCategory {
+  ACADEMIC
+  COMMUNITY_SERVICE
+  HEALTH
+  SCOUT
+}
+
+enum ActivityStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model ActivityCode {
+  id         String   @id @default(cuid())
+  code       String   @unique
+  isUsed     Boolean  @default(false)
+  usedAt     DateTime?
+  usedBy     String?
+  activityId String
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  
+  @@index([code])
+  @@index([activityId])
+}
+
+model Participation {
+  id         String   @id @default(cuid())
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  activityId String
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  joinedAt   DateTime @default(now())
+  codeUsed   String
+  
+  @@unique([studentId, activityId])
+  @@index([studentId])
+  @@index([activityId])
+}
+
+model Admin {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  name      String
+  activities Activity[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+```
+
+---
+
+## 🔐 STEP 2: AUTHENTICATION
+
+สร้าง lib/prisma.ts:
+```typescript
+import { PrismaClient } from '@prisma/client'
+
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined
+}
+
+export const prisma = globalForPrisma.prisma ?? new PrismaClient()
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+```
+
+สร้าง lib/auth.ts:
+```typescript
+import NextAuth from "next-auth"
+import Credentials from "next-auth/providers/credentials"
+import { PrismaAdapter } from "@auth/prisma-adapter"
+import { prisma } from "@/lib/prisma"
+import bcrypt from "bcryptjs"
+
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  adapter: PrismaAdapter(prisma),
+  session: { strategy: "jwt" },
+  pages: { signIn: "/login" },
+  providers: [
+    Credentials({
+      id: "student-login",
+      name: "Student",
+      credentials: {
+        studentId: { label: "รหัสนักศึกษา", type: "text" },
+        password: { label: "รหัสผ่าน", type: "password" }
+      },
+      async authorize(credentials) {
+        if (!credentials?.studentId || !credentials?.password) return null
+        
+        const student = await prisma.student.findUnique({
+          where: { studentId: credentials.studentId as string }
+        })
+        
+        if (!student) return null
+        
+        const isValid = await bcrypt.compare(
+          credentials.password as string,
+          student.password
+        )
+        
+        if (!isValid) return null
+        
+        return {
+          id: student.id,
+          studentId: student.studentId,
+          name: `${student.firstName} ${student.lastName}`,
+          role: "student",
+          isFirstLogin: student.isFirstLogin,
+          year: student.year,
+          department: student.department
+        }
+      }
+    }),
+    
+    Credentials({
+      id: "admin-login",
+      name: "Admin",
+      credentials: {
+        username: { label: "Username", type: "text" },
+        password: { label: "Password", type: "password" }
+      },
+      async authorize(credentials) {
+        if (!credentials?.username || !credentials?.password) return null
+        
+        const admin = await prisma.admin.findUnique({
+          where: { username: credentials.username as string }
+        })
+        
+        if (!admin) return null
+        
+        const isValid = await bcrypt.compare(
+          credentials.password as string,
+          admin.password
+        )
+        
+        if (!isValid) return null
+        
+        return {
+          id: admin.id,
+          name: admin.name,
+          role: "admin"
+        }
+      }
+    })
+  ],
+  callbacks: {
+    jwt({ token, user }) {
+      if (user) {
+        token.role = user.role
+        token.isFirstLogin = user.isFirstLogin
+        token.year = user.year
+        token.department = user.department
+      }
+      return token
+    },
+    session({ session, token }) {
+      if (session.user) {
+        session.user.role = token.role as string
+        session.user.isFirstLogin = token.isFirstLogin as boolean
+        session.user.year = token.year as string
+        session.user.department = token.department as string
+      }
+      return session
+    }
+  }
+})
+```
+
+สร้าง app/api/auth/[...nextauth]/route.ts:
+```typescript
+export { handlers as GET, handlers as POST } from "@/lib/auth"
+```
+
+---
+
+## 📁 STEP 3: CONSTANTS
+
+สร้าง lib/constants.ts:
+```typescript
+export const DEPARTMENTS = [
+  "ช่างยนต์", "ช่างกลโรงงาน", "ช่างเชื่อมโลหะ", "ช่างไฟฟ้า",
+  "อิเล็กทรอนิกส์", "ช่างก่อสร้าง", "สถาปัตยกรรม", "โยธา",
+  "เมคคาทรอนิกส์และหุ่นยนต์", "เทคโนโลยีสารสนเทศ", "เทคนิคคอมพิวเตอร์"
+] as const
+
+export const YEARS = ["ปวช.1", "ปวช.2", "ปวช.3", "ปวส.1", "ปวส.2"] as const
+export const SEMESTERS = ["ภาคเรียนที่ 1", "ภาคเรียนที่ 2"] as const
+export const PREFIXES = ["นาย", "นาง", "นางสาว"] as const
+
+export const CATEGORY_NAMES = {
+  ACADEMIC: "วิชาการ",
+  COMMUNITY_SERVICE: "บำเพ็ญประโยชน์",
+  HEALTH: "สุขภาพ",
+  SCOUT: "ลูกเสือ"
+} as const
+```
+
+---
+
+## 🎨 STEP 4: THAI FONTS
+
+อัพเดท app/layout.tsx:
+```typescript
+import { Noto_Sans_Thai, Inter } from 'next/font/google'
+import './globals.css'
+
+const notoSansThai = Noto_Sans_Thai({
+  subsets: ['thai'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-noto-sans-thai',
+  display: 'swap',
+})
+
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-inter',
+  display: 'swap',
+})
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="th" className={`${notoSansThai.variable} ${inter.variable}`}>
+      <body className="font-thai antialiased">{children}</body>
+    </html>
+  )
+}
+```
+
+อัพเดท tailwind.config.ts เพิ่ม:
+```typescript
+fontFamily: {
+  thai: ['var(--font-noto-sans-thai)', 'sans-serif'],
+  sans: ['var(--font-inter)', 'sans-serif'],
+}
+```
+
+อัพเดท app/globals.css เพิ่ม:
+```css
+@layer base {
+  body { @apply font-thai; }
+  h1, h2, h3, h4, h5, h6 { @apply font-thai font-semibold; }
+}
+```
+
+---
+
+## 🌱 STEP 5: SEED DATA
+
+สร้าง prisma/seed.ts พร้อมกิจกรรม 21 อัน ตาม list นี้:
+
+ปวช.1/1: ปฐมนิเทศ, อบรมคุณธรรม, ไหว้ครู, ตรวจสุขภาพ
+ปวช.1/2: ลูกเสือฯวิทยาลัยเทคนิคลำปาง, ตรวจสุขภาพ
+ปวช.2/1: เลือกตั้งอวท., ตรวจสุขภาพ
+ปวช.2/2: ตรวจสุขภาพ
+ปวช.3/1: ตรวจสุขภาพ
+ปวช.3/2: ตรวจสุขภาพ, ปัจฉิมนิเทศ
+ปวส.1/1: อบรมคุณธรรม, ปฐมนิเทศ, อวท.จิตอาสา, ตรวจสุขภาพ
+ปวส.1/2: ตรวจสุขภาพ
+ปวส.2/1: ถวายเทียนฯ, ตรวจสุขภาพ
+ปวส.2/2: ส่งท้ายปีเก่า, ตรวจสุขภาพ
+
+Admin: username=admin, password=admin1234
+Student ตัวอย่าง: 68301010016, password=1234, ปวช.1, เทคนิคคอมพิวเตอร์
+
+อัพเดท package.json เพิ่ม:
+```json
+"prisma": { "seed": "tsx prisma/seed.ts" }
+```
+
+---
+
+เสร็จแล้วรัน:
+npx prisma generate
+npx prisma db push
+npm install tsx -D
+npx prisma db seed

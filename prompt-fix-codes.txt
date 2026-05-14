@@ -1,0 +1,135 @@
+# Fix Activity Codes - Seed Data
+
+The ActivityCode table is empty, causing "invalid code" errors when students try to join activities.
+
+## Problem
+
+ActivityCode table has 0 records. Need to populate with codes for all activities.
+
+## Solution
+
+Update seed file to create activity codes for ALL activities.
+
+### Update prisma/seed.ts
+
+Add this section after creating activities:
+
+```typescript
+// prisma/seed.ts
+
+async function main() {
+  console.log('Start seeding...')
+  
+  // ... existing student creation ...
+  // ... existing admin creation ...
+  // ... existing activity creation ...
+  
+  // Get all created activities
+  const allActivities = await prisma.activity.findMany({
+    orderBy: { createdAt: 'asc' }
+  })
+  
+  console.log(`Found ${allActivities.length} activities`)
+  
+  // ✨ Create activity codes for ALL activities
+  const activityCodes = []
+  
+  for (let i = 0; i < allActivities.length; i++) {
+    const activity = allActivities[i]
+    
+    // Generate 6-digit code: 123456, 234567, 345678, etc.
+    const code = String((i + 1) * 111111).padStart(6, '0')
+    
+    activityCodes.push({
+      code: code,
+      activityId: activity.id,
+      isUsed: false,
+    })
+    
+    console.log(`  - Created code ${code} for "${activity.title}"`)
+  }
+  
+  // Insert all codes at once
+  await prisma.activityCode.createMany({
+    data: activityCodes,
+    skipDuplicates: true
+  })
+  
+  console.log(`✅ Created ${activityCodes.length} activity codes`)
+  
+  // ... rest of seed ...
+  
+  console.log('Seeding finished.')
+}
+
+main()
+  .catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })
+```
+
+### Expected Codes
+
+After seeding, ActivityCode table should have these codes:
+Activity 1 (ปฐมนิเทศ):           123456
+Activity 2 (อบรมคุณธรรม):         234567
+Activity 3 (พิธีไหว้ครู):         345678
+Activity 4 (ตรวจสุขภาพ):          456789
+Activity 5 (อบรมความปลอดภัย):     567890
+Activity 6 (โครงการลูกเสือ):      678901
+Activity 7 (จิตอาสา):             789012
+Activity 8 (ตรวจสุขภาพกลางปี):    890123
+... (and so on for all activities)
+
+## After Updating seed.ts
+
+Run these commands to reset and reseed the database:
+
+```bash
+# Reset database and run seed
+npx prisma migrate reset --force
+
+# This will:
+# 1. Drop all tables
+# 2. Run migrations
+# 3. Run seed script (creates students, admins, activities, AND codes)
+# 4. Show logs of what was created
+
+# Start dev server
+npm run dev
+```
+
+## Verification
+
+After seeding, verify in Prisma Studio:
+
+```bash
+npx prisma studio
+```
+
+Go to ActivityCode table - should see:
+- 8+ records (one per activity)
+- Each with a unique 6-digit code
+- isUsed = false
+- activityId pointing to an activity
+
+## Testing
+
+After reset, test joining activities:
+
+1. Login: 68301010016 / 1234
+2. Go to /join
+3. Enter code: 123456
+4. Should successfully join "ปฐมนิเทศนักศึกษาใหม่"
+5. Check /history - should see the activity
+
+## Summary
+
+✅ ActivityCode table populated with codes for all activities
+✅ Each activity has at least one valid code
+✅ Codes are 6 digits (123456, 234567, etc.)
+✅ Students can join activities using these codes

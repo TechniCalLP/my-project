@@ -1,0 +1,351 @@
+# Create Complete Admin Dashboard Components
+
+## Overview
+
+Create all missing admin dashboard components with proper table layout and balanced columns.
+
+## Files to Create
+
+### 1. Stats Cards Component
+
+File: `components/admin/stats-cards.tsx`
+
+```typescript
+import { Users, Calendar, ClipboardList, TrendingUp } from "lucide-react"
+import { Card } from "@/components/ui/card"
+
+const iconMap = {
+  users: Users,
+  calendar: Calendar,
+  clipboard: ClipboardList,
+  trending: TrendingUp,
+}
+
+const colorMap = {
+  primary: "text-primary-600 bg-primary-50",
+  secondary: "text-secondary-600 bg-secondary-50",
+  success: "text-success bg-success/10",
+  warning: "text-warning-600 bg-warning-50",
+}
+
+interface Stat {
+  label: string
+  value: number | string
+  icon: keyof typeof iconMap
+  color: keyof typeof colorMap
+}
+
+interface StatsCardsProps {
+  stats: Stat[]
+}
+
+export default function StatsCards({ stats }: StatsCardsProps) {
+  return (
+    
+      {stats.map((stat) => {
+        const Icon = iconMap[stat.icon]
+        const colorClass = colorMap[stat.color]
+        
+        return (
+          
+            
+              
+                
+                  {stat.label}
+                
+                
+                  {stat.value}
+                
+              
+              
+                
+              
+            
+          
+        )
+      })}
+    
+  )
+}
+```
+
+### 2. Recent Activities Component
+
+File: `components/admin/recent-activities.tsx`
+
+```typescript
+import Link from "next/link"
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Eye, Edit, Trash2, Users } from "lucide-react"
+
+function getCategoryLabel(category: string) {
+  const labels: Record = {
+    ACADEMIC: "วิชาการ",
+    SPORTS: "กีฬา",
+    ARTS: "ศิลปะ-วัฒนธรรม",
+    VOLUNTEER: "บำเพ็ญประโยชน์",
+    MORALITY: "คุณธรรม-จริยธรรม",
+    HEALTH: "สุขภาพ",
+  }
+  return labels[category] || category
+}
+
+interface Activity {
+  id: string
+  title: string
+  category: string
+  status: string
+  year: string
+  semester: number
+  _count: {
+    participations: number
+  }
+}
+
+interface RecentActivitiesProps {
+  activities: Activity[]
+}
+
+export default function RecentActivities({ activities }: RecentActivitiesProps) {
+  if (activities.length === 0) {
+    return (
+      
+        ยังไม่มีกิจกรรม
+      
+    )
+  }
+
+  return (
+    
+      
+        
+          
+            กิจกรรมล่าสุด
+          
+          
+            
+              ดูทั้งหมด
+            
+          
+        
+      
+      
+      
+        
+          
+            
+              
+                ชื่อกิจกรรม
+              
+              
+                ประเภท
+              
+              
+                สถานะ
+              
+              
+                ผู้เข้าร่วม
+              
+              
+                จัดการ
+              
+            
+          
+          
+            {activities.map((activity) => (
+              
+                {/* ชื่อกิจกรรม */}
+                
+                  
+                    
+                      {activity.title}
+                    
+                    
+                      {activity.year} / ภาคเรียนที่ {activity.semester}
+                    
+                  
+                
+
+                {/* ประเภท */}
+                
+                  
+                    {getCategoryLabel(activity.category)}
+                  
+                
+
+                {/* สถานะ */}
+                
+                  <Badge 
+                    className={
+                      activity.status === 'ACTIVE' 
+                        ? 'bg-primary text-white' 
+                        : 'bg-gray-400 text-white'
+                    }
+                  >
+                    {activity.status === 'ACTIVE' ? 'เปิดรับสมัคร' : 'ปิดแล้ว'}
+                  
+                
+
+                {/* ผู้เข้าร่วม */}
+                
+                  
+                    
+                    
+                      {activity._count.participations}
+                    
+                    คน
+                  
+                
+
+                {/* จัดการ */}
+                
+                  
+                    {/* ดู */}
+                    
+                      
+                        
+                        ดู
+                      
+                    
+
+                    {/* แก้ไข */}
+                    
+                      
+                        
+                        แก้ไข
+                      
+                    
+
+                    {/* ลบ */}
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="gap-1.5 text-secondary hover:bg-secondary hover:text-white"
+                      onClick={() => {
+                        if (confirm(`ต้องการลบกิจกรรม "${activity.title}" ใช่หรือไม่?`)) {
+                          alert('ฟังก์ชันลบจะพร้อมใช้งานใน Part 3.2')
+                        }
+                      }}
+                    >
+                      
+                      ลบ
+                    
+                  
+                
+              
+            ))}
+          
+        
+      
+    
+  )
+}
+```
+
+### 3. Update Dashboard Page
+
+File: `app/(admin)/admin/dashboard/page.tsx`
+
+Ensure it imports and uses the new components:
+
+```typescript
+import { prisma } from "@/lib/prisma"
+import StatsCards from "@/components/admin/stats-cards"
+import RecentActivities from "@/components/admin/recent-activities"
+import { LayoutDashboard } from "lucide-react"
+
+export default async function AdminDashboardPage() {
+  // Get statistics
+  const [
+    totalStudents,
+    totalActivities,
+    totalParticipations,
+  ] = await Promise.all([
+    prisma.student.count(),
+    prisma.activity.count(),
+    prisma.participation.count(),
+  ])
+
+  // Calculate participation rate
+  const participationRate = totalActivities > 0 
+    ? Math.round((totalParticipations / (totalStudents * totalActivities)) * 100)
+    : 0
+
+  // Get recent activities
+  const recentActivities = await prisma.activity.findMany({
+    take: 10,
+    orderBy: { createdAt: 'desc' },
+    include: {
+      _count: {
+        select: { participations: true }
+      }
+    }
+  })
+
+  const stats = [
+    {
+      label: "กิจกรรมทั้งหมด",
+      value: totalActivities,
+      icon: "calendar" as const,
+      color: "primary" as const
+    },
+    {
+      label: "กิจกรรมที่เปิดรับ",
+      value: await prisma.activity.count({ where: { status: 'ACTIVE' } }),
+      icon: "calendar" as const,
+      color: "secondary" as const
+    },
+    {
+      label: "นักศึกษาทั้งหมด",
+      value: totalStudents,
+      icon: "users" as const,
+      color: "success" as const
+    },
+    {
+      label: "การเข้าร่วม",
+      value: totalParticipations,
+      icon: "clipboard" as const,
+      color: "warning" as const
+    }
+  ]
+
+  return (
+    
+      {/* Header */}
+      
+        
+          
+          แดชบอร์ดผู้ดูแลระบบ
+        
+        
+          ภาพรวมระบบบันทึกกิจกรรมนักศึกษา
+        
+      
+
+      {/* Stats Cards */}
+      
+
+      {/* Recent Activities */}
+      
+    
+  )
+}
+```
+
+## Summary
+
+This creates:
+✅ stats-cards.tsx - Statistics display component
+✅ recent-activities.tsx - Activity table with balanced columns (25-16-16-16-25)
+✅ Updated dashboard page to use both components
+
+Column widths:
+- ชื่อกิจกรรม: w-1/4 (25%)
+- ประเภท: w-1/6 (16.67%)
+- สถานะ: w-1/6 (16.67%)  
+- ผู้เข้าร่วม: w-1/6 (16.67%)
+- จัดการ: w-1/4 (25%)
+
+Buttons have gap-3 (12px spacing) between them.

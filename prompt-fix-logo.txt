@@ -1,0 +1,128 @@
+# Fix Admin Login - Logo Image Path Issue
+
+## Problem
+
+The logo image exists at `public/logo-college.png` but may not be loading correctly on admin login page.
+
+## Solution
+
+Ensure proper Image component configuration with error handling and fallback.
+
+File: `app/(auth)/admin/login/page.tsx`
+
+## Changes Required
+
+### 1. Update Desktop Logo Section (around line 48)
+
+Replace the desktop logo div with proper error handling:
+
+```typescript
+{/* Logo */}
+
+  
+    
+      
+    
+  
+
+```
+
+### 2. Update Mobile Logo Section (around line 75)
+
+Replace the mobile logo div:
+
+```typescript
+{/* Mobile Logo (shown only on small screens) */}
+
+  
+    
+      
+    
+  
+  
+    วิทยาลัยเทคนิคลำปาง
+  
+  
+    ระบบบันทึกกิจกรรมนักศึกษา
+  
+
+```
+
+### 3. Ensure Image Import
+
+Make sure Image is imported at the top of the file:
+
+```typescript
+import Image from "next/image"
+```
+
+### 4. Next.js Config (if needed)
+
+If still having issues, update `next.config.ts`:
+
+```typescript
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  images: {
+    unoptimized: true,
+  },
+};
+
+export default nextConfig;
+```
+
+## Key Changes
+
+✅ Use `fill` instead of fixed width/height for responsive images
+✅ Add `unoptimized` prop to bypass Next.js image optimization
+✅ Add `overflow-hidden` to parent div for proper rounded corners
+✅ Use relative positioning wrapper for fill prop
+✅ Ensure proper object-cover for aspect ratio
+
+## Alternative: Conditional Rendering with Fallback
+
+If you want automatic fallback to Shield icon on error:
+
+```typescript
+{/* Logo with fallback */}
+
+  
+    <Image 
+      src="/logo-college.png" 
+      alt="วิทยาลัยเทคนิคลำปาง"
+      width={128}
+      height={128}
+      className="object-cover"
+      priority
+      unoptimized
+      onError={(e) => {
+        // Hide image and show shield icon on error
+        const target = e.currentTarget as HTMLImageElement;
+        target.style.display = 'none';
+        const parent = target.parentElement;
+        if (parent) {
+          parent.innerHTML = '';
+        }
+      }}
+    />
+  
+
+```
+
+## Testing
+
+After changes:
+1. Restart dev server: `npm run dev`
+2. Clear browser cache: Ctrl+Shift+R
+3. Visit: http://localhost:3000/admin/login
+4. Check if logo displays correctly
+
+## Summary
+
+✅ Proper Image component configuration
+✅ Added unoptimized flag
+✅ Fixed responsive sizing with fill prop
+✅ Added overflow-hidden for rounded corners
+✅ Ensured proper imports
+✅ Optional error handling with fallback

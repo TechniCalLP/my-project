@@ -1,0 +1,750 @@
+# Student Activity System - Part 2: Modern Student Experience
+
+## Critical Design Decisions
+
+### Layout Philosophy
+NO SIDEBAR - Use modern top navigation pattern
+
+Desktop: Horizontal nav bar
+Mobile: Bottom tab bar
+Content: Full width (no wasted space)
+Navigation: 4 items only (หน้าหลัก, กิจกรรม, ประวัติ, ตั้งค่า)
+
+
+### What NOT to Build
+❌ Sidebar navigation (wastes horizontal space)
+❌ Quick action cards (redundant with nav)
+❌ Admin features
+❌ "All activities" view (only student's year)
+❌ Generic dashboard (must be personalized)
+
+## Design System
+
+### Colors
+```css
+:root {
+  /* Primary */
+  --primary: #3b82f6;
+  --primary-dark: #2563eb;
+  --primary-light: #dbeafe;
+  
+  /* Semantic */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #06b6d4;
+  
+  /* Category Colors */
+  --academic: #8b5cf6;    /* Purple */
+  --service: #10b981;     /* Green */
+  --health: #ef4444;      /* Red */
+  --scout: #f59e0b;       /* Orange */
+  
+  /* Neutrals */
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-600: #4b5563;
+  --gray-900: #111827;
+}
+```
+
+### Typography
+```css
+/* Thai Font Primary */
+font-family: 'Noto Sans Thai', 'Inter', sans-serif;
+
+/* Sizes */
+--text-xs: 0.75rem;    /* 12px */
+--text-sm: 0.875rem;   /* 14px */
+--text-base: 1rem;     /* 16px */
+--text-lg: 1.125rem;   /* 18px */
+--text-xl: 1.25rem;    /* 20px */
+--text-2xl: 1.5rem;    /* 24px */
+--text-3xl: 1.875rem;  /* 30px */
+
+/* Weights */
+--font-normal: 400;
+--font-medium: 500;
+--font-semibold: 600;
+--font-bold: 700;
+```
+
+### Spacing
+```css
+--space-1: 0.25rem;  /* 4px */
+--space-2: 0.5rem;   /* 8px */
+--space-3: 0.75rem;  /* 12px */
+--space-4: 1rem;     /* 16px */
+--space-6: 1.5rem;   /* 24px */
+--space-8: 2rem;     /* 32px */
+--space-12: 3rem;    /* 48px */
+```
+
+## Project Structure
+src/
+├── app/
+│   ├── (auth)/
+│   │   └── login/
+│   │       └── page.tsx
+│   ├── (student)/
+│   │   ├── layout.tsx              # Top nav + bottom nav
+│   │   ├── dashboard/
+│   │   │   └── page.tsx
+│   │   ├── activities/
+│   │   │   └── page.tsx
+│   │   ├── history/
+│   │   │   └── page.tsx
+│   │   └── settings/
+│   │       └── page.tsx
+│   └── api/
+│       ├── student/
+│       │   ├── stats/route.ts
+│       │   └── history/route.ts
+│       ├── activities/
+│       │   ├── route.ts
+│       │   └── join/route.ts
+│       └── password/route.ts
+├── components/
+│   ├── ui/                         # shadcn/ui
+│   ├── layout/
+│   │   ├── top-nav.tsx
+│   │   ├── bottom-nav.tsx
+│   │   ├── mobile-menu.tsx
+│   │   └── profile-dropdown.tsx
+│   ├── dashboard/
+│   │   ├── progress-hero.tsx
+│   │   ├── stats-cards.tsx
+│   │   └── activity-list.tsx
+│   ├── activities/
+│   │   ├── activity-card.tsx
+│   │   ├── activity-grid.tsx
+│   │   └── activity-filters.tsx
+│   └── shared/
+│       ├── page-header.tsx
+│       ├── section.tsx
+│       └── empty-state.tsx
+└── lib/
+├── utils.ts
+├── constants.ts
+└── validations.ts
+
+## 1. Student Layout - The Foundation
+
+### Desktop Layout (≥768px)
+┌────────────────────────────────────────────────────────┐
+│ Top Navigation Bar                                     │
+│ ┌─────┐                                     ┌────────┐│
+│ │Logo │ หน้าหลัก กิจกรรม ประวัติ ตั้งค่า  │🔔  👤││
+│ └─────┘                                     └────────┘│
+├────────────────────────────────────────────────────────┤
+│                                                        │
+│                    Page Content                        │
+│                    (Full Width)                        │
+│                                                        │
+│                                                        │
+└────────────────────────────────────────────────────────┘
+
+### Mobile Layout (<768px)
+┌──────────────────┐
+│ ┌──┐  Logo  🔔 👤│ ← Mobile Header
+├──────────────────┤
+│                  │
+│    Page Content  │
+│   (Full Width)   │
+│                  │
+├──────────────────┤
+│ 🏠 📋 📜 ⚙️    │ ← Bottom Navigation
+└──────────────────┘
+
+### Code Implementation
+
+```typescript
+// app/(student)/layout.tsx
+import { getServerSession } from "next-auth"
+import { redirect } from "next/navigation"
+import { TopNav } from "@/components/layout/top-nav"
+import { BottomNav } from "@/components/layout/bottom-nav"
+import { MobileHeader } from "@/components/layout/mobile-header"
+
+export default async function StudentLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const session = await getServerSession()
+  
+  if (!session) {
+    redirect("/login")
+  }
+  
+  // Redirect to settings if first login
+  if (session.user.isFirstLogin && pathname !== "/settings") {
+    redirect("/settings")
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Desktop Top Navigation */}
+      <TopNav className="hidden md:flex" user={session.user} />
+      
+      {/* Mobile Header */}
+      <MobileHeader className="md:hidden" user={session.user} />
+      
+      {/* Main Content - Full Width */}
+      <main className="pb-20 md:pb-0">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
+          {children}
+        </div>
+      </main>
+      
+      {/* Mobile Bottom Navigation */}
+      <BottomNav className="md:hidden" />
+    </div>
+  )
+}
+```
+
+```typescript
+// components/layout/top-nav.tsx
+"use client"
+
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { Home, Calendar, History, Settings, Bell } from "lucide-react"
+import { cn } from "@/lib/utils"
+
+const navItems = [
+  { href: "/dashboard", label: "หน้าหลัก", icon: Home },
+  { href: "/activities", label: "กิจกรรม", icon: Calendar },
+  { href: "/history", label: "ประวัติ", icon: History },
+  { href: "/settings", label: "ตั้งค่า", icon: Settings },
+]
+
+export function TopNav({ user, className }) {
+  const pathname = usePathname()
+  
+  return (
+    <nav className={cn("bg-white border-b", className)}>
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo + Nav Links */}
+          <div className="flex items-center gap-8">
+            {/* Logo */}
+            <Link href="/dashboard" className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">วทล</span>
+              </div>
+              <span className="font-semibold text-gray-900 hidden lg:block">
+                วิทยาลัยเทคนิคลำปาง
+              </span>
+            </Link>
+            
+            {/* Navigation Links */}
+            <div className="flex gap-1">
+              {navItems.map((item) => {
+                const Icon = item.icon
+                const isActive = pathname === item.href
+                
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-blue-50 text-blue-700"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    )}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span>{item.label}</span>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+          
+          {/* Right Side: Notifications + Profile */}
+          <div className="flex items-center gap-4">
+            {/* Notification Bell */}
+            <button className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg">
+              <Bell className="w-5 h-5" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+            </button>
+            
+            {/* Profile Dropdown */}
+            <ProfileDropdown user={user} />
+          </div>
+        </div>
+      </div>
+    </nav>
+  )
+}
+```
+
+```typescript
+// components/layout/bottom-nav.tsx
+"use client"
+
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { Home, Calendar, History, Settings } from "lucide-react"
+import { cn } from "@/lib/utils"
+
+const navItems = [
+  { href: "/dashboard", label: "หน้าหลัก", icon: Home },
+  { href: "/activities", label: "กิจกรรม", icon: Calendar },
+  { href: "/history", label: "ประวัติ", icon: History },
+  { href: "/settings", label: "ตั้งค่า", icon: Settings },
+]
+
+export function BottomNav({ className }) {
+  const pathname = usePathname()
+  
+  return (
+    <nav className={cn(
+      "fixed bottom-0 left-0 right-0 bg-white border-t z-50",
+      className
+    )}>
+      <div className="grid grid-cols-4 h-16">
+        {navItems.map((item) => {
+          const Icon = item.icon
+          const isActive = pathname === item.href
+          
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex flex-col items-center justify-center gap-1",
+                isActive
+                  ? "text-blue-600"
+                  : "text-gray-600"
+              )}
+            >
+              <Icon className="w-5 h-5" />
+              <span className="text-xs font-medium">{item.label}</span>
+            </Link>
+          )
+        })}
+      </div>
+    </nav>
+  )
+}
+```
+
+## 2. Login Page
+
+```typescript
+// app/(auth)/login/page.tsx
+"use client"
+
+import { useState } from "react"
+import { signIn } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { School, Eye, EyeOff } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { useToast } from "@/components/ui/use-toast"
+
+export default function LoginPage() {
+  const router = useRouter()
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setLoading(true)
+
+    const formData = new FormData(e.currentTarget)
+    const studentId = formData.get("studentId") as string
+    const password = formData.get("password") as string
+
+    // Validate student ID (11 digits)
+    if (!/^\d{11}$/.test(studentId)) {
+      toast({
+        title: "ข้อมูลไม่ถูกต้อง",
+        description: "รหัสนักศึกษาต้องเป็นตัวเลข 11 หลัก",
+        variant: "destructive",
+      })
+      setLoading(false)
+      return
+    }
+
+    try {
+      const result = await signIn("credentials", {
+        studentId,
+        password,
+        redirect: false,
+      })
+
+      if (result?.ok) {
+        router.push("/dashboard")
+        router.refresh()
+      } else {
+        toast({
+          title: "เข้าสู่ระบบไม่สำเร็จ",
+          description: "รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "กรุณาลองใหม่อีกครั้ง",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md shadow-xl">
+        <CardHeader className="text-center space-y-4 pt-8 pb-6">
+          {/* Logo */}
+          <div className="mx-auto w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center">
+            <School className="w-10 h-10 text-blue-600" />
+          </div>
+          
+          {/* Title */}
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              วิทยาลัยเทคนิคลำปาง
+            </h1>
+            <p className="text-gray-600 mt-1">
+              ระบบบันทึกกิจกรรมนักศึกษา
+            </p>
+          </div>
+        </CardHeader>
+
+        <CardContent className="pb-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Student ID Input */}
+            <div className="space-y-2">
+              <Label htmlFor="studentId">รหัสนักศึกษา</Label>
+              <Input
+                id="studentId"
+                name="studentId"
+                type="text"
+                placeholder="11 หลัก"
+                maxLength={11}
+                required
+                className="h-12 text-base"
+                autoComplete="username"
+              />
+            </div>
+
+            {/* Password Input */}
+            <div className="space-y-2">
+              <Label htmlFor="password">รหัสผ่าน</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  required
+                  className="h-12 text-base pr-12"
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              className="w-full h-12 text-base"
+              disabled={loading}
+            >
+              {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
+            </Button>
+
+            {/* Help Text */}
+            <p className="text-sm text-center text-gray-600">
+              ลืมรหัสผ่าน? ติดต่อครูที่ปรึกษา
+            </p>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+```
+
+## 3. Dashboard - Personalized & Actionable
+
+```typescript
+// app/(student)/dashboard/page.tsx
+import { getServerSession } from "next-auth"
+import { prisma } from "@/lib/prisma"
+import { ProgressHero } from "@/components/dashboard/progress-hero"
+import { StatsCards } from "@/components/dashboard/stats-cards"
+import { ActivityList } from "@/components/dashboard/activity-list"
+import { RecentHistory } from "@/components/dashboard/recent-history"
+import { PageHeader } from "@/components/shared/page-header"
+import { Section } from "@/components/shared/section"
+
+export default async function DashboardPage() {
+  const session = await getServerSession()
+  const student = session.user
+
+  // Get stats
+  const joined = await prisma.participation.count({
+    where: { studentId: student.studentId }
+  })
+
+  const total = await prisma.activity.count({
+    where: {
+      year: student.year,
+      status: 'ACTIVE',
+      OR: [
+        { targetDepartments: { isEmpty: true } },
+        { targetDepartments: { has: student.department } }
+      ]
+    }
+  })
+
+  const remaining = total - joined
+  const progress = total > 0 ? Math.round((joined / total) * 100) : 0
+
+  // Get upcoming activities (not joined yet)
+  const upcomingActivities = await prisma.activity.findMany({
+    where: {
+      year: student.year,
+      status: 'ACTIVE',
+      OR: [
+        { targetDepartments: { isEmpty: true } },
+        { targetDepartments: { has: student.department } }
+      ],
+      NOT: {
+        participations: {
+          some: { studentId: student.studentId }
+        }
+      }
+    },
+    take: 5,
+    orderBy: { createdAt: 'desc' }
+  })
+
+  // Get recent history
+  const recentHistory = await prisma.participation.findMany({
+    where: { studentId: student.studentId },
+    include: { activity: true },
+    orderBy: { joinedAt: 'desc' },
+    take: 3
+  })
+
+  return (
+    <div className="space-y-8">
+      {/* Welcome Header */}
+      <PageHeader
+        title={`สวัสดี, ${student.firstName} ${student.lastName} 👋`}
+        subtitle={`${student.year} • ${student.department} • เทอม ${getCurrentSemester()}/2567`}
+      />
+
+      {/* Progress Hero */}
+      <ProgressHero
+        joined={joined}
+        total={total}
+        remaining={remaining}
+        progress={progress}
+      />
+
+      {/* Stats Cards */}
+      <StatsCards
+        joined={joined}
+        remaining={remaining}
+        progress={progress}
+      />
+
+      {/* Upcoming Activities */}
+      {upcomingActivities.length > 0 && (
+        <Section
+          title="กิจกรรมที่ยังไม่ได้เข้าร่วม"
+          description={`${upcomingActivities.length} กิจกรรม`}
+          action={{
+            label: "ดูทั้งหมด",
+            href: "/activities"
+          }}
+        >
+          <ActivityList activities={upcomingActivities} variant="upcoming" />
+        </Section>
+      )}
+
+      {/* Recent History */}
+      {recentHistory.length > 0 && (
+        <Section
+          title="กิจกรรมที่เข้าร่วมล่าสุด"
+          action={{
+            label: "ดูประวัติ",
+            href: "/history"
+          }}
+        >
+          <RecentHistory items={recentHistory} />
+        </Section>
+      )}
+
+      {/* Empty State if no activities */}
+      {upcomingActivities.length === 0 && recentHistory.length === 0 && (
+        <EmptyState
+          icon={Calendar}
+          title="ยังไม่มีกิจกรรม"
+          description="ขณะนี้ยังไม่มีกิจกรรมสำหรับคุณ"
+        />
+      )}
+    </div>
+  )
+}
+
+function getCurrentSemester() {
+  const month = new Date().getMonth() + 1
+  return month >= 6 && month <= 10 ? 1 : 2
+}
+```
+
+```typescript
+// components/dashboard/progress-hero.tsx
+import { Progress } from "@/components/ui/progress"
+import { Card } from "@/components/ui/card"
+
+interface ProgressHeroProps {
+  joined: number
+  total: number
+  remaining: number
+  progress: number
+}
+
+export function ProgressHero({ joined, total, remaining, progress }: ProgressHeroProps) {
+  return (
+    <Card className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 md:p-8">
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-xl md:text-2xl font-semibold">
+            คุณทำครบแล้ว {joined} จาก {total} กิจกรรม ({progress}%)
+          </h3>
+        </div>
+        
+        <Progress value={progress} className="h-3 bg-blue-400" />
+        
+        <p className="text-blue-100 text-lg">
+          {remaining > 0 
+            ? `💪 ทำต่อเถอะ! ยังขาดอีก ${remaining} กิจกรรม`
+            : `🎉 เยี่ยมมาก! คุณเข้าร่วมครบทุกกิจกรรมแล้ว`
+          }
+        </p>
+      </div>
+    </Card>
+  )
+}
+```
+
+```typescript
+// components/dashboard/stats-cards.tsx
+import { CheckCircle, Clock, TrendingUp } from "lucide-react"
+import { Card } from "@/components/ui/card"
+
+export function StatsCards({ joined, remaining, progress }) {
+  const stats = [
+    {
+      icon: CheckCircle,
+      value: joined,
+      label: "เข้าร่วมกิจกรรม",
+      color: "text-green-500",
+      bgColor: "bg-green-50"
+    },
+    {
+      icon: Clock,
+      value: remaining,
+      label: "คงเหลือกิจกรรม",
+      color: "text-orange-500",
+      bgColor: "bg-orange-50"
+    },
+    {
+      icon: TrendingUp,
+      value: `${progress}%`,
+      label: "ความคืบหน้า",
+      color: "text-blue-500",
+      bgColor: "bg-blue-50"
+    }
+  ]
+
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      {stats.map((stat) => {
+        const Icon = stat.icon
+        return (
+          <Card key={stat.label} className="p-6">
+            <div className="space-y-2">
+              <div className={`w-12 h-12 rounded-lg ${stat.bgColor} flex items-center justify-center`}>
+                <Icon className={`w-6 h-6 ${stat.color}`} />
+              </div>
+              <div className="text-3xl font-bold text-gray-900">
+                {stat.value}
+              </div>
+              <div className="text-sm text-gray-600">
+                {stat.label}
+              </div>
+            </div>
+          </Card>
+        )
+      })}
+    </div>
+  )
+}
+```
+
+[Continue with Activities Page, History, Settings, API Routes...]
+
+## Key Implementation Points
+
+### Auto-Filter by Student Year
+```typescript
+// ALWAYS include in activity queries
+where: {
+  year: session.user.year, // Lock to student's year
+  status: 'ACTIVE',
+  OR: [
+    { targetDepartments: { isEmpty: true } },
+    { targetDepartments: { has: session.user.department } }
+  ]
+}
+```
+
+### shadcn/ui Components
+```bash
+npx shadcn@latest add button card input label select dialog badge avatar dropdown-menu toast separator progress tabs
+```
+
+### Dependencies
+```bash
+npm install react-hook-form zod @hookform/resolvers date-fns lucide-react
+```
+
+## Success Criteria
+
+✅ No sidebar - top nav + bottom nav only
+✅ Content uses full width
+✅ Dashboard shows personalized progress
+✅ Student sees only their year's activities (e.g., ปวช.1 = 8 activities)
+✅ Mobile responsive with bottom navigation
+✅ Thai fonts throughout
+✅ No admin features
+✅ No redundant quick action buttons
+
+Ready to build!

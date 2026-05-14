@@ -1,13 +1,104 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
+  provider = "prisma-client-js"
   output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+model Student {
+  id             String          @id @default(cuid())
+  studentId      String          @unique
+  prefix         String
+  firstName      String
+  lastName       String
+  year           String
+  department     String
+  password       String
+  isFirstLogin   Boolean         @default(true)
+  participations Participation[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([studentId])
+  @@index([year])
+  @@index([department])
+}
+
+model Activity {
+  id                String          @id @default(cuid())
+  name              String
+  description       String?
+  category          ActivityCategory
+  targetYear        String
+  targetSemester    String
+  targetDepartments String[]        @default([])
+  startDate         DateTime
+  endDate           DateTime
+  location          String?
+  maxSlots          Int?
+  status            ActivityStatus  @default(DRAFT)
+  adminId           String
+  admin             Admin           @relation(fields: [adminId], references: [id])
+  activityCodes     ActivityCode[]
+  participations    Participation[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([targetYear])
+  @@index([targetSemester])
+  @@index([status])
+}
+
+enum ActivityCategory {
+  ACADEMIC
+  COMMUNITY_SERVICE
+  HEALTH
+  SCOUT
+}
+
+enum ActivityStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model ActivityCode {
+  id         String    @id @default(cuid())
+  code       String    @unique
+  isUsed     Boolean   @default(false)
+  usedAt     DateTime?
+  usedBy     String?
+  activityId String
+  activity   Activity  @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+
+  @@index([code])
+  @@index([activityId])
+}
+
+model Participation {
+  id         String   @id @default(cuid())
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  activityId String
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  joinedAt   DateTime @default(now())
+  codeUsed   String
+
+  @@unique([studentId, activityId])
+  @@index([studentId])
+  @@index([activityId])
+}
+
+model Admin {
+  id         String     @id @default(cuid())
+  username   String     @unique
+  password   String
+  name       String
+  activities Activity[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 }

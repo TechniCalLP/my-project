@@ -1,0 +1,342 @@
+#Fix Admin Login Page + Improve Dashboard
+
+## 1. Admin Login - Match Student Login Style
+
+Change admin login to use split-screen design like student login, but with admin branding.
+
+File: `app/(auth)/admin/login/page.tsx`
+
+Replace entire file with:
+
+```typescript
+"use client"
+
+import { useState } from "react"
+import { signIn } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import Image from "next/image"
+import { Eye, EyeOff, Shield } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { useToast } from "@/components/ui/use-toast"
+
+export default function AdminLoginPage() {
+  const router = useRouter()
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+
+    const formData = new FormData(e.currentTarget)
+    const username = formData.get("username") as string
+    const password = formData.get("password") as string
+
+    try {
+      const result = await signIn("admin-credentials", {
+        username,
+        password,
+        redirect: false,
+      })
+
+      if (result?.ok) {
+        router.push("/admin/dashboard")
+        router.refresh()
+      } else {
+        toast({
+          title: "เข้าสู่ระบบไม่สำเร็จ",
+          description: "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "กรุณาลองใหม่อีกครั้ง",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    
+      {/* LEFT SIDE - Brand Gradient */}
+      
+        {/* Decorative elements */}
+        
+          
+          
+          
+        
+
+        {/* Content */}
+        
+          {/* Logo */}
+          
+            
+              
+            
+          
+
+          {/* Title */}
+          
+            ระบบจัดการกิจกรรม
+          
+          
+          
+            สำหรับเจ้าหน้าที่และผู้ดูแลระบบ
+          
+
+          {/* Badge */}
+          
+            
+              
+              Admin Panel
+            
+          
+
+          {/* Additional info */}
+          
+            
+              วิทยาลัยเทคนิคลำปาง
+            
+            
+              Lampang Technical College
+            
+          
+        
+      
+
+      {/* RIGHT SIDE - Login Form */}
+      
+        
+          {/* Mobile Logo */}
+          
+            
+              
+            
+            
+              ระบบจัดการกิจกรรม
+            
+            
+              สำหรับเจ้าหน้าที่
+            
+          
+
+          {/* Login Card */}
+          
+            {/* Header */}
+            
+              
+                เข้าสู่ระบบ
+              
+              
+                สำหรับเจ้าหน้าที่และผู้ดูแลระบบ
+              
+            
+
+            {/* Form */}
+            
+              {/* Username */}
+              
+                
+                  ชื่อผู้ใช้
+                
+                
+              
+
+              {/* Password */}
+              
+                
+                  รหัสผ่าน
+                
+                
+                  
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-primary transition-colors"
+                  >
+                    {showPassword ? (
+                      
+                    ) : (
+                      
+                    )}
+                  
+                
+              
+
+              {/* Submit Button */}
+              
+                {loading ? (
+                  
+                    
+                      
+                      
+                    
+                    กำลังเข้าสู่ระบบ...
+                  
+                ) : (
+                  "เข้าสู่ระบบ"
+                )}
+              
+            
+          
+
+          {/* Footer */}
+          
+            
+              © 2024 วิทยาลัยเทคนิคลำปาง. All rights reserved.
+            
+          
+        
+      
+    
+  )
+}
+```
+
+## 2. Dashboard - Improve Activity List
+
+Make activity table clearer with better participant count display and action buttons.
+
+File: `components/admin/recent-activities.tsx`
+
+Replace with:
+
+```typescript
+import Link from "next/link"
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Eye, Users } from "lucide-react"
+import { formatThaiDateRange, getCategoryLabel } from "@/lib/utils"
+
+export default function RecentActivities({ activities }) {
+  if (activities.length === 0) {
+    return (
+      
+        ยังไม่มีกิจกรรม
+      
+    )
+  }
+
+  return (
+    
+      
+        
+          
+            กิจกรรมล่าสุด
+          
+          
+            
+              ดูทั้งหมด
+            
+          
+        
+      
+      
+      
+        
+          
+            
+              
+                ชื่อกิจกรรม
+              
+              
+                ประเภท
+              
+              
+                สถานะ
+              
+              
+                ผู้เข้าร่วม
+              
+              
+                การดำเนินการ
+              
+            
+          
+          
+            {activities.map((activity) => (
+              
+                
+                  
+                    
+                      {activity.title}
+                    
+                    
+                      {activity.year} / ภาคเรียนที่ {activity.semester}
+                    
+                  
+                
+                
+                  
+                    {getCategoryLabel(activity.category)}
+                  
+                
+                
+                  <Badge 
+                    className={
+                      activity.status === 'ACTIVE' 
+                        ? 'bg-primary text-white' 
+                        : 'bg-gray-400 text-white'
+                    }
+                  >
+                    {activity.status === 'ACTIVE' ? 'เปิดรับสมัคร' : 'ปิดแล้ว'}
+                  
+                
+                
+                  
+                    
+                    
+                      {activity._count.participations}
+                    
+                    คน
+                  
+                
+                
+                  
+                    
+                      
+                        
+                        ดูรายละเอียด
+                      
+                    
+                  
+                
+              
+            ))}
+          
+        
+      
+    
+  )
+}
+```
+
+## Summary
+
+Changes made:
+
+### Admin Login:
+✅ Split-screen design (like student login)
+✅ Left: Gradient with Shield icon
+✅ Right: Login form
+✅ Clear "สำหรับเจ้าหน้าที่" text
+✅ Mobile responsive
+✅ Brand colors
+
+### Dashboard Activities Table:
+✅ Table format (clearer than cards)
+✅ Participant count with Users icon
+✅ Large, bold number
+✅ "ดูรายละเอียด" button with Eye icon
+✅ Status badge (เปิดรับสมัคร/ปิดแล้ว)
+✅ Category badge
+✅ Hover effects

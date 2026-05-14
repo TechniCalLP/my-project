@@ -5,9 +5,39 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* Brand palette — Navy #2E3192 */
+  --color-primary-50: #F0F1FC;
+  --color-primary-100: #E0E2F9;
+  --color-primary-200: #C1C5F3;
+  --color-primary-300: #A2A8ED;
+  --color-primary-400: #676FBF;
+  --color-primary-500: #2E3192;
+  --color-primary-600: #252775;
+  --color-primary-700: #1C1D58;
+  --color-primary-800: #14143B;
+  --color-primary-900: #0A0A1E;
+
+  /* Brand palette — Red #C52833 */
+  --color-secondary-50: #FEF2F3;
+  --color-secondary-100: #FCE5E7;
+  --color-secondary-200: #F9CBCF;
+  --color-secondary-300: #F5A1A9;
+  --color-secondary-400: #E56773;
+  --color-secondary-500: #C52833;
+  --color-secondary-600: #9E2029;
+  --color-secondary-700: #77181F;
+  --color-secondary-800: #4F1014;
+  --color-secondary-900: #28080A;
+
+  /* Semantic */
+  --color-success: #2E9283;
+  --color-warning: #F59E0B;
+  --color-danger: #C52833;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-thai: var(--font-noto-sans-thai), sans-serif;
+  --font-sans: var(--font-inter), sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -55,8 +85,8 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.317 0.191 264.9); /* Navy #2E3192 */
+  --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
@@ -122,9 +152,9 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-thai;
   }
-  html {
-    @apply font-sans;
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-thai font-semibold;
   }
 }

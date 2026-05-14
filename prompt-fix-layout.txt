@@ -1,0 +1,151 @@
+# Fix Student Pages Layout - Center Content
+
+Fix the layout of 4 student pages to be centered on desktop like the Dashboard page.
+
+## Pages to Fix
+
+1. Activities Page
+2. Join Page  
+3. History Page
+4. Settings Page
+
+## Changes Needed
+
+Add appropriate max-width and center all content:
+
+### 1. Activities Page
+
+```typescript
+// app/(student)/activities/page.tsx
+
+export default async function ActivitiesPage() {
+  // ... existing code ...
+  
+  return (
+    // Before: 
+    // After:
+    
+      {/* Rest of content stays the same */}
+      
+        กิจกรรมสำหรับ {student.year}
+        
+          กิจกรรมทั้งหมด {activities.length} รายการ
+        
+      
+      
+      
+        {/* Existing tabs content */}
+      
+    
+  )
+}
+```
+
+### 2. Join Page
+
+```typescript
+// app/(student)/join/page.tsx
+
+export default function JoinPage() {
+  // ... existing code ...
+  
+  return (
+    // Before: 
+    // After:
+    
+      {/* Rest of content stays the same */}
+      
+      
+      {/* 6-digit input card */}
+      {/* Recent joins */}
+    
+  )
+}
+```
+
+### 3. History Page
+
+```typescript
+// app/(student)/history/page.tsx
+
+export default async function HistoryPage() {
+  // ... existing code ...
+  
+  return (
+    // Before: 
+    // After:
+    
+      {/* Rest of content stays the same */}
+      
+      
+      
+        {/* Existing tabs content */}
+      
+    
+  )
+}
+```
+
+### 4. Settings Page
+
+```typescript
+// app/(student)/settings/page.tsx
+
+export default async function SettingsPage() {
+  // ... existing code ...
+  
+  return (
+    // Before: 
+    // After:
+    
+      {/* Rest of content stays the same */}
+      
+      
+      {/* Profile info card */}
+      {/* Password change form */}
+    
+  )
+}
+```
+
+## Max-width Guidelines
+
+Use these max-width values for consistency:
+
+- **max-w-2xl (672px)**: Form-heavy pages
+  - Join Page (code input form)
+  - Settings Page (password form)
+
+- **max-w-5xl (1024px)**: Content-heavy pages  
+  - Activities Page (grid of cards)
+  - History Page (list of activities)
+
+- **max-w-7xl (1280px)**: Dashboard only
+  - Already implemented correctly
+
+All pages must use `mx-auto` to center horizontally.
+
+## Visual Result
+
+Before (content goes full width):
+┌────────────────────────────────────────────────┐
+│ Content stretches across entire screen         │
+│                                                │
+└────────────────────────────────────────────────┘
+
+After (content centered with max-width):
+┌────────────────────────────────────────────────┐
+│          ┌──────────────────┐                 │
+│          │  Centered        │                 │
+│          │  Content         │                 │
+│          └──────────────────┘                 │
+└────────────────────────────────────────────────┘
+
+## Summary
+
+✅ Activities: max-w-5xl mx-auto
+✅ Join: max-w-2xl mx-auto
+✅ History: max-w-5xl mx-auto
+✅ Settings: max-w-2xl mx-auto
+✅ All content centered on desktop
+✅ Mobile responsive (full width on small screens)

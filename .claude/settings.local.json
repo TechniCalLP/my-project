@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\usEr\\\\Projects\\\\student-activity-system\" -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(Sort-Object)",
+      "Bash(npx tsc *)",
+      "Bash(Get-ChildItem *)",
+      "Bash(New-Item *)"
+    ]
+  }
+}

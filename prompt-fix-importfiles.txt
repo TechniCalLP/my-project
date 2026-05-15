@@ -1,0 +1,296 @@
+🎯 Task: Import Students จาก Excel File (stdname-692010101.xls)
+📍 Project Path
+C:\Users\Sakdet\Documents\student-activity-system
+📊 ข้อมูลจริงจากไฟล์
+ไฟล์: stdname-692010101.xls (20 students)
+โครงสร้างข้อมูล
+Columnชื่อใช้?ตัวอย่างAเลขที่❌1, 2, 3, ... 20Bรหัสนักศึกษา✅69201010001, 69201010002, ..., 69201010020Cชื่อ✅ทำแล้ว (encoded)Dนามสกุล✅ยังไม่ได้ (encoded)Eแผนก❌ไม่มีข้อมูลF-Yคาบ1-20❌ว่างเปล่า
+ข้อมูลจริง
+Row 1 (Header): เลขที่, รหัสนักศึกษา, ชื่อ, นามสกุล, (empty), (empty)...คาบ20
+Row 2: 15, 69201010015, [name], [lastname], , , , ... (all empty)
+Row 3: 16, 69201010016, [name], [lastname], , , , ...
+Row 4: 17, 69201010017, [name], [lastname], , , , ...
+...
+Row 21: 20, 69201010020, [name], [lastname], , , , ...
+
+🧮 โลจิก Calculate Year
+ข้อสำคัญ: ไฟล์นี้มีรหัส 69xxx ที่เข้าปี 2569 แต่ปัจจุบัน 2567 → ยังไม่เข้า
+สูตร:
+studentId prefix = 69 → enrolled year 2569
+current year = 2567
+year = 2567 - 2569 + 1 = -1 → limit to 1
+Function:
+typescriptfunction calculateYear(studentId: string): number {
+  const currentYear = new Date().getFullYear() + 543 // Thai year (2567)
+  const yearPrefix = parseInt(studentId.substring(0, 2))
+  const enrollYear = 2500 + yearPrefix // 69 → 2569
+  const year = currentYear - enrollYear + 1 // 2567 - 2569 + 1 = -1
+  return Math.max(1, Math.min(4, year)) // Limit 1-4, so -1 → 1
+}
+ผลลัพธ์: 69xxx → Year = 1
+
+⚠️ ปัญหา Encoding
+ไฟล์ใช้ encoding: windows-874 (Thai)
+
+ชื่อและนามสกุลจะมี \xXX characters ที่ต้อง decode
+
+วิธีแก้: รับไฟล์เป็น base64 แล้ว decode ก่อน parse
+
+📝 ไฟล์ที่ต้องแก้ (2 ไฟล์)
+1️⃣ /app/api/admin/students/import/route.ts
+✅ ต้องทำ:
+A. เพิ่ม Dependencies
+typescriptimport iconv from 'iconv-lite' // สำหรับ decode windows-874
+B. Function calculateYear
+typescriptfunction calculateYear(studentId: string): number {
+  const currentYear = new Date().getFullYear() + 543 // 2567
+  const yearPrefix = parseInt(studentId.substring(0, 2))
+  const enrollYear = 2500 + yearPrefix
+  const year = currentYear - enrollYear + 1
+  return Math.max(1, Math.min(4, year))
+}
+C. Function detectDelimiter
+typescriptfunction detectDelimiter(text: string): string {
+  const firstLine = text.split('\n')[0]
+  const commaCount = (firstLine.match(/,/g) || []).length
+  const tabCount = (firstLine.match(/\t/g) || []).length
+  return tabCount > commaCount ? '\t' : ','
+}
+D. Function decodeThaiText (decode windows-874)
+typescriptfunction decodeThaiText(text: string): string {
+  try {
+    // ถ้าเป็น buffer ให้ decode โดยใช้ iconv-lite
+    if (typeof text === 'string') {
+      return text
+    }
+    return iconv.decode(Buffer.from(text), 'win874')
+  } catch {
+    return text
+  }
+}
+E. Function parseCSV
+typescriptfunction parseCSV(text: string): { students: StudentRow[]; errors: any[] } {
+  // Decode windows-874 to UTF-8
+  let decodedText = text
+  try {
+    decodedText = iconv.decode(iconv.encode(text, 'binary'), 'win874')
+  } catch (e) {
+    console.log('Encoding fallback: using original text')
+  }
+
+  // Remove BOM
+  decodedText = decodedText.replace(/^\uFEFF/, '')
+  
+  // Detect delimiter
+  const delimiter = detectDelimiter(decodedText)
+  const lines = decodedText.split('\n').filter(line => line.trim())
+  
+  if (lines.length < 2) {
+    throw new Error('ไฟล์ว่างเปล่า')
+  }
+
+  const students: StudentRow[] = []
+  const errors: any[] = []
+
+  // Skip header row
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim()
+    if (!line) continue
+
+    const values = line.split(delimiter).map(v => v.trim())
+
+    try {
+      if (values.length < 4) {
+        throw new Error('คอลัมน์ไม่ครบ')
+      }
+
+      // Map columns
+      // A (0) = เลขที่ → SKIP
+      // B (1) = รหัสนักศึกษา
+      // C (2) = ชื่อ
+      // D (3) = นามสกุล
+      // E (4) = แผนก (อาจว่าง)
+      // F-Y (5-24) = SKIP
+
+      const studentId = values[1]?.trim()
+      const firstName = values[2]?.trim() || '-'
+      const lastName = values[3]?.trim() || '-'
+      const department = values[4]?.trim() || 'ทั่วไป'
+
+      // Validate
+      if (!studentId || studentId.length < 8) {
+        throw new Error('รหัสนักศึกษาไม่ถูกต้อง')
+      }
+
+      if (!/^\d{11}$/.test(studentId)) {
+        throw new Error('รหัสต้อง 11 หลัก')
+      }
+
+      // Calculate year
+      const year = calculateYear(studentId)
+
+      students.push({
+        studentId,
+        firstName,
+        lastName,
+        department,
+        year
+      })
+
+    } catch (error: any) {
+      errors.push({
+        row: i + 1,
+        error: error.message,
+        data: values
+      })
+    }
+  }
+
+  return { students, errors }
+}
+F. POST Handler ให้รองรับ Preview + Import
+typescriptexport async function POST(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    
+    if (!session || session.user.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const formData = await req.formData()
+    const file = formData.get('file') as File
+    const mode = formData.get('mode') as string
+    
+    if (!file) {
+      return NextResponse.json({ error: 'ไม่พบไฟล์' }, { status: 400 })
+    }
+
+    // Read file
+    const text = await file.text()
+    
+    // Parse
+    const { students, errors } = parseCSV(text)
+
+    // PREVIEW mode
+    if (mode === 'preview') {
+      return NextResponse.json({
+        preview: students.slice(0, 10),
+        total: students.length,
+        errors: errors.slice(0, 5)
+      })
+    }
+
+    // IMPORT mode
+    const results = {
+      success: [],
+      errors: [...errors],
+      summary: {
+        total: students.length,
+        success: 0,
+        failed: errors.length
+      }
+    }
+
+    for (const student of students) {
+      try {
+        // Check duplicate
+        const existing = await prisma.student.findUnique({
+          where: { studentId: student.studentId }
+        })
+
+        if (existing) {
+          results.errors.push({
+            row: 0,
+            error: `รหัส ${student.studentId} มีอยู่แล้ว`,
+            data: student
+          })
+          results.summary.failed++
+          continue
+        }
+
+        // Hash password
+        const hashedPassword = await bcrypt.hash(student.studentId, 10)
+
+        // Insert
+        await prisma.student.create({
+          data: {
+            studentId: student.studentId,
+            password: hashedPassword,
+            firstName: student.firstName,
+            lastName: student.lastName,
+            department: student.department,
+            year: student.year,
+            isActive: true
+          }
+        })
+
+        results.success.push(student)
+        results.summary.success++
+
+      } catch (error: any) {
+        results.errors.push({
+          row: 0,
+          error: error.message,
+          data: student
+        })
+        results.summary.failed++
+      }
+    }
+
+    return NextResponse.json(results)
+
+  } catch (error: any) {
+    console.error('Import error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
+
+2️⃣ /components/admin/import-students-form.tsx
+เหมือนกับ PROMPT_IMPORT_FROM_GOOGLE_DRIVE.md ที่แล้ว
+สร้าง 3 Steps: Upload → Preview → Result (ดูจากไฟล์ก่อนหน้า)
+
+✅ Test Case
+Test 1: Upload & Preview
+Expected:
+
+✅ Preview แสดง 10 คนแรก
+✅ Total: 20 คน
+✅ Year: 1 (ทั้งหมด 69xxx)
+✅ Department: ทั่วไป (ถ้าข้อมูลว่าง)
+
+Test 2: Import สำเร็จ
+Expected:
+
+✅ Success: 20 คน
+✅ Password: 69201010001 (รหัสนักศึกษา)
+✅ Year: 1
+
+Test 3: Encoding
+Expected:
+
+✅ ชื่อ-นามสกุล decode ถูกต้อง (ภาษาไทย)
+
+
+🚀 ก่อนเริ่ม
+
+ติดตั้ง iconv-lite
+
+bashnpm install iconv-lite
+
+ตรวจสอบไฟล์:
+
+route.ts
+import-students-form.tsx
+
+
+แก้ไขตามข้างต้น
+ทดสอบ:
+
+Upload ไฟล์ stdname-692010101.xls
+ดู Preview
+Import
+
+
+
+
+ถ้ามีข้อสงสัยหรือปัญหา ให้ถามก่อนแก้ไข! 🎉

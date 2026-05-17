@@ -1,0 +1,312 @@
+🎯 Task: ปรับ UI หน้า Import Students ให้เรียบง่าย
+📍 Project Path
+
+🎨 ต้องการแก้ไข
+ปัญหาปัจจุบัน
+หน้า Import มี คำอธิบายเยอะเกินไป ทำให้ดูยุ่งและซับซ้อน
+เป้าหมาย
+
+✅ UI สะอาด เรียบง่าย
+✅ Upload file button ชัดเจน
+✅ คำอธิบายสั้นๆ นิดหน่อย (บรรทัดเดียว-สองบรรทัด)
+✅ ลบ section ข้อมูลที่ยาว เช่น:
+
+❌ "รูปแบบไฟล์ Excel" (ตารางใหญ่)
+❌ "ตัวอย่างข้อมูล" (code blocks)
+❌ "โลจิก Year" (คำอธิบายยาว)
+
+
+
+
+📝 ไฟล์ที่ต้องแก้
+/components/admin/import-students-form.tsx
+✅ ต้องทำ:
+A. Simplify UI - เหลือแค่ Step 1: Upload
+typescriptconst [file, setFile] = useState<File | null>(null)
+const [loading, setLoading] = useState(false)
+const [step, setStep] = useState<'upload' | 'preview' | 'result'>('upload')
+const [preview, setPreview] = useState<StudentPreview[]>([])
+const [previewTotal, setPreviewTotal] = useState(0)
+const [importResult, setImportResult] = useState<any>(null)
+B. Handler Functions (เหมือนเดิม)
+typescriptconst handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const selectedFile = e.target.files?.[0]
+  if (selectedFile) {
+    setFile(selectedFile)
+  }
+}
+
+const handlePreview = async () => {
+  if (!file) return
+  setLoading(true)
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('mode', 'preview')
+
+    const res = await fetch('/api/admin/students/import', {
+      method: 'POST',
+      body: formData,
+    })
+
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error)
+
+    setPreview(data.preview || [])
+    setPreviewTotal(data.total || 0)
+    setStep('preview')
+  } catch (error: any) {
+    alert(error.message)
+  } finally {
+    setLoading(false)
+  }
+}
+
+const handleImport = async () => {
+  if (!file) return
+  if (!confirm(`ต้องการ Import นักศึกษา ${previewTotal} คน?`)) return
+
+  setLoading(true)
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('mode', 'import')
+
+    const res = await fetch('/api/admin/students/import', {
+      method: 'POST',
+      body: formData,
+    })
+
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error)
+
+    setImportResult(data)
+    setStep('result')
+  } catch (error: any) {
+    alert(error.message)
+  } finally {
+    setLoading(false)
+  }
+}
+
+const handleReset = () => {
+  setFile(null)
+  setPreview([])
+  setImportResult(null)
+  setStep('upload')
+}
+C. UI - 3 Steps แต่ Step 1 ให้เรียบง่าย
+tsxreturn (
+  <div className="space-y-6">
+    {/* STEP 1: UPLOAD - เรียบง่าย */}
+    {step === 'upload' && (
+      <Card>
+        <CardHeader>
+          <CardTitle>นำเข้าข้อมูลนักศึกษา</CardTitle>
+          <CardDescription>
+            อัปโหลดไฟล์ CSV หรือ Excel (.csv, .xls, .xlsx)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* ลบ Alert ที่มีข้อมูลยาวๆ ออก */}
+
+          <div>
+            <Label htmlFor="file">เลือกไฟล์</Label>
+            <Input
+              id="file"
+              type="file"
+              accept=".csv,.xls,.xlsx"
+              onChange={handleFileChange}
+              className="mt-1"
+            />
+          </div>
+
+          {file && (
+            <p className="text-sm text-gray-600">
+              ✅ {file.name} ({(file.size / 1024).toFixed(2)} KB)
+            </p>
+          )}
+
+          <Button
+            onClick={handlePreview}
+            disabled={!file || loading}
+            className="w-full"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                กำลังโหลด...
+              </>
+            ) : (
+              <>
+                <Upload className="mr-2 h-4 w-4" />
+                ดูตัวอย่างข้อมูล
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+    )}
+
+    {/* STEP 2: PREVIEW */}
+    {step === 'preview' && (
+      <Card>
+        <CardHeader>
+          <CardTitle>ตัวอย่างข้อมูล</CardTitle>
+          <CardDescription>
+            พบนักศึกษาทั้งหมด {previewTotal} คน
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>รหัสนักศึกษา</TableHead>
+                  <TableHead>ชื่อ</TableHead>
+                  <TableHead>นามสกุล</TableHead>
+                  <TableHead>แผนก</TableHead>
+                  <TableHead>ชั้นปี</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {preview.map((s, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell className="font-mono">{s.studentId}</TableCell>
+                    <TableCell>{s.firstName}</TableCell>
+                    <TableCell>{s.lastName}</TableCell>
+                    <TableCell>{s.department}</TableCell>
+                    <TableCell>ปี {s.year}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={handleReset} className="flex-1">
+              ยกเลิก
+            </Button>
+            <Button
+              onClick={handleImport}
+              disabled={loading}
+              className="flex-1 bg-[#2E3192]"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  กำลัง Import...
+                </>
+              ) : (
+                <>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Import {previewTotal} คน
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    )}
+
+    {/* STEP 3: RESULT */}
+    {step === 'result' && importResult && (
+      <Card>
+        <CardHeader>
+          <CardTitle>ผลการ Import</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-blue-50 p-4 rounded text-center">
+              <div className="text-sm text-gray-600">ทั้งหมด</div>
+              <div className="text-2xl font-bold">{importResult.summary.total}</div>
+            </div>
+            <div className="bg-green-50 p-4 rounded text-center">
+              <div className="text-sm text-gray-600">สำเร็จ</div>
+              <div className="text-2xl font-bold text-green-600">
+                {importResult.summary.success}
+              </div>
+            </div>
+            <div className="bg-red-50 p-4 rounded text-center">
+              <div className="text-sm text-gray-600">ล้มเหลว</div>
+              <div className="text-2xl font-bold text-red-600">
+                {importResult.summary.failed}
+              </div>
+            </div>
+          </div>
+
+          {importResult.errors.length > 0 && (
+            <Alert className="bg-red-50 border-red-200">
+              <AlertDescription className="text-red-800 text-sm">
+                <p className="font-semibold mb-2">พบข้อผิดพลาด {importResult.errors.length} รายการ</p>
+                <ul className="space-y-1 max-h-40 overflow-y-auto">
+                  {importResult.errors.slice(0, 5).map((err: any, idx: number) => (
+                    <li key={idx} className="text-xs">
+                      {err.data?.studentId}: {err.error}
+                    </li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={handleReset} className="flex-1">
+              Import ใหม่
+            </Button>
+            <Button
+              onClick={() => router.push('/admin/students')}
+              className="flex-1 bg-[#2E3192]"
+            >
+              ดูรายชื่อนักศึกษา
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    )}
+  </div>
+)
+
+🎨 ส่วนที่ต้องลบออก
+❌ Alert ที่มีข้อมูลยาว:
+tsx// ลบบรรทัดนี้ออก
+<Alert>
+  <FileSpreadsheet className="h-4 w-4" />
+  <AlertDescription>
+    <p className="font-semibold">รูปแบบไฟล์ Excel:</p>
+    <code className="block bg-gray-100 p-2 rounded text-sm">
+      เลขที่, รหัสนักศึกษา, ชื่อ, นามสกุล, แผนก, คาบ1, ..., คาบ20
+    </code>
+    ...
+  </AlertDescription>
+</Alert>
+❌ คำอธิบายใน CardDescription:
+tsx// เปลี่ยนจากนี้:
+<CardDescription>
+  รองรับ 2 รูปแบบ: ไฟล์มาตรฐาน หรือ ไฟล์เช็คชื่อจากวิทยาลัย
+  ...ยาวๆ...
+</CardDescription>
+
+// เป็นนี้:
+<CardDescription>
+  อัปโหลดไฟล์ CSV หรือ Excel (.csv, .xls, .xlsx)
+</CardDescription>
+
+✅ ผลลัพธ์
+UI จะเหลือแค่:
+
+ชื่อหัวข้อ - "นำเข้าข้อมูลนักศึกษา"
+คำอธิบาย 1 บรรทัด - "อัปโหลดไฟล์ CSV หรือ Excel..."
+Input file - เลือกไฟล์
+Button - "ดูตัวอย่างข้อมูล"
+Step 2 & 3 - Preview และ Result (เหมือนเดิม)
+
+
+🚀 เริ่มทำ
+
+อ่านไฟล์ /components/admin/import-students-form.tsx
+ลบ section ข้อมูลยาว
+เปลี่ยน CardDescription ให้สั้น
+ทดสอบ UI ว่าเรียบง่ายจริง ✨
+
+ถ้าไม่เข้าใจตรงไหน ถามได้นะครับ!

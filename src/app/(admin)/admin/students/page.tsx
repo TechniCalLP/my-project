@@ -4,11 +4,12 @@ import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Plus, Upload, Users } from "lucide-react"
+import { Upload, Plus, Users } from "lucide-react"
 import Link from "next/link"
 import { Suspense } from "react"
 import StudentsTable from "@/components/admin/students-table"
 import StudentFilters from "@/components/admin/student-filters"
+import ExportDropdown from "@/components/admin/export-dropdown"
 
 interface PageProps {
   searchParams: Promise<{
@@ -49,26 +50,34 @@ export default async function StudentsPage({ searchParams }: PageProps) {
   const totalParticipations = students.reduce((sum, s) => sum + s._count.participations, 0)
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-8 space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <Users className="w-6 h-6 text-primary-600" />
-            <h1 className="text-2xl font-bold font-thai">จัดการนักศึกษา</h1>
+            <Users className="w-5 h-5 text-primary-600" />
+            <h1 className="text-xl md:text-2xl font-bold font-thai">จัดการนักศึกษา</h1>
           </div>
-          <p className="text-gray-500 font-thai mt-1">เพิ่ม แก้ไข และจัดการข้อมูลนักศึกษา</p>
+          <p className="text-gray-500 font-thai mt-1 text-sm">เพิ่ม แก้ไข และจัดการข้อมูลนักศึกษา</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Suspense>
+            <ExportDropdown
+              excelUrl="/api/admin/export/students"
+              printUrl="/admin/print/students"
+            />
+          </Suspense>
           <Link href="/admin/students/import">
             <Button variant="outline" className="font-thai gap-2">
               <Upload className="w-4 h-4" />
-              Import CSV/Excel
+              <span className="hidden sm:inline">นำเข้าข้อมูล</span>
+              <span className="sm:hidden">นำเข้า</span>
             </Button>
           </Link>
           <Link href="/admin/students/create">
             <Button className="font-thai gap-2">
               <Plus className="w-4 h-4" />
-              เพิ่มนักศึกษา
+              <span className="hidden sm:inline">เพิ่มนักศึกษา</span>
+              <span className="sm:hidden">เพิ่ม</span>
             </Button>
           </Link>
         </div>

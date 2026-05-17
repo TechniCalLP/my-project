@@ -1,0 +1,416 @@
+🎯 Task: แก้ UI Import Students - Drag & Drop Upload
+📍 Project Path
+C:\Users\Sakdet\Documents\student-activity-system
+🎨 ต้องการ
+
+✅ ตัดส่วนบน "คำแนะนำ" ออก
+✅ เปลี่ยนเป็น Drag & Drop UI
+✅ เหลือแค่: ชื่อหัวข้อ + Drag & Drop + Preview & Result
+✅ สวย และใช้งานง่าย
+
+
+📝 ไฟล์ที่ต้องแก้
+/components/admin/import-students-form.tsx
+✅ Code ที่ต้อง Replace
+ใหญ่ Component ทั้งหมด:
+typescript'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Upload, CheckCircle, XCircle, AlertCircle, Loader2, FileSpreadsheet } from 'lucide-react'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+
+interface StudentPreview {
+  studentId: string
+  firstName: string
+  lastName: string
+  department: string
+  year: number
+}
+
+interface ImportError {
+  row: number
+  error: string
+  data?: any
+}
+
+export default function ImportStudentsForm() {
+  const router = useRouter()
+  const [file, setFile] = useState<File | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [preview, setPreview] = useState<StudentPreview[]>([])
+  const [previewTotal, setPreviewTotal] = useState(0)
+  const [previewErrors, setPreviewErrors] = useState<ImportError[]>([])
+  const [importResult, setImportResult] = useState<any>(null)
+  const [step, setStep] = useState<'upload' | 'preview' | 'result'>('upload')
+  const [dragActive, setDragActive] = useState(false)
+
+  const handleFile = (selectedFile: File | null) => {
+    if (selectedFile) {
+      setFile(selectedFile)
+    }
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0]
+    handleFile(selectedFile || null)
+  }
+
+  // Drag & Drop Handlers
+  const handleDrag = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true)
+    } else if (e.type === 'dragleave') {
+      setDragActive(false)
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setDragActive(false)
+
+    const droppedFiles = e.dataTransfer.files
+    if (droppedFiles && droppedFiles[0]) {
+      handleFile(droppedFiles[0])
+    }
+  }
+
+  const handlePreview = async () => {
+    if (!file) return
+
+    setLoading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('mode', 'preview')
+
+      const res = await fetch('/api/admin/students/import', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'เกิดข้อผิดพลาด')
+      }
+
+      setPreview(data.preview || [])
+      setPreviewTotal(data.total || 0)
+      setPreviewErrors(data.errors || [])
+      setStep('preview')
+
+    } catch (error: any) {
+      alert(error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleImport = async () => {
+    if (!file) return
+
+    if (!confirm(`ต้องการ Import นักศึกษา ${previewTotal} คน?`)) {
+      return
+    }
+
+    setLoading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('mode', 'import')
+
+      const res = await fetch('/api/admin/students/import', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'เกิดข้อผิดพลาด')
+      }
+
+      setImportResult(data)
+      setStep('result')
+
+    } catch (error: any) {
+      alert(error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleReset = () => {
+    setFile(null)
+    setPreview([])
+    setPreviewErrors([])
+    setImportResult(null)
+    setStep('upload')
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* STEP 1: DRAG & DROP UPLOAD */}
+      {step === 'upload' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>นำเข้าข้อมูลนักศึกษา</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Drag & Drop Area */}
+            <div
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+              className={`
+                border-2 border-dashed rounded-lg p-12 text-center transition-all
+                ${dragActive 
+                  ? 'border-[#2E3192] bg-blue-50 shadow-md' 
+                  : 'border-gray-300 hover:border-[#2E3192] hover:bg-gray-50'
+                }
+              `}
+            >
+              <div className="flex justify-center mb-4">
+                <div className={`p-4 rounded-full ${dragActive ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                  <FileSpreadsheet 
+                    className={`h-12 w-12 ${dragActive ? 'text-[#2E3192]' : 'text-gray-400'}`}
+                  />
+                </div>
+              </div>
+              
+              <p className="font-semibold text-lg mb-2 text-gray-900">
+                ลากไฟล์มาวางที่นี่
+              </p>
+              <p className="text-sm text-gray-600 mb-4">
+                หรือคลิกเพื่อเลือกไฟล์ CSV หรือ Excel
+              </p>
+
+              {/* Hidden File Input */}
+              <Input
+                type="file"
+                accept=".csv,.xls,.xlsx"
+                onChange={handleFileChange}
+                className="hidden"
+                id="file-input"
+              />
+              
+              <Label htmlFor="file-input" className="cursor-pointer">
+                <Button variant="outline" type="button">
+                  <FileSpreadsheet className="mr-2 h-4 w-4" />
+                  เลือกไฟล์
+                </Button>
+              </Label>
+            </div>
+
+            {/* File Info */}
+            {file && (
+              <div className="flex items-center gap-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
+                <div className="flex-shrink-0">
+                  <CheckCircle className="h-6 w-6 text-green-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-green-900">{file.name}</p>
+                  <p className="text-sm text-green-700">
+                    {(file.size / 1024).toFixed(2)} KB · พร้อมอัปโหลด
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setFile(null)}
+                  className="text-green-600 hover:text-green-700"
+                >
+                  ×
+                </Button>
+              </div>
+            )}
+
+            {/* Preview Button */}
+            <Button
+              onClick={handlePreview}
+              disabled={!file || loading}
+              className="w-full bg-[#2E3192] hover:bg-[#2E3192]/90 h-11"
+              size="lg"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  กำลังโหลด...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  ดูตัวอย่างข้อมูล
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* STEP 2: PREVIEW */}
+      {step === 'preview' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>ตัวอย่างข้อมูล</CardTitle>
+            <div className="text-sm text-gray-600 mt-2">
+              พบนักศึกษาทั้งหมด <strong>{previewTotal} คน</strong>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {previewErrors.length > 0 && (
+              <Alert className="bg-yellow-50 border-yellow-200">
+                <AlertCircle className="h-4 w-4 text-yellow-600" />
+                <AlertDescription className="text-yellow-800">
+                  พบข้อผิดพลาด {previewErrors.length} รายการ
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="rounded-md border overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>รหัสนักศึกษา</TableHead>
+                    <TableHead>ชื่อ</TableHead>
+                    <TableHead>นามสกุล</TableHead>
+                    <TableHead>แผนก</TableHead>
+                    <TableHead>ชั้นปี</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {preview.map((s, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell className="font-mono text-sm">{s.studentId}</TableCell>
+                      <TableCell>{s.firstName}</TableCell>
+                      <TableCell>{s.lastName}</TableCell>
+                      <TableCell>{s.department}</TableCell>
+                      <TableCell>ปี {s.year}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                onClick={handleReset} 
+                className="flex-1"
+              >
+                ยกเลิก
+              </Button>
+              <Button
+                onClick={handleImport}
+                disabled={loading}
+                className="flex-1 bg-[#2E3192] hover:bg-[#2E3192]/90"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    กำลัง Import...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Import {previewTotal} คน
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* STEP 3: RESULT */}
+      {step === 'result' && importResult && (
+        <Card>
+          <CardHeader>
+            <CardTitle>ผลการ Import</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                <div className="text-sm text-gray-600">ทั้งหมด</div>
+                <div className="text-2xl font-bold text-blue-600">
+                  {importResult.summary.total}
+                </div>
+              </div>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                <div className="text-sm text-gray-600">สำเร็จ</div>
+                <div className="text-2xl font-bold text-green-600">
+                  {importResult.summary.success}
+                </div>
+              </div>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+                <div className="text-sm text-gray-600">ล้มเหลว</div>
+                <div className="text-2xl font-bold text-red-600">
+                  {importResult.summary.failed}
+                </div>
+              </div>
+            </div>
+
+            {importResult.errors.length > 0 && (
+              <Alert className="bg-red-50 border-red-200">
+                <XCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-800">
+                  <p className="font-semibold mb-2">
+                    พบข้อผิดพลาด {importResult.errors.length} รายการ
+                  </p>
+                  <ul className="text-sm space-y-1 max-h-40 overflow-y-auto">
+                    {importResult.errors.slice(0, 5).map((err: any, idx: number) => (
+                      <li key={idx}>
+                        {err.data?.studentId}: {err.error}
+                      </li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                onClick={handleReset} 
+                className="flex-1"
+              >
+                Import ใหม่
+              </Button>
+              <Button
+                onClick={() => router.push('/admin/students')}
+                className="flex-1 bg-[#2E3192] hover:bg-[#2E3192]/90"
+              >
+                ดูรายชื่อนักศึกษา
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}
+
+🎨 Drag & Drop Features
+✅ ลากไฟล์มาวาง - ทำให้ dragActive = true
+✅ เปลี่ยนสีขณะลาก - Border หยุมัน + background เปลี่ยน
+✅ Icon ที่ปรับเปลี่ยน - สีเปลี่ยนตามสถานะ
+✅ คลิกเลือกไฟล์ - มี fallback button
+✅ แสดงไฟล์ที่เลือก - พร้อมปุ่มลบ
+✅ โปรแกรม Responsive - ทำงานบน Mobile ด้วย

@@ -34,10 +34,10 @@ const CATEGORY_COLORS: Record<ActivityCategory, string> = {
 }
 
 const STATUS_COLORS: Record<ActivityStatus, string> = {
-  ACTIVE: "bg-primary-100 text-primary-700 border-primary-200",
+  ACTIVE: "bg-green-100 text-green-700 border-green-200",
   COMPLETED: "bg-gray-100 text-gray-600 border-gray-200",
-  DRAFT: "bg-yellow-100 text-yellow-700 border-yellow-200",
-  CANCELLED: "bg-secondary-100 text-secondary-600 border-secondary-200",
+  DRAFT: "bg-orange-100 text-orange-700 border-orange-200",
+  CANCELLED: "bg-red-100 text-red-700 border-red-200",
 }
 
 const STATUS_LABELS: Record<ActivityStatus, string> = {

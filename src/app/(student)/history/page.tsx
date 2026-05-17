@@ -3,6 +3,9 @@ import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { HistorySemesterTabs } from "@/components/activities/history-semester-tabs"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { FileText } from "lucide-react"
 
 function getCurrentSemesterTab(): string {
   const month = new Date().getMonth() + 1
@@ -44,9 +47,19 @@ export default async function HistoryPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold font-thai">ประวัติการเข้าร่วมกิจกรรม</h1>
-        <p className="text-sm text-gray-500 font-thai">รวม {participations.length} กิจกรรม</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold font-thai">ประวัติการเข้าร่วมกิจกรรม</h1>
+          <p className="text-sm text-gray-500 font-thai">รวม {participations.length} กิจกรรม</p>
+        </div>
+        {participations.length > 0 && (
+          <Link href="/certificate" target="_blank">
+            <Button variant="outline" className="font-thai gap-2">
+              <FileText className="w-4 h-4" />
+              ใบรับรองกิจกรรม
+            </Button>
+          </Link>
+        )}
       </div>
 
       {participations.length === 0 ? (

@@ -44,75 +44,81 @@ export default function StudentsTable({ students }: StudentsTableProps) {
   return (
     <Card>
       <CardContent className="p-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="font-thai">รหัสนักศึกษา</TableHead>
-              <TableHead className="font-thai">ชื่อ-นามสกุล</TableHead>
-              <TableHead className="font-thai">แผนก</TableHead>
-              <TableHead className="font-thai">ระดับชั้น</TableHead>
-              <TableHead className="font-thai text-right">กิจกรรม</TableHead>
-              <TableHead className="font-thai">สถานะ</TableHead>
-              <TableHead className="font-thai">จัดการ</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {students.map((student) => (
-              <TableRow key={student.id} className="hover:bg-gray-50">
-                <TableCell className="font-mono">{student.studentId}</TableCell>
-
-                <TableCell>
-                  <p className="font-thai font-medium">
-                    {student.prefix}{student.firstName} {student.lastName}
-                  </p>
-                  {student.email && (
-                    <p className="text-xs text-gray-400">{student.email}</p>
-                  )}
-                </TableCell>
-
-                <TableCell className="font-thai text-sm">{student.department}</TableCell>
-
-                <TableCell>
-                  <span className="font-thai text-sm">{student.year}</span>
-                </TableCell>
-
-                <TableCell className="text-right">
-                  <span className="font-mono text-sm">{student._count.participations}</span>
-                </TableCell>
-
-                <TableCell>
-                  {student.isActive ? (
-                    <Badge className="bg-success/10 text-success border-0 font-thai text-xs">ใช้งาน</Badge>
-                  ) : (
-                    <Badge className="bg-gray-100 text-gray-500 border-0 font-thai text-xs">ปิดใช้งาน</Badge>
-                  )}
-                </TableCell>
-
-                <TableCell>
-                  <div className="flex items-center gap-1">
-                    <Link href={`/admin/students/${student.id}`}>
-                      <Button variant="ghost" size="sm" className="font-thai gap-1">
-                        <Eye className="w-3.5 h-3.5" />
-                        ดู
-                      </Button>
-                    </Link>
-                    <Link href={`/admin/students/${student.id}/edit`}>
-                      <Button variant="ghost" size="sm" className="font-thai gap-1 text-warning">
-                        <Pencil className="w-3.5 h-3.5" />
-                        แก้ไข
-                      </Button>
-                    </Link>
-                    <ToggleStudentStatusButton
-                      studentId={student.id}
-                      currentStatus={student.isActive}
-                      studentName={`${student.firstName} ${student.lastName}`}
-                    />
-                  </div>
-                </TableCell>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="font-thai whitespace-nowrap">รหัสนักศึกษา</TableHead>
+                <TableHead className="font-thai whitespace-nowrap">ชื่อ-นามสกุล</TableHead>
+                <TableHead className="font-thai whitespace-nowrap hidden md:table-cell">แผนก</TableHead>
+                <TableHead className="font-thai whitespace-nowrap hidden sm:table-cell">ระดับชั้น</TableHead>
+                <TableHead className="font-thai text-right whitespace-nowrap hidden sm:table-cell">กิจกรรม</TableHead>
+                <TableHead className="font-thai whitespace-nowrap">สถานะ</TableHead>
+                <TableHead className="font-thai whitespace-nowrap">จัดการ</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {students.map((student) => (
+                <TableRow key={student.id} className="hover:bg-gray-50">
+                  <TableCell className="font-mono text-sm">{student.studentId}</TableCell>
+
+                  <TableCell>
+                    <p className="font-thai font-medium whitespace-nowrap">
+                      {student.prefix}{student.firstName} {student.lastName}
+                    </p>
+                    {/* Show year/dept inline on mobile */}
+                    <p className="text-xs text-gray-400 font-thai sm:hidden mt-0.5">
+                      {student.year} · {student.department}
+                    </p>
+                    {student.email && (
+                      <p className="text-xs text-gray-400 hidden md:block">{student.email}</p>
+                    )}
+                  </TableCell>
+
+                  <TableCell className="font-thai text-sm hidden md:table-cell">{student.department}</TableCell>
+
+                  <TableCell className="hidden sm:table-cell">
+                    <span className="font-thai text-sm">{student.year}</span>
+                  </TableCell>
+
+                  <TableCell className="text-right hidden sm:table-cell">
+                    <span className="font-mono text-sm">{student._count.participations}</span>
+                  </TableCell>
+
+                  <TableCell>
+                    {student.isActive ? (
+                      <Badge className="bg-success/10 text-success border-0 font-thai text-xs whitespace-nowrap">ใช้งาน</Badge>
+                    ) : (
+                      <Badge className="bg-gray-100 text-gray-500 border-0 font-thai text-xs whitespace-nowrap">ปิดใช้งาน</Badge>
+                    )}
+                  </TableCell>
+
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Link href={`/admin/students/${student.id}`}>
+                        <Button variant="ghost" size="sm" className="font-thai gap-1">
+                          <Eye className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">ดู</span>
+                        </Button>
+                      </Link>
+                      <Link href={`/admin/students/${student.id}/edit`}>
+                        <Button variant="ghost" size="sm" className="font-thai gap-1 text-warning">
+                          <Pencil className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">แก้ไข</span>
+                        </Button>
+                      </Link>
+                      <ToggleStudentStatusButton
+                        studentId={student.id}
+                        currentStatus={student.isActive}
+                        studentName={`${student.firstName} ${student.lastName}`}
+                      />
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </CardContent>
     </Card>
   )

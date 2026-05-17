@@ -1,11 +1,13 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
 import type { Session } from "next-auth"
-import { LayoutDashboard, CalendarDays, Users, LogOut } from "lucide-react"
+import { LayoutDashboard, CalendarDays, Users, LogOut, Menu, X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 
 interface AdminNavProps {
   session: Session
@@ -17,20 +19,21 @@ const navItems = [
   { href: "/admin/students", label: "นักศึกษา", icon: Users },
 ]
 
-export function AdminNav({ session }: AdminNavProps) {
+function NavContent({ session, onNavigate }: { session: Session; onNavigate?: () => void }) {
   const pathname = usePathname()
 
   return (
-    <nav className="w-64 min-h-screen bg-gray-900 text-white flex flex-col">
+    <div className="flex flex-col h-full bg-gray-900 text-white">
       <div className="p-6 border-b border-gray-700">
-        <p className="text-sm text-gray-400 font-thai">ผู้ดูแลระบบ</p>
-        <p className="font-semibold truncate font-thai">{session.user.name}</p>
+        <p className="text-xs text-gray-400 font-thai">ผู้ดูแลระบบ</p>
+        <p className="font-semibold truncate font-thai text-sm mt-0.5">{session.user.name}</p>
       </div>
       <div className="flex-1 py-4">
         {navItems.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}
+            onClick={onNavigate}
             className={cn(
               "flex items-center gap-3 px-6 py-3 text-sm transition-colors hover:bg-gray-800 font-thai",
               pathname === href || pathname.startsWith(href + "/")
@@ -52,6 +55,36 @@ export function AdminNav({ session }: AdminNavProps) {
           ออกจากระบบ
         </button>
       </div>
-    </nav>
+    </div>
+  )
+}
+
+export function AdminNav({ session }: AdminNavProps) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <nav className="hidden lg:flex w-64 min-h-screen flex-shrink-0">
+        <div className="w-full">
+          <NavContent session={session} />
+        </div>
+      </nav>
+
+      {/* Mobile top header */}
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-gray-900 text-white flex items-center gap-3 px-4 shadow-md">
+        <Sheet open={open} onOpenChange={setOpen}>
+          <SheetTrigger asChild>
+            <button className="p-1.5 rounded hover:bg-gray-700 transition-colors" aria-label="เมนู">
+              <Menu size={22} />
+            </button>
+          </SheetTrigger>
+          <SheetContent side="left" className="p-0 w-64 bg-gray-900 border-gray-700" showCloseButton={false}>
+            <NavContent session={session} onNavigate={() => setOpen(false)} />
+          </SheetContent>
+        </Sheet>
+        <span className="font-semibold font-thai text-sm">ระบบจัดการกิจกรรม</span>
+      </header>
+    </>
   )
 }

@@ -25,6 +25,13 @@ import { ActivityForm } from "@/components/forms/activity-form"
 import { CATEGORY_NAMES } from "@/lib/constants"
 import { ActivityCategory, ActivityStatus } from "@/generated/prisma"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { FileOutput, FileSpreadsheet, FileText } from "lucide-react"
 
 const CATEGORY_COLORS: Record<ActivityCategory, string> = {
   ACADEMIC: "bg-primary-100 text-primary-700",
@@ -34,10 +41,10 @@ const CATEGORY_COLORS: Record<ActivityCategory, string> = {
 }
 
 const STATUS_COLORS: Record<ActivityStatus, string> = {
-  ACTIVE: "bg-primary-100 text-primary-700",
-  COMPLETED: "bg-gray-100 text-gray-700",
-  DRAFT: "bg-yellow-100 text-yellow-700",
-  CANCELLED: "bg-secondary-100 text-secondary-700",
+  ACTIVE: "bg-green-100 text-green-700",
+  COMPLETED: "bg-gray-100 text-gray-600",
+  DRAFT: "bg-orange-100 text-orange-700",
+  CANCELLED: "bg-red-100 text-red-700",
 }
 
 const STATUS_LABELS: Record<ActivityStatus, string> = {
@@ -133,7 +140,31 @@ export default function ActivityDetailPage() {
           </Link>
           <h1 className="text-2xl font-bold font-thai mt-1">{activity.name}</h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="font-thai gap-2">
+                <FileOutput className="w-4 h-4" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="font-thai">
+              <DropdownMenuItem
+                className="gap-2 cursor-pointer"
+                onClick={() => { window.location.href = `/api/admin/export/activities/${params.id}` }}
+              >
+                <FileSpreadsheet className="w-4 h-4 text-green-600" />
+                Export Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="gap-2 cursor-pointer"
+                onClick={() => window.open(`/admin/print/activities/${params.id}`, "_blank")}
+              >
+                <FileText className="w-4 h-4 text-red-500" />
+                Export PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Link href={`/admin/activities/${params.id}/codes`}>
             <Button variant="outline" className="font-thai">จัดการรหัส</Button>
           </Link>

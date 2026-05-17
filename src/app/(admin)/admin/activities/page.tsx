@@ -20,12 +20,13 @@ import { CATEGORY_NAMES } from "@/lib/constants"
 import { ActivityCategory, ActivityStatus } from "@/generated/prisma"
 import { DeleteActivityButton } from "@/components/admin/delete-activity-button"
 import ActivityFilters from "@/components/admin/activity-filters"
+import ExportDropdown from "@/components/admin/export-dropdown"
 
 const STATUS_COLORS: Record<ActivityStatus, string> = {
-  ACTIVE: "bg-primary-100 text-primary-700",
-  COMPLETED: "bg-gray-100 text-gray-700",
-  DRAFT: "bg-yellow-100 text-yellow-700",
-  CANCELLED: "bg-secondary-100 text-secondary-700",
+  ACTIVE: "bg-green-100 text-green-700",
+  COMPLETED: "bg-gray-100 text-gray-600",
+  DRAFT: "bg-orange-100 text-orange-700",
+  CANCELLED: "bg-red-100 text-red-700",
 }
 
 const STATUS_LABELS: Record<ActivityStatus, string> = {
@@ -66,12 +67,20 @@ export default async function AdminActivitiesPage({ searchParams }: PageProps) {
   const totalParticipations = activities.reduce((sum, a) => sum + a._count.participations, 0)
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold font-thai">จัดการกิจกรรม</h1>
-        <Link href="/admin/activities/new">
-          <Button className="font-thai">+ สร้างกิจกรรม</Button>
-        </Link>
+    <div className="p-4 md:p-8 space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl md:text-2xl font-bold font-thai">จัดการกิจกรรม</h1>
+        <div className="flex gap-2">
+          <Suspense>
+            <ExportDropdown
+              excelUrl="/api/admin/export/activities"
+              printUrl="/admin/print/activities"
+            />
+          </Suspense>
+          <Link href="/admin/activities/new">
+            <Button className="font-thai">+ สร้างกิจกรรม</Button>
+          </Link>
+        </div>
       </div>
 
       {/* Stats */}
@@ -116,74 +125,79 @@ export default async function AdminActivitiesPage({ searchParams }: PageProps) {
         <CardHeader>
           <CardTitle className="font-thai text-base">ทั้งหมด {activities.length} กิจกรรม</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="font-thai" style={{ width: "28%" }}>ชื่อกิจกรรม</TableHead>
-                <TableHead className="font-thai" style={{ width: "14%" }}>ประเภท</TableHead>
-                <TableHead className="font-thai" style={{ width: "12%" }}>ระดับชั้น</TableHead>
-                <TableHead className="font-thai" style={{ width: "14%" }}>สถานะ</TableHead>
-                <TableHead className="font-thai text-right" style={{ width: "10%" }}>รหัส</TableHead>
-                <TableHead className="font-thai text-right" style={{ width: "10%" }}>ผู้เข้าร่วม</TableHead>
-                <TableHead className="font-thai" style={{ width: "12%" }}>จัดการ</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {activities.length === 0 ? (
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-gray-500 font-thai py-8">
-                    ยังไม่มีกิจกรรม
-                  </TableCell>
+                  <TableHead className="font-thai whitespace-nowrap">ชื่อกิจกรรม</TableHead>
+                  <TableHead className="font-thai whitespace-nowrap hidden md:table-cell">ประเภท</TableHead>
+                  <TableHead className="font-thai whitespace-nowrap hidden lg:table-cell">ระดับชั้น</TableHead>
+                  <TableHead className="font-thai whitespace-nowrap">สถานะ</TableHead>
+                  <TableHead className="font-thai text-right whitespace-nowrap hidden sm:table-cell">รหัส</TableHead>
+                  <TableHead className="font-thai text-right whitespace-nowrap hidden sm:table-cell">ผู้เข้าร่วม</TableHead>
+                  <TableHead className="font-thai whitespace-nowrap">จัดการ</TableHead>
                 </TableRow>
-              ) : (
-                activities.map((a) => (
-                  <TableRow key={a.id} className="hover:bg-gray-50">
-                    <TableCell className="font-medium font-thai">
-                      <div>
-                        <p>{a.name}</p>
-                        <p className="text-xs text-gray-400">{a.targetYear} / {a.targetSemester}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-xs font-thai text-gray-600">{CATEGORY_NAMES[a.category]}</span>
-                    </TableCell>
-                    <TableCell className="text-sm font-thai">{a.targetYear}</TableCell>
-                    <TableCell>
-                      <Badge className={`${STATUS_COLORS[a.status]} border-0 font-thai text-xs`}>
-                        {STATUS_LABELS[a.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-mono">{a._count.activityCodes}</TableCell>
-                    <TableCell className="text-right">{a._count.participations}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Link href={`/admin/activities/${a.id}`}>
-                          <Button variant="ghost" size="sm" className="font-thai gap-1">
-                            <Eye className="w-3.5 h-3.5" />
-                            ดู
-                          </Button>
-                        </Link>
-                        <Link href={`/admin/activities/${a.id}/codes`}>
-                          <Button variant="ghost" size="sm" className="font-thai gap-1 text-primary-600">
-                            <Ticket className="w-3.5 h-3.5" />
-                            รหัส
-                          </Button>
-                        </Link>
-                        <Link href={`/admin/activities/${a.id}/edit`}>
-                          <Button variant="ghost" size="sm" className="font-thai gap-1 text-warning">
-                            <Pencil className="w-3.5 h-3.5" />
-                            แก้ไข
-                          </Button>
-                        </Link>
-                        <DeleteActivityButton id={a.id} name={a.name} />
-                      </div>
+              </TableHeader>
+              <TableBody>
+                {activities.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center text-gray-500 font-thai py-8">
+                      ยังไม่มีกิจกรรม
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  activities.map((a) => (
+                    <TableRow key={a.id} className="hover:bg-gray-50">
+                      <TableCell className="font-medium font-thai">
+                        <div>
+                          <p className="whitespace-nowrap">{a.name}</p>
+                          <p className="text-xs text-gray-400">{a.targetYear} / {a.targetSemester}</p>
+                          <p className="text-xs text-gray-400 md:hidden mt-0.5">
+                            {CATEGORY_NAMES[a.category]} · {a._count.participations} คน
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <span className="text-xs font-thai text-gray-600">{CATEGORY_NAMES[a.category]}</span>
+                      </TableCell>
+                      <TableCell className="text-sm font-thai hidden lg:table-cell">{a.targetYear}</TableCell>
+                      <TableCell>
+                        <Badge className={`${STATUS_COLORS[a.status]} border-0 font-thai text-xs whitespace-nowrap`}>
+                          {STATUS_LABELS[a.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-mono hidden sm:table-cell">{a._count.activityCodes}</TableCell>
+                      <TableCell className="text-right hidden sm:table-cell">{a._count.participations}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Link href={`/admin/activities/${a.id}`}>
+                            <Button variant="ghost" size="sm" className="font-thai gap-1">
+                              <Eye className="w-3.5 h-3.5" />
+                              <span className="hidden md:inline">ดู</span>
+                            </Button>
+                          </Link>
+                          <Link href={`/admin/activities/${a.id}/codes`}>
+                            <Button variant="ghost" size="sm" className="font-thai gap-1 text-primary-600">
+                              <Ticket className="w-3.5 h-3.5" />
+                              <span className="hidden md:inline">รหัส</span>
+                            </Button>
+                          </Link>
+                          <Link href={`/admin/activities/${a.id}/edit`}>
+                            <Button variant="ghost" size="sm" className="font-thai gap-1 text-warning">
+                              <Pencil className="w-3.5 h-3.5" />
+                              <span className="hidden md:inline">แก้ไข</span>
+                            </Button>
+                          </Link>
+                          <DeleteActivityButton id={a.id} name={a.name} />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>

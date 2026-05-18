@@ -1,13 +1,41 @@
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { redirect } from "next/navigation"
+'use client'
+
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import { AdminNav } from "@/components/navigation/admin-nav"
 import type { Session } from "next-auth"
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== "admin") {
-    redirect("/admin/login")
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  const [isAuthorized, setIsAuthorized] = useState(false)
+
+  useEffect(() => {
+    if (status === "loading") return
+
+    if (!session) {
+      router.push("/admin/login")
+      return
+    }
+
+    if (session.user?.role !== "admin") {
+      console.warn("Unauthorized access attempt to admin panel")
+      router.push("/dashboard")
+      return
+    }
+
+    setIsAuthorized(true)
+  }, [session, status, router])
+
+  if (!isAuthorized || !session) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-lg text-muted-foreground">กำลังตรวจสอบสิทธิ์...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

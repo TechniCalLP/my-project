@@ -1,0 +1,216 @@
+Prompt fix security bug · MDCopy🔒 Critical Security Bug Fix: Student Can Access Admin Dashboard
+📍 Project Path
+
+🐛 Bug Description
+ปัญหา:
+
+Login เป็นนักศึกษา
+นั่งอยู่ (session open)
+Refresh browser
+💥 โผล่หน้า Admin Dashboard!
+
+สาเหตุ:
+
+Session ยังถูกต้อง แต่ไม่มี Role Check
+Protected routes ไม่ Validate Role
+Middleware ไม่ Redirect ถูก
+
+
+📝 ไฟล์ที่ต้องแก้ (3 ไฟล์)
+1️⃣ /middleware.ts - ตรวจสอบ Role ที่ Server Level
+✅ ต้องทำ:
+typescriptimport { withAuth } from "next-auth/middleware"
+import { NextRequest, NextResponse } from "next/server"
+
+export const middleware = withAuth(
+  function middleware(req: NextRequest & { nextauth: any }) {
+    const token = req.nextauth.token
+
+    // ✅ ตรวจสอบ Admin routes
+    if (req.nextUrl.pathname.startsWith("/admin")) {
+      // ❌ ถ้า role ไม่ใช่ admin → redirect ออก
+      if (!token || token.role !== "admin") {
+        return NextResponse.redirect(new URL("/", req.url))
+      }
+    }
+
+    // ✅ ตรวจสอบ Student routes
+    if (req.nextUrl.pathname.startsWith("/dashboard")) {
+      // ❌ ถ้า role ไม่ใช่ student → redirect ออก
+      if (!token || token.role !== "student") {
+        return NextResponse.redirect(new URL("/auth/login", req.url))
+      }
+    }
+
+    return NextResponse.next()
+  },
+  {
+    callbacks: {
+      authorized: ({ token }) => {
+        // ✅ ต้อง login ก่อน
+        return !!token
+      },
+    },
+  }
+)
+
+export const config = {
+  matcher: [
+    "/admin/:path*",
+    "/dashboard/:path*",
+    "/api/admin/:path*",
+  ],
+}
+
+2️⃣ /app/(admin)/admin/layout.tsx - Client-side Guard
+✅ ต้องทำ:
+typescript'use client'
+
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  const [isAuthorized, setIsAuthorized] = useState(false)
+
+  useEffect(() => {
+    // ❌ ถ้า loading ยัง → ไม่ render อะไร
+    if (status === "loading") {
+      return
+    }
+
+    // ❌ ถ้า session ไม่มี → redirect
+    if (!session) {
+      router.push("/auth/login")
+      return
+    }
+
+    // ❌ ถ้า role ไม่ใช่ admin → redirect
+    if (session.user?.role !== "admin") {
+      console.warn("Unauthorized access attempt to admin panel")
+      router.push("/")
+      return
+    }
+
+    // ✅ ตรวจสอบผ่าน → render
+    setIsAuthorized(true)
+  }, [session, status, router])
+
+  // ❌ ถ้า unauthorized → ไม่ render
+  if (!isAuthorized) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-lg text-red-600">กำลังตรวจสอบสิทธิ์...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return <>{children}</>
+}
+
+3️⃣ /app/(student)/dashboard/layout.tsx - Student-side Guard
+✅ ต้องทำ:
+typescript'use client'
+
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+
+export default function StudentLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  const [isAuthorized, setIsAuthorized] = useState(false)
+
+  useEffect(() => {
+    // ❌ ถ้า loading ยัง → ไม่ render อะไร
+    if (status === "loading") {
+      return
+    }
+
+    // ❌ ถ้า session ไม่มี → redirect
+    if (!session) {
+      router.push("/auth/login")
+      return
+    }
+
+    // ❌ ถ้า role ไม่ใช่ student → redirect
+    if (session.user?.role !== "student") {
+      console.warn("Unauthorized access attempt to student panel")
+      router.push("/")
+      return
+    }
+
+    // ✅ ตรวจสอบผ่าน → render
+    setIsAuthorized(true)
+  }, [session, status, router])
+
+  // ❌ ถ้า unauthorized → ไม่ render
+  if (!isAuthorized) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-lg text-red-600">กำลังตรวจสอบสิทธิ์...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return <>{children}</>
+}
+
+4️⃣ (ถ้ามี) /app/api/admin/[...route]/route.ts - API Guard
+✅ ต้องทำ:
+typescriptimport { getServerSession } from "next-auth"
+import { authOptions } from "@/auth.config"
+import { NextRequest, NextResponse } from "next/server"
+
+// ✅ Protect ทุก Admin API
+export async function GET(req: NextRequest) {
+  const session = await getServerSession(authOptions)
+
+  // ❌ ถ้า session ไม่มี
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  // ❌ ถ้า role ไม่ใช่ admin
+  if (session.user?.role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
+  // ✅ ตรวจสอบผ่าน → ทำงานต่อ
+  // ... rest of the code
+}
+
+✅ สรุปการแก้:
+Before (ไม่ safe):
+1️⃣ Student login
+2️⃣ Session save
+3️⃣ Refresh
+4️⃣ 💥 Admin Dashboard โผล่!
+After (Safe):
+1️⃣ Student login
+2️⃣ Session save
+3️⃣ Refresh
+4️⃣ ✅ Middleware check role
+5️⃣ ✅ Layout check role
+6️⃣ ✅ API check role
+7️⃣ ❌ Redirect to home (ไม่ให้เข้า)
+
+🔐 ตรวจสอบแล้ว:
+✅ Server-level protection (Middleware)
+✅ Client-level protection (Layout useEffect)
+✅ API-level protection (Endpoint validation)
+✅ Token validation (Role check)

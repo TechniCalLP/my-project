@@ -1,0 +1,206 @@
+Prompt fix bug 10 download notification · MDCopy🔧 PROMPT #10 - Fix BUG #10 - Download Notification
+Project Path
+
+Bug Description
+Problem:
+ปริ้น/ดาวน์โหลด PDF หรือ Excel ไปยัง Downloads folder
+แต่ไม่มี Notification แสดง "Download complete!"
+Expected:
+
+กด Download/Print
+ไฟล์ดาวน์โหลด
+แสดง Toast/Notification "Download successful!"
+Notification ปรากฏที่มุมขวา Browser (top-right)
+
+Files to Modify:
+
+app/(admin)/admin/activities/[id]/print/page.tsx
+app/(admin)/admin/activities/[id]/export/participants/route.ts
+app/api/admin/*/export/route.ts (all export endpoints)
+
+
+Implementation
+Step 1: Import Toast Hook
+typescriptimport { useToast } from '@/hooks/use-toast'
+// OR
+import { useToast } from "@/components/ui/use-toast"
+Step 2: Add Download Handler
+typescriptconst handleDownload = async (url: string, filename: string) => {
+  try {
+    const response = await fetch(url)
+    const blob = await response.blob()
+    
+    // Create download link
+    const downloadUrl = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = downloadUrl
+    link.download = filename
+    document.body.appendChild(link)
+    
+    // Trigger download
+    link.click()
+    
+    // Cleanup
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(downloadUrl)
+    
+    // Show success toast
+    toast({
+      title: "Success!",
+      description: `${filename} downloaded successfully`,
+      duration: 3000,
+    })
+  } catch (error) {
+    console.error('Download failed:', error)
+    toast({
+      title: "Error",
+      description: "Failed to download file",
+      variant: "destructive",
+      duration: 3000,
+    })
+  }
+}
+Step 3: Add Export/Download Button
+typescript<button
+  onClick={() => handleDownload('/api/admin/activities/1/export/participants', 'participants.xlsx')}
+  className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded transition"
+>
+  Download Excel
+</button>
+Step 4: For PDF/Print Export
+typescriptconst handlePrintDownload = async (activityId: string) => {
+  try {
+    const response = await fetch(`/api/admin/activities/${activityId}/export/pdf`)
+    const blob = await response.blob()
+    
+    // Create PDF download link
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `activity_${activityId}.pdf`
+    link.click()
+    
+    window.URL.revokeObjectURL(url)
+    
+    // Show success toast
+    toast({
+      title: "Success!",
+      description: "PDF downloaded successfully",
+      duration: 3000,
+    })
+  } catch (error) {
+    toast({
+      title: "Error",
+      description: "Failed to download PDF",
+      variant: "destructive",
+    })
+  }
+}
+Step 5: Alternative - Browser Download API (Simpler)
+If the export endpoint returns file directly:
+typescriptconst handleExportClick = async (url: string, filename: string) => {
+  try {
+    // Fetch file
+    const response = await fetch(url)
+    if (!response.ok) throw new Error('Download failed')
+    
+    const blob = await response.blob()
+    
+    // Create temporary link and click it
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    
+    // Cleanup
+    setTimeout(() => {
+      document.body.removeChild(link)
+      URL.revokeObjectURL(link.href)
+    }, 100)
+    
+    // Show notification
+    toast({
+      title: "✓ Download Complete",
+      description: `${filename} saved to Downloads`,
+      duration: 2500,
+    })
+  } catch (error) {
+    console.error('Download error:', error)
+    toast({
+      title: "✗ Download Failed",
+      description: "Please try again",
+      variant: "destructive",
+      duration: 3000,
+    })
+  }
+}
+
+Testing
+Test 1: Download Excel
+
+Click "Download Participants" button
+Toast shows "Download successful" ✅
+File appears in Downloads folder ✅
+
+Test 2: Download PDF
+
+Click "Print/Download" button
+Toast shows "PDF downloaded" ✅
+PDF file in Downloads ✅
+
+Test 3: Toast Position
+
+Notification appears top-right corner ✅
+Disappears after 3 seconds ✅
+
+Test 4: Error Handling
+
+Disable internet (or mock error)
+Click download
+Shows "Download failed" toast ✅
+
+Test 5: Multiple Downloads
+
+Download file 1 → toast 1
+Download file 2 → toast 2
+Each toast shows correctly ✅
+
+
+Checklist
+
+ Import useToast hook
+ Add handleDownload function
+ Add error handling
+ Show toast on success
+ Show toast on error
+ Toast at top-right corner
+ Update Export/Download buttons
+ Test Excel download
+ Test PDF download
+ Test error handling
+ Push Git
+
+
+Key Points
+✅ Must:
+
+Show toast on successful download
+Show error toast on failure
+Trigger file download
+Display at top-right
+Auto-dismiss after 2-3 seconds
+
+❌ Don't:
+
+Block UI during download
+Show no feedback
+Fail silently
+
+
+Toast Timing
+typescript// Success toast: 2-3 seconds
+duration: 2500
+
+// Error toast: 3-4 seconds (longer for error)
+duration: 3000

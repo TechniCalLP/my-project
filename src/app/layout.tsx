@@ -28,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="th" className={`${notoSansThai.variable} ${inter.variable}`}>
+    <html lang="th" className={`${notoSansThai.variable} ${inter.variable}`} suppressHydrationWarning>
       <body className="font-thai antialiased">
         <Providers>{children}</Providers>
       </body>

@@ -31,7 +31,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { FileOutput, FileSpreadsheet, FileText } from "lucide-react"
+import { FileOutput, FileSpreadsheet, FileText, ChevronLeft, ChevronRight } from "lucide-react"
+
+const PARTICIPANTS_PER_PAGE = 10
 
 const CATEGORY_COLORS: Record<ActivityCategory, string> = {
   ACADEMIC: "bg-primary-100 text-primary-700",
@@ -89,6 +91,7 @@ export default function ActivityDetailPage() {
   const [loading, setLoading] = useState(true)
   const [editOpen, setEditOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [participantsPage, setParticipantsPage] = useState(1)
 
   const fetchActivity = async () => {
     setLoading(true)
@@ -96,6 +99,7 @@ export default function ActivityDetailPage() {
       const res = await fetch(`/api/activities/${params.id}`)
       if (!res.ok) { router.push("/admin/activities"); return }
       setActivity(await res.json())
+      setParticipantsPage(1)
     } catch {
       router.push("/admin/activities")
     } finally {
@@ -151,14 +155,36 @@ export default function ActivityDetailPage() {
             <DropdownMenuContent align="end" className="font-thai">
               <DropdownMenuItem
                 className="gap-2 cursor-pointer"
-                onClick={() => { window.location.href = `/api/admin/export/activities/${params.id}` }}
+                onClick={async () => {
+                  try {
+                    const res = await fetch(`/api/admin/export/activities/${params.id}`)
+                    if (!res.ok) throw new Error("Download failed")
+                    const blob = await res.blob()
+                    const url = URL.createObjectURL(blob)
+                    const link = document.createElement("a")
+                    link.href = url
+                    const disposition = res.headers.get("Content-Disposition") ?? ""
+                    const match = disposition.match(/filename\*?=(?:UTF-8'')?([^;]+)/i)
+                    link.download = match ? decodeURIComponent(match[1]) : "export.xlsx"
+                    document.body.appendChild(link)
+                    link.click()
+                    document.body.removeChild(link)
+                    URL.revokeObjectURL(url)
+                    toast.success("ดาวน์โหลด Excel สำเร็จ")
+                  } catch {
+                    toast.error("ดาวน์โหลดไม่สำเร็จ กรุณาลองใหม่")
+                  }
+                }}
               >
                 <FileSpreadsheet className="w-4 h-4 text-green-600" />
                 Export Excel
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="gap-2 cursor-pointer"
-                onClick={() => window.open(`/admin/print/activities/${params.id}`, "_blank")}
+                onClick={() => {
+                  window.open(`/admin/print/activities/${params.id}`, "_blank")
+                  toast.success("เปิดหน้า PDF แล้ว")
+                }}
               >
                 <FileText className="w-4 h-4 text-red-500" />
                 Export PDF
@@ -241,32 +267,81 @@ export default function ActivityDetailPage() {
         <CardContent>
           {activity.participations.length === 0 ? (
             <p className="text-center text-gray-500 py-8 font-thai">ยังไม่มีผู้เข้าร่วม</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="font-thai">รหัสนักศึกษา</TableHead>
-                  <TableHead className="font-thai">ชื่อ-นามสกุล</TableHead>
-                  <TableHead className="font-thai">ระดับชั้น</TableHead>
-                  <TableHead className="font-thai">แผนก</TableHead>
-                  <TableHead className="font-thai">วันที่เข้าร่วม</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {activity.participations.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-mono">{p.student.studentId}</TableCell>
-                    <TableCell className="font-thai">{p.student.firstName} {p.student.lastName}</TableCell>
-                    <TableCell className="font-thai">{p.student.year}</TableCell>
-                    <TableCell className="font-thai">{p.student.department}</TableCell>
-                    <TableCell className="font-thai">
-                      {new Date(p.joinedAt).toLocaleDateString("th-TH")}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+          ) : (() => {
+            const totalParticipantPages = Math.ceil(activity.participations.length / PARTICIPANTS_PER_PAGE)
+            const paginated = activity.participations.slice(
+              (participantsPage - 1) * PARTICIPANTS_PER_PAGE,
+              participantsPage * PARTICIPANTS_PER_PAGE
+            )
+            return (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="font-thai">รหัสนักศึกษา</TableHead>
+                      <TableHead className="font-thai">ชื่อ-นามสกุล</TableHead>
+                      <TableHead className="font-thai">ระดับชั้น</TableHead>
+                      <TableHead className="font-thai">แผนก</TableHead>
+                      <TableHead className="font-thai">วันที่เข้าร่วม</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginated.map((p) => (
+                      <TableRow key={p.id}>
+                        <TableCell className="font-mono">{p.student.studentId}</TableCell>
+                        <TableCell className="font-thai">{p.student.firstName} {p.student.lastName}</TableCell>
+                        <TableCell className="font-thai">{p.student.year}</TableCell>
+                        <TableCell className="font-thai">{p.student.department}</TableCell>
+                        <TableCell className="font-thai">
+                          {new Date(p.joinedAt).toLocaleDateString("th-TH")}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {totalParticipantPages > 1 && (
+                  <div className="flex flex-col items-center gap-2 pt-4">
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setParticipantsPage((p) => p - 1)}
+                        disabled={participantsPage === 1}
+                        className="font-thai gap-1"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        ก่อนหน้า
+                      </Button>
+                      {Array.from({ length: totalParticipantPages }, (_, i) => i + 1).map((page) => (
+                        <Button
+                          key={page}
+                          variant={participantsPage === page ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setParticipantsPage(page)}
+                          className="w-9 h-9"
+                        >
+                          {page}
+                        </Button>
+                      ))}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setParticipantsPage((p) => p + 1)}
+                        disabled={participantsPage === totalParticipantPages}
+                        className="font-thai gap-1"
+                      >
+                        ถัดไป
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <p className="text-xs text-gray-500 font-thai">
+                      แสดง {(participantsPage - 1) * PARTICIPANTS_PER_PAGE + 1}–{Math.min(participantsPage * PARTICIPANTS_PER_PAGE, activity.participations.length)} จาก {activity.participations.length} คน
+                    </p>
+                  </div>
+                )}
+              </>
+            )
+          })()}
         </CardContent>
       </Card>
 

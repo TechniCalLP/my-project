@@ -29,6 +29,7 @@ export default async function DashboardPage() {
   const studentDept = session.user.department ?? ""
 
   const activeYearFilter = {
+    isDeleted: false,
     targetYear: studentYear,
     status: ActivityStatus.ACTIVE,
     OR: [
@@ -42,6 +43,7 @@ export default async function DashboardPage() {
     prisma.activity.count({ where: activeYearFilter }),
     prisma.activity.findMany({
       where: {
+        isDeleted: false,
         targetYear: studentYear,
         OR: [
           { targetDepartments: { isEmpty: true } },
@@ -186,10 +188,10 @@ export default async function DashboardPage() {
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center text-base shrink-0">
-                      {CATEGORY_ICONS[p.activity.category]}
+                      {p.activity ? CATEGORY_ICONS[p.activity.category] : "🗑️"}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium font-thai text-sm truncate">{p.activity.name}</p>
+                      <p className="font-medium font-thai text-sm truncate">{p.activity?.name ?? "[กิจกรรมที่ถูกลบ]"}</p>
                       <p className="text-xs text-gray-400 font-thai">
                         {new Date(p.joinedAt).toLocaleDateString("th-TH", {
                           year: "numeric",

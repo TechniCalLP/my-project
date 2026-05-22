@@ -19,6 +19,7 @@ export default async function ActivitiesPage() {
 
   const activities = await prisma.activity.findMany({
     where: {
+      isDeleted: false,
       targetYear: studentYear,
       OR: [
         { targetDepartments: { isEmpty: true } },

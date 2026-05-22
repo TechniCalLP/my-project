@@ -3,6 +3,18 @@ import Credentials from "next-auth/providers/credentials"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 
+export async function checkStudentStatus(studentId: string) {
+  const student = await prisma.student.findUnique({
+    where: { studentId },
+    select: { id: true, isActive: true, isFirstLogin: true },
+  })
+
+  if (!student) throw new Error("Student not found")
+  if (!student.isActive) throw new Error("Your account is disabled")
+
+  return { id: student.id, isActive: student.isActive, isFirstLogin: student.isFirstLogin }
+}
+
 export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
@@ -23,6 +35,10 @@ export const authOptions: NextAuthOptions = {
 
         if (!student) return null
 
+        if (!student.isActive) {
+          throw new Error("ACCOUNT_DISABLED")
+        }
+
         const isValid = await bcrypt.compare(
           credentials.password as string,
           student.password
@@ -35,6 +51,7 @@ export const authOptions: NextAuthOptions = {
           studentId: student.studentId,
           name: `${student.firstName} ${student.lastName}`,
           role: "student",
+          isActive: student.isActive,
           isFirstLogin: student.isFirstLogin,
           year: student.year,
           department: student.department
@@ -77,6 +94,7 @@ export const authOptions: NextAuthOptions = {
     jwt({ token, user }) {
       if (user) {
         token.role = (user as { role?: string }).role
+        token.isActive = (user as { isActive?: boolean }).isActive
         token.isFirstLogin = (user as { isFirstLogin?: boolean }).isFirstLogin
         token.year = (user as { year?: string }).year
         token.department = (user as { department?: string }).department
@@ -87,6 +105,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         session.user.id = token.sub as string
         ;(session.user as { role?: string }).role = token.role as string
+        ;(session.user as { isActive?: boolean }).isActive = token.isActive as boolean
         ;(session.user as { isFirstLogin?: boolean }).isFirstLogin = token.isFirstLogin as boolean
         ;(session.user as { year?: string }).year = token.year as string
         ;(session.user as { department?: string }).department = token.department as string

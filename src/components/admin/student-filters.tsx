@@ -27,6 +27,7 @@ export default function StudentFilters() {
     } else {
       params.delete(key)
     }
+    params.delete("page")
     router.push(`/admin/students?${params.toString()}`)
   }
 

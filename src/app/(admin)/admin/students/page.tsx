@@ -10,6 +10,9 @@ import { Suspense } from "react"
 import StudentsTable from "@/components/admin/students-table"
 import StudentFilters from "@/components/admin/student-filters"
 import ExportDropdown from "@/components/admin/export-dropdown"
+import { PaginationNav } from "@/components/ui/pagination-nav"
+
+const ITEMS_PER_PAGE = 10
 
 interface PageProps {
   searchParams: Promise<{
@@ -17,6 +20,7 @@ interface PageProps {
     department?: string
     status?: string
     search?: string
+    page?: string
   }>
 }
 
@@ -25,6 +29,8 @@ export default async function StudentsPage({ searchParams }: PageProps) {
   if (!session || (session.user as { role?: string }).role !== "admin") redirect("/admin/login")
 
   const params = await searchParams
+  const currentPage = Math.max(1, parseInt(params.page ?? "1"))
+  const skip = (currentPage - 1) * ITEMS_PER_PAGE
 
   const where: Record<string, unknown> = {}
   if (params.year) where.year = params.year
@@ -38,16 +44,24 @@ export default async function StudentsPage({ searchParams }: PageProps) {
     ]
   }
 
-  const students = await prisma.student.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    include: { _count: { select: { participations: true } } },
-  })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const w = where as any
 
-  const totalStudents = students.length
-  const activeStudents = students.filter((s) => s.isActive).length
+  const [totalStudents, activeStudents, students] = await Promise.all([
+    prisma.student.count({ where: w }),
+    prisma.student.count({ where: { ...w, isActive: true } }),
+    prisma.student.findMany({
+      where: w,
+      skip,
+      take: ITEMS_PER_PAGE,
+      orderBy: { createdAt: "desc" },
+      include: { _count: { select: { participations: true } } },
+    }),
+  ])
+
   const inactiveStudents = totalStudents - activeStudents
   const totalParticipations = students.reduce((sum, s) => sum + s._count.participations, 0)
+  const totalPages = Math.ceil(totalStudents / ITEMS_PER_PAGE)
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -115,6 +129,15 @@ export default async function StudentsPage({ searchParams }: PageProps) {
       </Suspense>
 
       <StudentsTable students={students} />
+
+      <Suspense>
+        <PaginationNav
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalStudents}
+          itemsPerPage={ITEMS_PER_PAGE}
+        />
+      </Suspense>
     </div>
   )
 }

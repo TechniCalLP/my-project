@@ -54,20 +54,21 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   XLSX.utils.book_append_sheet(wb, wsInfo, "ข้อมูลกิจกรรม")
 
   // Sheet 2: Participant list
-  const participantRows = activity.participations.map((p, i) => ({
-    "ลำดับ": i + 1,
+  const participantRows = activity.participations.map((p) => ({
     "รหัสนักศึกษา": p.student.studentId,
-    "ชื่อ-สกุล": `${p.student.prefix}${p.student.firstName} ${p.student.lastName}`,
-    "ระดับชั้น": p.student.year,
+    "ชื่อ": p.student.firstName,
+    "นามสกุล": p.student.lastName,
     "แผนก": p.student.department,
-    "วันที่เข้าร่วม": p.joinedAt.toLocaleDateString("th-TH"),
+    "ชั้นปี": p.student.year,
   }))
 
   const wsParticipants = XLSX.utils.json_to_sheet(
     participantRows.length > 0 ? participantRows : [{ "หมายเหตุ": "ยังไม่มีผู้เข้าร่วม" }]
   )
-  wsParticipants["!cols"] = [{ wch: 6 }, { wch: 14 }, { wch: 26 }, { wch: 10 }, { wch: 26 }, { wch: 16 }]
+  wsParticipants["!cols"] = [{ wch: 14 }, { wch: 18 }, { wch: 20 }, { wch: 26 }, { wch: 10 }]
   XLSX.utils.book_append_sheet(wb, wsParticipants, "รายชื่อผู้เข้าร่วม")
+
+  wb.Workbook = { Views: [{ ActiveTab: 1 }] }
 
   const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" })
   const safeName = activity.name.replace(/[^฀-๿a-zA-Z0-9]/g, "_").slice(0, 40)

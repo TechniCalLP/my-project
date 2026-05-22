@@ -87,6 +87,9 @@ export async function DELETE(
 
   const { id } = await params
 
-  await prisma.activity.delete({ where: { id } })
+  await prisma.activity.update({
+    where: { id },
+    data: { isDeleted: true, deletedAt: new Date() },
+  })
   return Response.json({ success: true })
 }

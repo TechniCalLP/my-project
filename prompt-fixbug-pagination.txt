@@ -1,0 +1,252 @@
+🔧 PROMPT - Add Pagination System
+Project Path
+
+Feature Description
+Goal:
+เพิ่ม Pagination ให้กับ Tables ทั่วระบบ
+
+แสดง 10 items/page
+Navigate pages ด้วย Previous/Next/Page Numbers
+ช่วย Performance + UX
+
+Benefits:
+✅ Load faster (10 items instead of 100+)
+✅ Search ไว ขึ้น
+✅ Table looks cleaner
+✅ Better user experience
+
+Implementation
+Step 1: Create Pagination Component
+File: components/ui/pagination.tsx (NEW)
+typescript'use client'
+
+interface PaginationProps {
+  currentPage: number
+  totalPages: number
+  onPageChange: (page: number) => void
+}
+
+export function Pagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: PaginationProps) {
+  if (totalPages <= 1) return null
+
+  return (
+    <div className="flex items-center justify-center gap-2 mt-6">
+      {/* Previous Button */}
+      <button
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage === 1}
+        className="px-3 py-2 border rounded hover:bg-gray-100 disabled:opacity-50"
+      >
+        ← ก่อนหน้า
+      </button>
+
+      {/* Page Numbers */}
+      <div className="flex gap-1">
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+          <button
+            key={page}
+            onClick={() => onPageChange(page)}
+            className={`px-3 py-2 rounded ${
+              currentPage === page
+                ? 'bg-blue-600 text-white'
+                : 'border hover:bg-gray-100'
+            }`}
+          >
+            {page}
+          </button>
+        ))}
+      </div>
+
+      {/* Next Button */}
+      <button
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        className="px-3 py-2 border rounded hover:bg-gray-100 disabled:opacity-50"
+      >
+        ถัดไป →
+      </button>
+
+      {/* Info */}
+      <span className="ml-4 text-sm text-gray-600">
+        หน้า {currentPage} จาก {totalPages}
+      </span>
+    </div>
+  )
+}
+
+Step 2: Apply to Student List Page
+File: app/(admin)/admin/students/page.tsx
+typescript'use client'
+
+import { useState, useMemo } from 'react'
+import { Pagination } from '@/components/ui/pagination'
+
+const ITEMS_PER_PAGE = 10
+
+export default function StudentsPage() {
+  const [students, setStudents] = useState([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [searchTerm, setSearchTerm] = useState('')
+
+  // Filter by search
+  const filteredStudents = useMemo(() => {
+    return students.filter((s) =>
+      `${s.firstName} ${s.lastName} ${s.studentId}`
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase())
+    )
+  }, [students, searchTerm])
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredStudents.length / ITEMS_PER_PAGE)
+  const paginatedStudents = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+    return filteredStudents.slice(startIndex, startIndex + ITEMS_PER_PAGE)
+  }, [filteredStudents, currentPage])
+
+  // Reset page when search changes
+  const handleSearch = (term: string) => {
+    setSearchTerm(term)
+    setCurrentPage(1)
+  }
+
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">
+        รายชื่อนักศึกษา ({filteredStudents.length})
+      </h1>
+
+      {/* Search Input */}
+      <input
+        type="text"
+        placeholder="ค้นหารหัสนักศึกษา/ชื่อ..."
+        value={searchTerm}
+        onChange={(e) => handleSearch(e.target.value)}
+        className="w-full px-4 py-2 border rounded mb-4"
+      />
+
+      {/* Table */}
+      <table className="w-full border">
+        <thead>
+          <tr className="bg-gray-100">
+            <th className="p-2">รหัสนักศึกษา</th>
+            <th className="p-2">ชื่อ</th>
+            <th className="p-2">นามสกุล</th>
+            <th className="p-2">แผนก</th>
+            <th className="p-2">ชั้นปี</th>
+            <th className="p-2">การดำเนินการ</th>
+          </tr>
+        </thead>
+        <tbody>
+          {paginatedStudents.map((student) => (
+            <tr key={student.id} className="border-t">
+              <td className="p-2">{student.studentId}</td>
+              <td className="p-2">{student.firstName}</td>
+              <td className="p-2">{student.lastName}</td>
+              <td className="p-2">{student.department}</td>
+              <td className="p-2">{student.year}</td>
+              <td className="p-2">
+                <button className="text-blue-600 hover:underline">แก้ไข</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* Pagination */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
+
+      {/* Info */}
+      <p className="text-sm text-gray-600 mt-4">
+        แสดง {paginatedStudents.length} รายการจากทั้งหมด {filteredStudents.length}
+      </p>
+    </div>
+  )
+}
+
+Step 3: Apply to Activities Page
+File: app/(admin)/admin/activities/page.tsx
+Same pattern as students:
+
+Add currentPage state
+Filter activities
+Paginate (10 items/page)
+Use Pagination component
+Reset page on search
+
+
+Step 4: Apply to Participants Page
+File: app/(admin)/admin/activities/[id]/participants/page.tsx
+Same pattern:
+
+10 participants/page
+Navigate with Pagination
+Search by name/ID
+
+
+Testing
+Test 1: Student List
+
+View students (10/page) ✅
+Click next page ✅
+Search updates pagination ✅
+
+Test 2: Activities List
+
+View activities (10/page) ✅
+Click previous page ✅
+All 3+ pages work ✅
+
+Test 3: Participants
+
+View participants (10/page) ✅
+Click page 2, 3, etc ✅
+
+Test 4: Performance
+
+Page loads fast ✅
+Search is responsive ✅
+No lag when clicking pages ✅
+
+
+Checklist
+
+ Create Pagination component
+ Apply to Student List page
+ Apply to Activities List page
+ Apply to Participants page
+ Test pagination works
+ Test search resets page
+ Test styling looks good
+ Test on mobile (responsive)
+ Push Git
+
+
+Files to Create/Modify
+Create:
+
+components/ui/pagination.tsx (NEW)
+
+Modify:
+
+app/(admin)/admin/students/page.tsx
+app/(admin)/admin/activities/page.tsx
+app/(admin)/admin/activities/[id]/participants/page.tsx
+
+
+Key Features
+✅ 10 items per page
+✅ Previous/Next buttons
+✅ Page numbers
+✅ Current page indicator
+✅ Auto-hide if <= 1 page
+✅ Reset on search
+✅ Responsive design

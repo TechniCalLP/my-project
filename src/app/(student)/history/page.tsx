@@ -42,8 +42,9 @@ export default async function HistoryPage() {
     activity: p.activity,
   }))
 
-  const sem1 = data.filter((p) => p.activity.targetSemester === "ภาคเรียนที่ 1")
-  const sem2 = data.filter((p) => p.activity.targetSemester === "ภาคเรียนที่ 2")
+  const sem1 = data.filter((p) => p.activity?.targetSemester === "ภาคเรียนที่ 1")
+  const sem2 = data.filter((p) => p.activity?.targetSemester === "ภาคเรียนที่ 2")
+  const deleted = data.filter((p) => p.activity === null)
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -72,6 +73,7 @@ export default async function HistoryPage() {
         <HistorySemesterTabs
           sem1={sem1}
           sem2={sem2}
+          deleted={deleted}
           defaultSemester={getCurrentSemesterTab()}
         />
       )}

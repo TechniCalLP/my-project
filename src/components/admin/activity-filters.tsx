@@ -1,9 +1,12 @@
 "use client"
 
 import { useRouter, useSearchParams } from "next/navigation"
+import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { X } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { X, Search } from "lucide-react"
+import { useState } from "react"
 import { YEARS, SEMESTERS, CATEGORY_NAMES } from "@/lib/constants"
 import { ActivityStatus } from "@/generated/prisma"
 
@@ -20,10 +23,16 @@ export default function ActivityFilters() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "")
   const currentYear = searchParams.get("year") ?? ""
   const currentSemester = searchParams.get("semester") ?? ""
   const currentCategory = searchParams.get("category") ?? ""
   const currentStatus = searchParams.get("status") ?? ""
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    updateFilter("search", searchTerm)
+  }
 
   const updateFilter = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -32,13 +41,33 @@ export default function ActivityFilters() {
     } else {
       params.delete(key)
     }
+    params.delete("page")
     router.push(`/admin/activities?${params.toString()}`)
   }
 
-  const hasFilters = currentYear || currentSemester || currentCategory || currentStatus
+  const hasFilters = searchTerm || currentYear || currentSemester || currentCategory || currentStatus
+
+  const clearFilters = () => {
+    setSearchTerm("")
+    router.push("/admin/activities")
+  }
 
   return (
-    <div className="flex flex-wrap gap-3 items-center">
+    <Card>
+      <CardContent className="pt-4">
+      <div className="flex flex-wrap gap-3 items-center">
+      <form onSubmit={handleSearch} className="flex gap-2 flex-1 min-w-48">
+        <Input
+          placeholder="ค้นหากิจกรรม..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="flex-1 font-thai"
+        />
+        <Button type="submit" size="sm" className="gap-1.5 font-thai">
+          <Search className="w-3.5 h-3.5" />
+          ค้นหา
+        </Button>
+      </form>
       <Select value={currentYear || ALL_VALUE} onValueChange={(v) => updateFilter("year", v)}>
         <SelectTrigger className="w-36 font-thai">
           <SelectValue placeholder="ระดับชั้น" />
@@ -52,7 +81,7 @@ export default function ActivityFilters() {
       </Select>
 
       <Select value={currentSemester || ALL_VALUE} onValueChange={(v) => updateFilter("semester", v)}>
-        <SelectTrigger className="w-40 font-thai">
+        <SelectTrigger className="w-48 font-thai">
           <SelectValue placeholder="ภาคเรียน" />
         </SelectTrigger>
         <SelectContent>
@@ -91,13 +120,15 @@ export default function ActivityFilters() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => router.push("/admin/activities")}
+          onClick={clearFilters}
           className="gap-1.5 font-thai text-gray-500"
         >
           <X className="w-3.5 h-3.5" />
           ล้างตัวกรอง
         </Button>
       )}
-    </div>
+      </div>
+      </CardContent>
+    </Card>
   )
 }

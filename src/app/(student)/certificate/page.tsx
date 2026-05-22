@@ -38,19 +38,21 @@ export default async function CertificatePage() {
 
   if (!student) redirect("/login")
 
-  const activities = student.participations.map((p) => ({
-    name: p.activity.name,
-    category: CATEGORY_NAMES[p.activity.category],
-    targetYear: p.activity.targetYear,
-    targetSemester: p.activity.targetSemester,
-    date: p.activity.startDate.toLocaleDateString("th-TH", {
-      year: "numeric", month: "long", day: "numeric",
-    }),
-    location: p.activity.location || "-",
-    joinedAt: p.joinedAt.toLocaleDateString("th-TH", {
-      year: "numeric", month: "long", day: "numeric",
-    }),
-  }))
+  const activities = student.participations
+    .filter((p) => p.activity !== null)
+    .map((p) => ({
+      name: p.activity!.name,
+      category: CATEGORY_NAMES[p.activity!.category],
+      targetYear: p.activity!.targetYear,
+      targetSemester: p.activity!.targetSemester,
+      date: p.activity!.startDate.toLocaleDateString("th-TH", {
+        year: "numeric", month: "long", day: "numeric",
+      }),
+      location: p.activity!.location || "-",
+      joinedAt: p.joinedAt.toLocaleDateString("th-TH", {
+        year: "numeric", month: "long", day: "numeric",
+      }),
+    }))
 
   return (
     <CertificatePrint

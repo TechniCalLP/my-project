@@ -28,11 +28,27 @@ export function LoginForm() {
   const onSubmit = async (data: LoginInput) => {
     setLoading(true)
     try {
+      const check = await fetch("/api/auth/check-student", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentId: data.studentId }),
+      }).then((res) => res.json())
+
+      if (check?.isActive === false) {
+        toast.error("บัญชีของคุณถูกปิดใช้งาน กรุณาติดต่อผู้ดูแลระบบ")
+        return
+      }
+
       const result = await signIn("student-login", {
         studentId: data.studentId,
         password: data.password,
         redirect: false,
       })
+
+      if (result?.error === "ACCOUNT_DISABLED") {
+        toast.error("บัญชีของคุณถูกปิดใช้งาน กรุณาติดต่อผู้ดูแลระบบ")
+        return
+      }
 
       if (!result?.ok || result.error) {
         toast.error("รหัสนักศึกษาหรือรหัสผ่านไม่ถูกต้อง")

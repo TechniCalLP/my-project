@@ -1,0 +1,150 @@
+Prompt fix bug 9 copy code button · MDCopy🔧 PROMPT #9 - Fix BUG #9 - Copy Code Button
+
+Bug Description
+Problem:
+Activity Codes page ไม่มีปุ่ม Copy to Clipboard
+ต้องคัดลอกรหัสด้วยตนเองแบบ Manual (ยุ่นยาก)
+Expected:
+
+เพิ่มปุ่ม "Copy" ถัดจากรหัสแต่ละตัว
+กดแล้ว Copy to Clipboard
+แสดง Toast/Notification "Copied to clipboard!"
+
+Files to Modify:
+
+app/(admin)/admin/activities/[id]/codes/page.tsx
+Might need: components/ui/button.tsx or existing button component
+
+
+Implementation
+Step 1: Import Toast (if not already imported)
+typescriptimport { useToast } from '@/hooks/use-toast'
+// OR
+import { toast } from '@/lib/toast'
+// OR use shadcn/ui toast
+import { useToast } from "@/components/ui/use-toast"
+Step 2: Add Copy Function
+typescriptconst handleCopyCode = async (code: string) => {
+  try {
+    // Copy to clipboard
+    await navigator.clipboard.writeText(code)
+    
+    // Show success toast
+    toast({
+      title: "Copied!",
+      description: `Code ${code} copied to clipboard`,
+      duration: 2000,
+    })
+  } catch (error) {
+    console.error('Failed to copy:', error)
+    toast({
+      title: "Error",
+      description: "Failed to copy code",
+      variant: "destructive",
+    })
+  }
+}
+Step 3: Add Copy Button in Table/List
+typescript// In the codes table/list rendering
+{codes.map((code) => (
+  <div key={code.id} className="flex items-center gap-2 mb-2">
+    <span className="font-mono text-lg">{code.code}</span>
+    
+    {/* Copy Button */}
+    <button
+      onClick={() => handleCopyCode(code.code)}
+      className="px-3 py-1 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded transition"
+    >
+      Copy
+    </button>
+    
+    {/* Optional: Show status */}
+    <span className="text-xs text-gray-500">
+      {code.usedBy ? `Used by ${code.usedBy}` : "Unused"}
+    </span>
+  </div>
+))}
+Step 4: Alternative UI with Icon Button
+typescript// If you want a more compact icon-based button
+import { Copy } from 'lucide-react'
+
+<button
+  onClick={() => handleCopyCode(code.code)}
+  className="p-2 hover:bg-gray-100 rounded transition"
+  title="Copy code"
+>
+  <Copy size={16} />
+</button>
+
+Testing
+Test 1: Copy Single Code
+
+Click "Copy" button next to a code
+Should show toast "Copied to clipboard!" ✅
+Paste into text editor - code should appear ✅
+
+Test 2: Copy Multiple Codes
+
+Copy code 1
+Copy code 2
+Each should show separate toast ✅
+
+Test 3: Copy Success
+
+Toast disappears after 2 seconds ✅
+Next copy shows new toast ✅
+
+Test 4: Long Codes
+
+Copy a long code (10+ characters)
+Should copy completely ✅
+
+
+Checklist
+
+ Import useToast hook
+ Add handleCopyCode function
+ Use navigator.clipboard.writeText()
+ Show toast on success
+ Show error toast on failure
+ Add Copy button next to each code
+ Button styling matches design
+ Test copy functionality
+ Test with multiple codes
+ Push Git
+
+
+Key Points
+✅ Must:
+
+Use navigator.clipboard API
+Show toast notification
+Copy entire code string
+Handle errors gracefully
+
+❌ Don't:
+
+Copy partial code
+Fail silently without feedback
+Block UI during copy
+
+
+Toast Library Options
+If no toast library exists, use:
+Option 1: shadcn/ui toast
+typescriptimport { useToast } from "@/components/ui/use-toast"
+const { toast } = useToast()
+
+toast({
+  title: "Copied!",
+  description: "Code copied to clipboard",
+})
+Option 2: React-toastify
+typescriptimport { toast } from 'react-toastify'
+
+toast.success('Code copied!')
+Option 3: Simple browser alert (fallback)
+typescriptif (navigator.clipboard) {
+  await navigator.clipboard.writeText(code)
+  alert('Copied to clipboard!')
+}

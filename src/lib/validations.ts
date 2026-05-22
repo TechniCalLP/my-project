@@ -35,6 +35,10 @@ export const passwordSchema = z
     message: "รหัสผ่านไม่ตรงกัน",
     path: ["confirmPassword"],
   })
+  .refine((data) => data.newPassword !== data.currentPassword, {
+    message: "รหัสผ่านใหม่ต้องไม่เหมือนรหัสผ่านเดิม",
+    path: ["newPassword"],
+  })
 
 export const joinSchema = z.object({
   code: z.string().length(6, "รหัสต้องมี 6 ตัวอักษร").regex(/^[A-Z0-9]{6}$/i, "รหัสต้องเป็นตัวอักษรหรือตัวเลขเท่านั้น"),

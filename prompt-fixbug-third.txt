@@ -1,0 +1,61 @@
+🔧 PROMPT #4 - Fix BUG #4 - Delete Activity with History
+Project Path
+C:\Users\Sakdet\Documents\student-activity-system
+
+Bug Description
+Problem:
+Admin ลบ Activity → Participation (ประวัติ) หายไปด้วย
+Expected:
+Admin ลบ Activity → Activity ลบ แต่ Participation ยังเหลือ
+Root Cause:
+Prisma schema onDelete: Cascade ต้องเปลี่ยนเป็น SetNull
+
+Files to Modify (2 Files)
+File 1: prisma/schema.prisma
+แก้ Participation model:
+
+Change activityId: String to String? (nullable)
+Change onDelete: Cascade to onDelete: SetNull
+
+BEFORE:
+activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+AFTER:
+activityId String?
+activity   Activity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
+File 2: app/(student)/dashboard/history/page.tsx
+Display "[Deleted Activity]" when activity = null:
+{participation.activity?.name || "[Deleted Activity]"}
+
+Testing
+Test 1: Delete Activity
+
+Delete Activity with participants
+Check Student History
+Should see "[Deleted Activity]" ✅
+
+Test 2: Check Database
+
+Participation record still exists (activityId = null) ✅
+
+Test 3: Multiple Deletes
+
+Delete Activity A, B, C
+All should show in history as "[Deleted Activity]" ✅
+
+
+Database Migration
+After schema change, run:
+bashnpx prisma migrate dev --name delete_activity_keep_history
+Or:
+bashnpx prisma db push
+
+Checklist
+
+ Edit prisma/schema.prisma
+ Change activityId to String?
+ Change onDelete: Cascade to SetNull
+ Run Prisma migration
+ Edit history page to show "[Deleted Activity]"
+ Test delete activity
+ Test history shows deleted activities
+ Push Git

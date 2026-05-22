@@ -1,0 +1,64 @@
+🔧 PROMPT #3 - Fix BUG #3 - Password Validation
+📍 Project Path
+
+
+🐛 Bug Description
+Problem:
+Change password → ยินยอมเปลี่ยนรหัสผ่านเก่า (ผิด)
+Student สามารถกลับไปใช้รหัสผ่านเก่าได้
+Expected:
+Change password → ต้อง Validate old password ก่อน
+ถ้า old password ผิด → ห้ามเปลี่ยน
+ถ้า new password = old password → ห้ามเปลี่ยน
+Root Cause:
+API ไม่ validate old password + ไม่ check newPassword !== oldPassword
+
+📝 Files to Modify (2 Files)
+File 1: app/(student)/dashboard/settings/page.tsx
+ต้องแก้ handleChangePassword:
+
+เพิ่ม validation: oldPassword ต้องไม่ว่าง
+เพิ่ม validation: newPassword !== oldPassword
+เพิ่ม validation: newPassword === confirmPassword
+เพิ่ม validation: newPassword.length >= 6
+ส่ง oldPassword ไป server
+
+
+File 2: app/api/student/change-password/route.ts
+ต้องแก้ POST handler:
+
+Validate oldPassword ด้วย bcrypt.compare()
+Check newPassword !== oldPassword
+Check newPassword === confirmPassword
+Check newPassword.length >= 6
+ถ้า validate ผิด → return error message
+ถ้า validate ถูก → hash newPassword + update database
+
+
+✅ Testing
+Test 1: Wrong Old Password
+
+Result: Error "Current password is incorrect"
+
+Test 2: New Password = Old Password
+
+Result: Error "New password must be different"
+
+Test 3: Passwords Don't Match
+
+Result: Error "Passwords do not match"
+
+Test 4: Successful Change
+
+Result: Success + can login with new password
+
+
+📋 Checklist
+
+ แก้ settings page validation
+ แก้ API validation + bcrypt.compare()
+ Test all 4 scenarios
+ Push Git
+
+
+Ready to fix! 🔧

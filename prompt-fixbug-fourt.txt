@@ -1,0 +1,97 @@
+🔧 PROMPT #5 - Fix BUG #5 - Export Participants Format
+Project Path
+
+Bug Description
+Problem:
+Export Participants Excel ขาด Columns และ Column ผิด
+Current Excel:
+ลำดับ | รหัสนักศึกษา | ชื่อ-สกุล | ระดับชั้น | แผนก | วันที่เข้าร่วม
+Expected:
+รหัสนักศึกษา | ชื่อ | นามสกุล | แผนก | ชั้นปี
+What to Remove:
+
+❌ ลบ Column "ลำดับ"
+❌ ลบ Column "วันที่เข้าร่วม"
+
+What to Fix:
+
+✅ เปลี่ยน "ระดับชั้น" → "ชั้นปี"
+✅ แยก "ชื่อ-สกุล" → "ชื่อ" + "นามสกุล"
+✅ ตรวจสอบ Thai encoding (UTF-8)
+
+
+Files to Modify
+File 1: lib/export.ts or similar export function
+Find the exportParticipants() function
+BEFORE:
+Columns: Index | StudentID | FullName | Level | Department | JoinedDate
+AFTER:
+Columns: StudentID | FirstName | LastName | Department | Year
+Changes needed:
+
+❌ Remove index/sequence column
+❌ Remove joinedAt column
+✅ Split name into firstName + lastName
+✅ Change "level" to "year"
+✅ Ensure Thai encoding (UTF-8)
+
+File 2: app/(admin)/admin/activities/[id]/export/participants/route.ts
+If export is in API endpoint, apply same changes:
+typescriptconst participants = activity.participations.map((p) => ({
+  studentId: p.student.studentId,     // ✅ ID
+  firstName: p.student.firstName,      // ✅ First Name
+  lastName: p.student.lastName,        // ✅ Last Name
+  department: p.student.department,    // ✅ Department
+  year: p.student.year,                // ✅ Year (not level)
+  // ❌ Remove: index, joinedAt
+}))
+
+Testing
+Test 1: Export Participants
+
+Select Activity
+Export Participants
+Check Excel columns: StudentID | FirstName | LastName | Department | Year ✅
+
+Test 2: Thai Characters
+
+Check Thai names display correctly ✅
+Check Thai department name ✅
+
+Test 3: Data Accuracy
+
+Count participants matches Excel rows ✅
+Data matches database ✅
+
+Test 4: No Extra Columns
+
+No "ลำดับ" column ✅
+No "วันที่เข้าร่วม" column ✅
+
+
+Checklist
+
+ Find export function in lib/export.ts
+ Remove index/sequence column
+ Remove joinedAt column
+ Change "level" to "year"
+ Split firstName + lastName (if combined)
+ Verify Thai encoding UTF-8
+ Test export with 5+ participants
+ Verify column order correct
+ Push Git
+
+
+Key Points
+✅ Must have these columns exactly:
+
+StudentID (รหัสนักศึกษา)
+FirstName (ชื่อ)
+LastName (นามสกุล)
+Department (แผนก)
+Year (ชั้นปี)
+
+❌ Must NOT have:
+
+Index/ลำดับ
+JoinedDate/วันที่เข้าร่วม

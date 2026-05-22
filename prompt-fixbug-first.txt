@@ -1,0 +1,235 @@
+🔧 PROMPT #1 - Fix CRITICAL Bug: Disable Student Login
+📍 Project Path
+
+🐛 Bug Description
+Problem:
+ปิดใช้งาน (Disable) นักศึกษา → นักศึกษายังสามารถ Login ได้
+Expected:
+ปิดใช้งาน (Disable) นักศึกษา → ไม่สามารถ Login ได้ (Access Denied)
+Root Cause:
+Login logic ไม่ check Student.isActive field
+
+📝 Files to Modify (5 Files)
+File 1: src/lib/auth.ts (NextAuth Configuration)
+ต้องแก้ใน callback function:
+แก้ JWT callback ให้ check isActive:
+typescript// ❌ BEFORE - ไม่ check isActive
+async jwt({ token, user }) {
+  if (user) {
+    token.id = user.id
+    token.role = user.role
+    // ❌ ไม่มี check isActive
+  }
+  return token
+}
+
+// ✅ AFTER - check isActive
+async jwt({ token, user }) {
+  if (user) {
+    const dbUser = await prisma.student.findUnique({
+      where: { id: user.id },
+    })
+
+    if (!dbUser?.isActive) {
+      throw new Error('Your account is disabled')
+    }
+
+    token.id = user.id
+    token.role = user.role
+    token.isActive = dbUser.isActive
+  }
+  return token
+}
+แก้ Session callback ให้ double check isActive:
+typescript// ❌ BEFORE
+async session({ session, token }) {
+  if (session.user) {
+    session.user.id = token.id
+    session.user.role = token.role
+  }
+  return session
+}
+
+// ✅ AFTER - double check isActive
+async session({ session, token }) {
+  if (session.user) {
+    session.user.id = token.id
+    session.user.role = token.role
+    session.user.isActive = token.isActive
+
+    if (!token.isActive) {
+      throw new Error('Your account is disabled')
+    }
+  }
+  return session
+}
+
+File 2: app/(auth)/login/page.tsx (Login Page)
+เพิ่ม check isActive ก่อน signIn:
+typescript// ✅ BEFORE login → check isActive
+const handleLogin = async (studentId: string, password: string) => {
+  try {
+    const student = await fetch('/api/auth/check-student', {
+      method: 'POST',
+      body: JSON.stringify({ studentId }),
+    }).then(res => res.json())
+
+    if (!student?.isActive) {
+      setError('Your account has been disabled. Please contact admin.')
+      return
+    }
+
+    const result = await signIn('credentials', {
+      studentId,
+      password,
+      redirect: false,
+    })
+
+    if (result?.error) {
+      setError('Invalid credentials')
+    } else {
+      router.push('/dashboard')
+    }
+  } catch (error) {
+    setError('Login failed')
+  }
+}
+
+File 3: app/api/auth/[...nextauth]/route.ts (NextAuth Route)
+เพิ่ม isActive ในการ select + check:
+typescript// ✅ BEFORE password check → add isActive to select
+const response = await prisma.student.findUnique({
+  where: { studentId },
+  select: {
+    id: true,
+    studentId: true,
+    password: true,
+    firstName: true,
+    lastName: true,
+    isActive: true,  // ✅ เพิ่มนี่
+  },
+})
+
+// ✅ AFTER password check → check isActive
+if (!response?.isActive) {
+  throw new Error('Your account is disabled')
+}
+
+File 4: app/api/auth/check-student/route.ts (NEW - Create This File)
+สร้างไฟล์ใหม่:
+typescriptimport { prisma } from '@/lib/prisma'
+import { NextRequest, NextResponse } from 'next/server'
+
+export async function POST(req: NextRequest) {
+  try {
+    const { studentId } = await req.json()
+
+    const student = await prisma.student.findUnique({
+      where: { studentId },
+      select: {
+        id: true,
+        isActive: true,
+      },
+    })
+
+    if (!student) {
+      return NextResponse.json(
+        { error: 'Student not found' },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json({
+      isActive: student.isActive,
+      id: student.id,
+    })
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+File 5: src/lib/auth.ts - Add Helper Function
+เพิ่ม function ตรวจสอบ account status:
+typescriptexport async function checkStudentStatus(studentId: string) {
+  const student = await prisma.student.findUnique({
+    where: { studentId },
+    select: {
+      id: true,
+      isActive: true,
+      isFirstLogin: true,
+    },
+  })
+
+  if (!student) {
+    throw new Error('Student not found')
+  }
+
+  if (!student.isActive) {
+    throw new Error('Your account is disabled')
+  }
+
+  return {
+    id: student.id,
+    isActive: student.isActive,
+    isFirstLogin: student.isFirstLogin,
+  }
+}
+
+✅ Testing After Fix
+Test 1: Disable Student
+1. Admin Dashboard → Students
+2. Select Student
+3. Click "Disable"
+4. Student logout
+5. Try login with same credentials
+
+Expected:
+❌ Login ไม่ได้
+📝 Message: "Your account is disabled"
+
+Status: ✅ PASS
+Test 2: Re-enable Student
+1. Admin Dashboard → Students
+2. Select disabled student
+3. Click "Enable"
+4. Try login with same credentials
+
+Expected:
+✅ Login สำเร็จ
+📝 Access Dashboard
+
+Status: ✅ PASS
+
+📋 Checklist
+
+ แก้ src/lib/auth.ts - JWT callback
+ แก้ src/lib/auth.ts - Session callback
+ แก้ app/(auth)/login/page.tsx - Login handler
+ แก้ app/api/auth/[...nextauth]/route.ts - Credentials provider
+ สร้าง app/api/auth/check-student/route.ts - New endpoint
+ Test Disable Student
+ Test Re-enable Student
+ ตรวจสอบ Error message
+ Push ขึ้น Git
+
+
+🚀 Priority
+CRITICAL - ต้องแก้ก่อน ⚠️
+
+💡 Notes
+
+✅ ต้องตรวจสอบ isActive field ใน 3 ที่:
+
+JWT callback
+Session callback
+Credentials provider
+
+
+✅ Error message ต้องชัดเจน: "Your account is disabled"
+✅ ทดสอบหลังแก้ทั้ง Disable + Re-enable
+
+
+Ready to fix! 🔧

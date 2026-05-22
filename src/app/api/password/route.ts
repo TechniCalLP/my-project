@@ -30,6 +30,11 @@ export async function PATCH(request: Request) {
     return Response.json({ error: "รหัสผ่านปัจจุบันไม่ถูกต้อง" }, { status: 400 })
   }
 
+  const isSamePassword = await bcrypt.compare(newPassword, student.password)
+  if (isSamePassword) {
+    return Response.json({ error: "รหัสผ่านใหม่ต้องไม่เหมือนรหัสผ่านเดิม" }, { status: 400 })
+  }
+
   const hashed = await bcrypt.hash(newPassword, 10)
 
   await prisma.student.update({

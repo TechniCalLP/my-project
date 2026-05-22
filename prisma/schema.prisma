@@ -42,6 +42,8 @@ model Activity {
   location          String?
   maxSlots          Int?
   status            ActivityStatus  @default(DRAFT)
+  isDeleted         Boolean         @default(false)
+  deletedAt         DateTime?
   adminId           String
   admin             Admin           @relation(fields: [adminId], references: [id])
   activityCodes     ActivityCode[]
@@ -83,12 +85,12 @@ model ActivityCode {
 }
 
 model Participation {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   studentId  String
-  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  activityId String
-  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
-  joinedAt   DateTime @default(now())
+  student    Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  activityId String?
+  activity   Activity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
+  joinedAt   DateTime  @default(now())
   codeUsed   String
 
   @@unique([studentId, activityId])

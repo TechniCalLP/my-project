@@ -43,12 +43,13 @@ interface ParticipationItem {
     targetYear: string
     targetSemester: string
     location: string | null
-  }
+  } | null
 }
 
 interface HistorySemesterTabsProps {
   sem1: ParticipationItem[]
   sem2: ParticipationItem[]
+  deleted?: ParticipationItem[]
   defaultSemester: string
 }
 
@@ -65,25 +66,29 @@ function HistoryList({ items }: { items: ParticipationItem[] }) {
   return (
     <div className="space-y-3">
       {items.map((p) => (
-        <Card key={p.id} className="border-l-4 border-l-success">
+        <Card key={p.id} className={`border-l-4 ${p.activity ? "border-l-success" : "border-l-gray-300"}`}>
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center text-xl shrink-0">
-                {CATEGORY_ICONS[p.activity.category]}
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl shrink-0 ${p.activity ? "bg-primary-50" : "bg-gray-100"}`}>
+                {p.activity ? CATEGORY_ICONS[p.activity.category] : "🗑️"}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="font-semibold font-thai text-sm leading-snug">
-                    {p.activity.name}
+                  <p className={`font-semibold font-thai text-sm leading-snug ${!p.activity ? "text-gray-400 italic" : ""}`}>
+                    {p.activity?.name ?? "[กิจกรรมที่ถูกลบ]"}
                   </p>
-                  <Badge className={`${CATEGORY_COLORS[p.activity.category]} border-0 font-thai text-xs shrink-0`}>
-                    {CATEGORY_NAMES[p.activity.category]}
-                  </Badge>
+                  {p.activity && (
+                    <Badge className={`${CATEGORY_COLORS[p.activity.category]} border-0 font-thai text-xs shrink-0`}>
+                      {CATEGORY_NAMES[p.activity.category]}
+                    </Badge>
+                  )}
                 </div>
-                <p className="text-xs text-gray-400 font-thai mt-0.5">
-                  {p.activity.targetYear} • {p.activity.targetSemester}
-                  {p.activity.location ? ` • ${p.activity.location}` : ""}
-                </p>
+                {p.activity && (
+                  <p className="text-xs text-gray-400 font-thai mt-0.5">
+                    {p.activity.targetYear} • {p.activity.targetSemester}
+                    {p.activity.location ? ` • ${p.activity.location}` : ""}
+                  </p>
+                )}
                 <div className="flex items-center gap-3 mt-1.5">
                   <div className="flex items-center gap-1">
                     <CheckCircle2 size={12} className="text-success shrink-0" />
@@ -106,7 +111,7 @@ function HistoryList({ items }: { items: ParticipationItem[] }) {
   )
 }
 
-export function HistorySemesterTabs({ sem1, sem2, defaultSemester }: HistorySemesterTabsProps) {
+export function HistorySemesterTabs({ sem1, sem2, deleted = [], defaultSemester }: HistorySemesterTabsProps) {
   const [active, setActive] = useState(defaultSemester)
   const current = active === "ภาคเรียนที่ 1" ? sem1 : sem2
 
@@ -142,6 +147,13 @@ export function HistorySemesterTabs({ sem1, sem2, defaultSemester }: HistorySeme
       </div>
 
       <HistoryList items={current} />
+
+      {deleted.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs text-gray-400 font-thai">กิจกรรมที่ถูกลบออกจากระบบ ({deleted.length})</p>
+          <HistoryList items={deleted} />
+        </div>
+      )}
     </div>
   )
 }

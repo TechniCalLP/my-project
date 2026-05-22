@@ -21,6 +21,9 @@ import { ActivityCategory, ActivityStatus } from "@/generated/prisma"
 import { DeleteActivityButton } from "@/components/admin/delete-activity-button"
 import ActivityFilters from "@/components/admin/activity-filters"
 import ExportDropdown from "@/components/admin/export-dropdown"
+import { PaginationNav } from "@/components/ui/pagination-nav"
+
+const ITEMS_PER_PAGE = 10
 
 const STATUS_COLORS: Record<ActivityStatus, string> = {
   ACTIVE: "bg-green-100 text-green-700",
@@ -42,6 +45,8 @@ interface PageProps {
     semester?: string
     category?: string
     status?: string
+    search?: string
+    page?: string
   }>
 }
 
@@ -50,21 +55,34 @@ export default async function AdminActivitiesPage({ searchParams }: PageProps) {
   if (!session || session.user.role !== "admin") redirect("/admin/login")
 
   const params = await searchParams
-  const where: Record<string, unknown> = {}
+  const currentPage = Math.max(1, parseInt(params.page ?? "1"))
+  const skip = (currentPage - 1) * ITEMS_PER_PAGE
+
+  const where: Record<string, unknown> = { isDeleted: false }
   if (params.year) where.targetYear = params.year
   if (params.semester) where.targetSemester = params.semester
   if (params.category) where.category = params.category as ActivityCategory
   if (params.status) where.status = params.status as ActivityStatus
+  if (params.search) where.name = { contains: params.search, mode: "insensitive" }
 
-  const activities = await prisma.activity.findMany({
-    where,
-    include: {
-      _count: { select: { participations: true, activityCodes: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const w = where as any
+
+  const [totalActivities, activeCount, completedCount, activities] = await Promise.all([
+    prisma.activity.count({ where: w }),
+    prisma.activity.count({ where: { ...w, status: ActivityStatus.ACTIVE } }),
+    prisma.activity.count({ where: { ...w, status: ActivityStatus.COMPLETED } }),
+    prisma.activity.findMany({
+      where: w,
+      skip,
+      take: ITEMS_PER_PAGE,
+      include: { _count: { select: { participations: true, activityCodes: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+  ])
 
   const totalParticipations = activities.reduce((sum, a) => sum + a._count.participations, 0)
+  const totalPages = Math.ceil(totalActivities / ITEMS_PER_PAGE)
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -87,23 +105,19 @@ export default async function AdminActivitiesPage({ searchParams }: PageProps) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
-            <p className="text-3xl font-bold">{activities.length}</p>
+            <p className="text-3xl font-bold">{totalActivities}</p>
             <p className="text-sm text-gray-500 font-thai mt-1">กิจกรรมทั้งหมด</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <p className="text-3xl font-bold text-primary-600">
-              {activities.filter((a) => a.status === ActivityStatus.ACTIVE).length}
-            </p>
+            <p className="text-3xl font-bold text-primary-600">{activeCount}</p>
             <p className="text-sm text-gray-500 font-thai mt-1">เปิดรับสมัคร</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <p className="text-3xl font-bold text-gray-600">
-              {activities.filter((a) => a.status === ActivityStatus.COMPLETED).length}
-            </p>
+            <p className="text-3xl font-bold text-gray-600">{completedCount}</p>
             <p className="text-sm text-gray-500 font-thai mt-1">เสร็จสิ้น</p>
           </CardContent>
         </Card>
@@ -123,7 +137,7 @@ export default async function AdminActivitiesPage({ searchParams }: PageProps) {
       {/* Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="font-thai text-base">ทั้งหมด {activities.length} กิจกรรม</CardTitle>
+          <CardTitle className="font-thai text-base">ทั้งหมด {totalActivities} กิจกรรม</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -143,7 +157,7 @@ export default async function AdminActivitiesPage({ searchParams }: PageProps) {
                 {activities.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center text-gray-500 font-thai py-8">
-                      ยังไม่มีกิจกรรม
+                      {params.search ? `ไม่พบกิจกรรมที่ค้นหา "${params.search}"` : "ยังไม่มีกิจกรรม"}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -200,6 +214,15 @@ export default async function AdminActivitiesPage({ searchParams }: PageProps) {
           </div>
         </CardContent>
       </Card>
+
+      <Suspense>
+        <PaginationNav
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalActivities}
+          itemsPerPage={ITEMS_PER_PAGE}
+        />
+      </Suspense>
     </div>
   )
 }

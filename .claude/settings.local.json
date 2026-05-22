@@ -6,7 +6,8 @@
       "Bash(Sort-Object)",
       "Bash(npx tsc *)",
       "Bash(Get-ChildItem *)",
-      "Bash(New-Item *)"
+      "Bash(New-Item *)",
+      "Bash(npx prisma *)"
     ]
   }
 }

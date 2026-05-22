@@ -1,0 +1,114 @@
+🔧 PROMPT #6 - Fix BUG #6 - Search Activity
+Project Path
+
+Bug Description
+Problem:
+Admin Activities page ไม่มี Search Input
+ต้องเลื่อนดูหมดทั้งหมด (ยุ่นยาก)
+Expected:
+
+เพิ่ม Search Input field
+Search ตามชื่อ Activity
+ผลลัพธ์ทันที (real-time)
+
+Files to Modify:
+
+app/(admin)/admin/activities/page.tsx
+
+
+Implementation
+Step 1: Add State for Search
+typescriptconst [searchTerm, setSearchTerm] = useState('')
+const [filteredActivities, setFilteredActivities] = useState([])
+
+// Filter activities when search term changes
+useEffect(() => {
+  if (!activities) return
+  
+  const filtered = activities.filter((activity) =>
+    activity.name.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+  
+  setFilteredActivities(filtered)
+}, [searchTerm, activities])
+Step 2: Add Search Input UI
+typescript<div className="mb-4">
+  <input
+    type="text"
+    placeholder="ค้นหากิจกรรม..."
+    value={searchTerm}
+    onChange={(e) => setSearchTerm(e.target.value)}
+    className="w-full px-4 py-2 border rounded-lg"
+  />
+</div>
+Step 3: Display Filtered Results
+typescript// Use filteredActivities instead of activities
+{filteredActivities.length > 0 ? (
+  filteredActivities.map((activity) => (
+    // ... render activity row
+  ))
+) : (
+  <tr>
+    <td colSpan="5" className="text-center py-4">
+      ไม่พบกิจกรรม
+    </td>
+  </tr>
+)}
+Step 4: Show Result Count
+typescript<p className="text-sm text-gray-600 mt-2">
+  แสดง {filteredActivities.length} / {activities?.length} กิจกรรม
+</p>
+
+Testing
+Test 1: Search by Activity Name
+
+Type "ปรับปรุง"
+Should show only activities with "ปรับปรุง" in name ✅
+
+Test 2: No Results
+
+Type "xyz123"
+Should show "ไม่พบกิจกรรม" ✅
+
+Test 3: Clear Search
+
+Clear search input
+Should show all activities again ✅
+
+Test 4: Real-time Search
+
+Type slowly, results update instantly ✅
+
+
+Checklist
+
+ Add searchTerm state
+ Add filteredActivities state
+ Add useEffect to filter activities
+ Add search input field
+ Update table to use filteredActivities
+ Show "ไม่พบกิจกรรม" when no results
+ Show result count
+ Test search functionality
+ Push Git
+
+
+Key Points
+✅ Search by:
+
+Activity name (name field)
+Real-time search (instant results)
+
+❌ Don't need to:
+
+Search by category (yet)
+Search by year (yet)
+Search by department (yet)
+
+
+UI Placement
+Search input should be:
+
+Above the activities table
+Below the "Add Activity" button
+Full width of the page

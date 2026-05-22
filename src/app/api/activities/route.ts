@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   if (status) where.status = status as ActivityStatus
 
   const activities = await prisma.activity.findMany({
-    where,
+    where: { ...where, isDeleted: false },
     include: { _count: { select: { participations: true } } },
     orderBy: { createdAt: "desc" },
   })

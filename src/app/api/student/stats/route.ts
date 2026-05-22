@@ -14,6 +14,7 @@ export async function GET() {
   const studentDept = session.user.department ?? ""
 
   const yearFilter = {
+    isDeleted: false,
     targetYear: studentYear,
     status: ActivityStatus.ACTIVE,
     OR: [

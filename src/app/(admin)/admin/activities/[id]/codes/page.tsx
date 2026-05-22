@@ -18,6 +18,7 @@ import { ArrowLeft, Ticket, CheckCircle2, XCircle } from "lucide-react"
 import { GenerateCodesForm } from "@/components/admin/generate-codes-form"
 import { DeleteCodeButton } from "@/components/admin/delete-code-button"
 import { PrintCodesButton } from "@/components/admin/print-codes-button"
+import { CopyCodeButton } from "@/components/admin/copy-code-button"
 
 export default async function CodesPage({
   params,
@@ -128,8 +129,11 @@ export default async function CodesPage({
               <TableBody>
                 {serializedCodes.map((code) => (
                   <TableRow key={code.id}>
-                    <TableCell className="font-mono font-bold text-lg tracking-widest">
-                      {code.code}
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <span className="font-mono font-bold text-lg tracking-widest">{code.code}</span>
+                        <CopyCodeButton code={code.code} />
+                      </div>
                     </TableCell>
                     <TableCell>
                       {code.isUsed ? (

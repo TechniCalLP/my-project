@@ -136,14 +136,16 @@ export default async function StudentDetailPage({ params }: PageProps) {
               <TableBody>
                 {student.participations.map((p) => (
                   <TableRow key={p.id}>
-                    <TableCell className="font-thai font-medium">{p.activity.name}</TableCell>
+                    <TableCell className="font-thai font-medium">
+                      {p.activity?.name || "[Deleted Activity]"}
+                    </TableCell>
                     <TableCell>
-                      <span className="text-xs font-thai text-gray-600">
-                        {CATEGORY_NAMES[p.activity.category]}
-                      </span>
+                    <span className="text-xs font-thai text-gray-600">
+                    {p.activity ? CATEGORY_NAMES[p.activity.category] : "—"}
+                    </span>
                     </TableCell>
                     <TableCell className="font-thai text-sm">
-                      {p.activity.targetYear} / {p.activity.targetSemester}
+                    {p.activity ? `${p.activity?.targetYear} / ${p.activity?.targetSemester}` : "—"}
                     </TableCell>
                     <TableCell className="font-thai text-sm">
                       {new Date(p.joinedAt).toLocaleDateString("th-TH", {

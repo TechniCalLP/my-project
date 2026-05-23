@@ -68,7 +68,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   wsParticipants["!cols"] = [{ wch: 14 }, { wch: 18 }, { wch: 20 }, { wch: 26 }, { wch: 10 }]
   XLSX.utils.book_append_sheet(wb, wsParticipants, "รายชื่อผู้เข้าร่วม")
 
-  wb.Workbook = { Views: [{ ActiveTab: 1 }] }
+
 
   const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" })
   const safeName = activity.name.replace(/[^฀-๿a-zA-Z0-9]/g, "_").slice(0, 40)

@@ -58,7 +58,7 @@ export default function RootLayout({
         {/* Contentsquare */}
         <Script
           id="contentsquare"
-          strategy="afterInteractive"
+          strategy="beforeInteractive"
           src="https://t.contentsquare.net/uxa/5c7490f5c2a75.js"
         />
       </body>

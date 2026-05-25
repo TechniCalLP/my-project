@@ -1,0 +1,155 @@
+🔧 PROMPT - Fix Student Year Detection Logic
+Project Path
+
+Problem
+Student import auto-detects year from department, but needs to handle repeat/special cases:
+Example:
+- StudentID: 6620901020
+- Department: "เทคโนโลยีสารสนเทศ.../1 2564 (ช.64(IT1))"
+- Auto-detect: 2568 - 2564 + 1 = ปวช 5 ❌
+- Should be: ปวช 3 (repeat year)
+
+Solution
+Add hard-coded rules for year detection:
+Rule:
+- If admission year <= 2564: Set to max (ปวช 3 or ปวส 2)
+- If admission year = 2565: ปวช 3
+- If admission year = 2566: ปวช 2
+- If admission year = 2567: ปวช 1
+- If admission year = 2568+: ปวช 1
+
+Implementation
+Step 1: Find Student Import API
+File: src/app/api/admin/import/students/route.ts
+Look for the student import endpoint where year is calculated.
+Step 2: Update Year Detection Logic
+Replace or add this function:
+typescriptfunction detectStudentYear(
+  admissionYear: number | null,
+  curriculumType: string | null
+): number | null {
+  if (!admissionYear || !curriculumType) {
+    return null;
+  }
+
+  // Hard-coded rules for year detection
+  // Handle repeat/special years
+  
+  if (admissionYear <= 2564) {
+    // Repeat year: students who entered before 2564
+    // Now at max level: ปวช 3 or ปวส 2
+    return curriculumType === 'ช' ? 3 : 2;
+  }
+
+  if (admissionYear === 2565) {
+    return 3; // ปวช 3
+  }
+
+  if (admissionYear === 2566) {
+    return 2; // ปวช 2 or ปวส 1
+  }
+
+  if (admissionYear === 2567) {
+    return 1; // ปวช 1
+  }
+
+  // For 2568 onwards
+  return 1;
+}
+Step 3: Use This Function in Import
+Find where you calculate current year from department:
+typescript// OLD (broken for repeat years):
+// const currentYear = 2568 - admissionYear + 1;
+
+// NEW (fixed):
+const currentYear = detectStudentYear(admissionYear, curriculumType);
+Step 4: Extract Admission Year & Type
+Make sure you're extracting these correctly from department:
+typescriptfunction extractYearAndType(department: string) {
+  // Extract year (2566, 2567, 2564, etc.)
+  const yearMatch = department.match(/(\d{4})/);
+  const admissionYear = yearMatch ? parseInt(yearMatch[1]) : null;
+
+  // Extract type: ช (ปวช) or ส (ปวส)
+  const typeMatch = department.match(/\(([ช|ส])\./);
+  const curriculumType = typeMatch ? typeMatch[1] : null;
+
+  return { admissionYear, curriculumType };
+}
+Step 5: Complete Import Flow
+typescript// In student import endpoint:
+
+const { admissionYear, curriculumType } = extractYearAndType(department);
+const currentYear = detectStudentYear(admissionYear, curriculumType);
+
+// Save to database
+const student = await prisma.student.create({
+  data: {
+    studentId,
+    firstName,
+    lastName,
+    department,
+    admissionYear,
+    curriculumType,
+    currentYear,
+    // ... other fields
+  }
+});
+
+Test Cases
+Test with these examples:
+1. Department: "...2564 (ช.64(IT1))"
+   → Year: 2564, Type: ช
+   → Expected: ปวช 3 ✅
+
+2. Department: "...2565 (ช.65(ACC))"
+   → Year: 2565, Type: ช
+   → Expected: ปวช 3 ✅
+
+3. Department: "...2566 (ส.66(BUS))"
+   → Year: 2566, Type: ส
+   → Expected: ปวส 1 (or ปวช 2) ✅
+
+4. Department: "...2567 (ช.67(IT1))"
+   → Year: 2567, Type: ช
+   → Expected: ปวช 1 ✅
+
+Database Schema
+If Student model doesn't have these fields, add them:
+prismamodel Student {
+  id String @id @default(cuid())
+  studentId String @unique
+  firstName String
+  lastName String
+  department String
+  
+  // Add these fields
+  admissionYear Int?
+  curriculumType String? // 'ช' or 'ส'
+  currentYear Int? // 1, 2, or 3
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+If fields exist, skip this step.
+
+Steps to Complete
+
+ Find student import endpoint
+ Extract year & type from department
+ Add detectStudentYear() function
+ Update import logic to use new function
+ Test with examples above
+ Build: npm run build
+ Commit: git add . && git commit -m "Fix: Student year detection for repeat years"
+ Push: git push origin main
+ Deploy to Vercel
+ Test import with Excel file
+
+
+Key Points
+✅ Handle repeat years (2564 and earlier)
+✅ Cap at max level (ปวช 3, ปวส 2)
+✅ Use hard-coded rules (simple, reliable)
+✅ Only extract year + type (ignore /1, IT1, etc.)
+✅ No manual column needed

@@ -25,29 +25,45 @@ const YEAR_LEVEL_MAP: Record<string, number> = {
   "ปวช.1": 1, "ปวช.2": 2, "ปวช.3": 3, "ปวส.1": 4, "ปวส.2": 5,
 }
 
-// "(ช.68(A1))" → "ปวช"  |  "(ส.69(E1))" → "ปวส"  |  not found → null
-function detectLevelFromHeaders(rows: string[][], firstStudentIdx: number): "ปวช" | "ปวส" | null {
+// "(ช.68(A1))" → { level: "ปวช", admissionYear: 2568 }
+// "(ส.69(E1))" → { level: "ปวส", admissionYear: 2569 }
+// not found → { level: null, admissionYear: null }
+function detectHeaderInfo(rows: string[][], firstStudentIdx: number): {
+  level: "ปวช" | "ปวส" | null
+  admissionYear: number | null
+} {
   for (let i = 0; i < firstStudentIdx; i++) {
     for (const cell of rows[i]) {
-      if (/\(ช\./.test(cell)) return "ปวช"
-      if (/\(ส\./.test(cell)) return "ปวส"
+      const chMatch = cell.match(/\(ช\.(\d{2})/)
+      if (chMatch) return { level: "ปวช", admissionYear: 2500 + parseInt(chMatch[1]) }
+      const soMatch = cell.match(/\(ส\.(\d{2})/)
+      if (soMatch) return { level: "ปวส", admissionYear: 2500 + parseInt(soMatch[1]) }
     }
   }
-  return null
+  return { level: null, admissionYear: null }
 }
 
-function calculateYear(studentId: string, level?: "ปวช" | "ปวส" | null): number {
-  const currentYear = new Date().getFullYear() + 543
-  const yearPrefix = parseInt(studentId.substring(0, 2))
-  const enrollYear = 2500 + yearPrefix
-  const yr = currentYear - enrollYear + 1
+// Use admissionYear from department header first; fall back to student ID prefix.
+// Caps ปวช at 3 and ปวส at 2 (stored as 4–5) so repeat-year students don't overflow.
+function calculateYear(
+  admissionYear: number | null,
+  level: "ปวช" | "ปวส" | null,
+  studentId?: string,
+): number {
+  const currentThaiYear = new Date().getFullYear() + 543
+  const enrollYear = admissionYear
+    ?? (studentId ? 2500 + parseInt(studentId.substring(0, 2)) : null)
+
+  if (!enrollYear) return level === "ปวส" ? 4 : 1
+
+  const yr = currentThaiYear - enrollYear + 1
 
   if (level === "ปวส") {
     // ปวส.1 = 4, ปวส.2 = 5 in YEAR_MAP
     return Math.max(4, Math.min(5, yr + 3))
   }
   // ปวช.1 = 1, ปวช.2 = 2, ปวช.3 = 3
-  return Math.max(1, Math.min(5, yr))
+  return Math.max(1, Math.min(3, yr))
 }
 
 function detectDelimiter(text: string): string {
@@ -182,15 +198,15 @@ function parseRows(rows: string[][], overrideDepartment?: string): {
     }
   }
 
-  // Extract department and level (ปวช/ปวส) from header rows
+  // Extract department, level (ปวช/ปวส), and admission year from header rows
   const defaultDepartment = overrideDepartment ||
     (firstStudentIdx > 0
       ? detectDepartmentFromHeaders(rows, firstStudentIdx)
       : "ไม่ระบุ")
 
-  const detectedLevel = firstStudentIdx > 0
-    ? detectLevelFromHeaders(rows, firstStudentIdx)
-    : null
+  const { level: detectedLevel, admissionYear: detectedAdmissionYear } = firstStudentIdx > 0
+    ? detectHeaderInfo(rows, firstStudentIdx)
+    : { level: null, admissionYear: null }
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]
@@ -209,13 +225,13 @@ function parseRows(rows: string[][], overrideDepartment?: string): {
         ;({ prefix, firstName } = extractPrefixAndName(String(row[1] ?? "")))
         lastName = String(row[2] ?? "").trim()
         department = defaultDepartment
-        year = parseYearLevel(String(row[4] ?? "")) ?? calculateYear(studentId, detectedLevel)
+        year = parseYearLevel(String(row[4] ?? "")) ?? calculateYear(detectedAdmissionYear, detectedLevel, studentId)
       } else {
         // col[0]=rowNum, col[1]=studentId, col[2]=prefix+firstName, col[3]=lastName
         ;({ prefix, firstName } = extractPrefixAndName(String(row[2] ?? "")))
         lastName = String(row[3] ?? "").trim()
         department = defaultDepartment
-        year = calculateYear(studentId, detectedLevel)
+        year = calculateYear(detectedAdmissionYear, detectedLevel, studentId)
       }
 
       if (!firstName) throw new Error("ชื่อหายไป")

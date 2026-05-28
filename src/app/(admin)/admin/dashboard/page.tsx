@@ -16,11 +16,12 @@ export default async function AdminDashboardPage() {
 
   const [totalActivities, activeActivities, totalStudents, totalParticipations, recentActivities] =
     await Promise.all([
-      prisma.activity.count(),
-      prisma.activity.count({ where: { status: ActivityStatus.ACTIVE } }),
+      prisma.activity.count({ where: { isDeleted: false } }),
+      prisma.activity.count({ where: { isDeleted: false, status: ActivityStatus.ACTIVE } }),
       prisma.student.count(),
       prisma.participation.count(),
       prisma.activity.findMany({
+        where: { isDeleted: false },
         include: { _count: { select: { participations: true } } },
         orderBy: { createdAt: "desc" },
         take: 10,

@@ -7,6 +7,7 @@ import { CATEGORY_NAMES } from "@/lib/constants"
 import { ActivityCategory } from "@/generated/prisma"
 import { CheckCircle2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { formatThaiDate } from "@/lib/format"
 
 const CATEGORY_COLORS: Record<ActivityCategory, string> = {
   ACADEMIC: "bg-purple-100 text-purple-700",
@@ -22,15 +23,6 @@ const CATEGORY_ICONS: Record<ActivityCategory, string> = {
   SCOUT: "⛺",
 }
 
-const THAI_MONTHS = [
-  "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
-  "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
-]
-
-function formatThaiDate(date: string): string {
-  const d = new Date(date)
-  return `${d.getDate()} ${THAI_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`
-}
 
 interface ParticipationItem {
   id: string

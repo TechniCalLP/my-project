@@ -15,6 +15,7 @@ model Student {
   lastName       String
   year           String
   department     String
+  group          String?
   email          String?
   phone          String?
   password       String

@@ -24,6 +24,7 @@ interface StudentPreview {
   lastName: string
   department: string
   year: number
+  group: string | null
 }
 
 interface ImportError {
@@ -251,6 +252,7 @@ export default function ImportStudentsForm() {
                     <TableHead className="font-thai">ชื่อ-สกุล</TableHead>
                     <TableHead className="font-thai">แผนก</TableHead>
                     <TableHead className="font-thai">ชั้นปี</TableHead>
+                    <TableHead className="font-thai">กลุ่ม</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -260,6 +262,7 @@ export default function ImportStudentsForm() {
                       <TableCell className="font-thai text-sm">{s.prefix}{s.firstName} {s.lastName}</TableCell>
                       <TableCell className="font-thai text-sm">{s.department}</TableCell>
                       <TableCell className="font-thai text-sm">{YEAR_DISPLAY[s.year] ?? `ปีที่ ${s.year}`}</TableCell>
+                      <TableCell className="font-mono text-sm">{s.group ?? '-'}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

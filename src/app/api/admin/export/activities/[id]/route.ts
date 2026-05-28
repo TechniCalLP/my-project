@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import * as XLSX from "xlsx"
 import { CATEGORY_NAMES } from "@/lib/constants"
+import { formatThaiDateTime } from "@/lib/format"
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: "เปิดรับสมัคร",
@@ -45,7 +46,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     { "หัวข้อ": "สถานะ", "ข้อมูล": STATUS_LABELS[activity.status] },
     { "หัวข้อ": "ปีการศึกษา", "ข้อมูล": activity.targetYear },
     { "หัวข้อ": "ภาคเรียน", "ข้อมูล": activity.targetSemester },
-    { "หัวข้อ": "วันที่จัดกิจกรรม", "ข้อมูล": activity.startDate.toLocaleDateString("th-TH") },
+    { "หัวข้อ": "วันที่จัดกิจกรรม", "ข้อมูล": formatThaiDateTime(activity.startDate) },
     { "หัวข้อ": "สถานที่", "ข้อมูล": activity.location || "-" },
     { "หัวข้อ": "จำนวนผู้เข้าร่วม", "ข้อมูล": activity.participations.length },
   ]
@@ -54,18 +55,20 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   XLSX.utils.book_append_sheet(wb, wsInfo, "ข้อมูลกิจกรรม")
 
   // Sheet 2: Participant list
-  const participantRows = activity.participations.map((p) => ({
+  const participantRows = activity.participations.map((p, i) => ({
+    "ลำดับ": i + 1,
     "รหัสนักศึกษา": p.student.studentId,
     "ชื่อ": p.student.firstName,
     "นามสกุล": p.student.lastName,
     "แผนก": p.student.department,
     "ชั้นปี": p.student.year,
+    "วันที่เข้าร่วม": formatThaiDateTime(p.joinedAt),
   }))
 
   const wsParticipants = XLSX.utils.json_to_sheet(
     participantRows.length > 0 ? participantRows : [{ "หมายเหตุ": "ยังไม่มีผู้เข้าร่วม" }]
   )
-  wsParticipants["!cols"] = [{ wch: 14 }, { wch: 18 }, { wch: 20 }, { wch: 26 }, { wch: 10 }]
+  wsParticipants["!cols"] = [{ wch: 6 }, { wch: 14 }, { wch: 18 }, { wch: 20 }, { wch: 26 }, { wch: 10 }, { wch: 22 }]
   XLSX.utils.book_append_sheet(wb, wsParticipants, "รายชื่อผู้เข้าร่วม")
 
 

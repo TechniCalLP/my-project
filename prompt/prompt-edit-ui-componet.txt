@@ -1,0 +1,640 @@
+📋 PROMPT - Add Date/Time Picker to Create Activity Form
+🎯 ความต้องการ
+เพิ่ม Date/Time Picker ในหน้า "Create Activity" โดยใช้ shadcn/ui Components:
+
+DatePickerTime Component (Date + Time)
+เก็บข้อมูล: startDate, endDate + Time
+ส่ง Backend: Combine Date + Time → DateTime
+
+
+📊 ตัวอย่าง Current Form
+typescript// Current: ไม่มี Date/Time
+const createActivityForm = {
+  name: "Workshop ABC",
+  type: "WORKSHOP",
+  description: "...",
+  targetYear: "1",
+  maxParticipants: 50,
+  // ❌ startDate, endDate, startTime, endTime?
+};
+ต้องแก้เป็น:
+typescript// Updated: มี Date + Time
+const createActivityForm = {
+  name: "Workshop ABC",
+  type: "WORKSHOP",
+  description: "...",
+  targetYear: "1",
+  maxParticipants: 50,
+  startDate: Date,        // ✅ NEW
+  startTime: string,      // ✅ NEW (HH:mm:ss)
+  endDate: Date,          // ✅ NEW
+  endTime: string,        // ✅ NEW (HH:mm:ss)
+};
+
+🔧 Implementation - Create Activity Form
+Step 1: Create DatePickerTime Component (Already Given)
+typescript// components/ui/date-picker-time.tsx
+
+"use client"
+import * as React from "react"
+import { format } from "date-fns"
+import { ChevronDownIcon } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+
+interface DatePickerTimeProps {
+  label: string;
+  date?: Date;
+  time?: string;
+  onDateChange: (date: Date | undefined) => void;
+  onTimeChange: (time: string) => void;
+}
+
+export function DatePickerTime({
+  label,
+  date,
+  time = "10:30:00",
+  onDateChange,
+  onTimeChange,
+}: DatePickerTimeProps) {
+  const [open, setOpen] = React.useState(false)
+
+  return (
+    <FieldGroup className="flex flex-row gap-4">
+      <Field>
+        <FieldLabel htmlFor={`date-picker-${label}`}>{label} - Date</FieldLabel>
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger 
+            render={
+              <Button 
+                variant="outline" 
+                id={`date-picker-${label}`} 
+                className="w-40 justify-between font-normal"
+              >
+                {date ? format(date, "PPP") : "Select date"}
+                <ChevronDownIcon data-icon="inline-end" />
+              </Button>
+            } 
+          />
+          <PopoverContent className="w-auto overflow-hidden p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={date}
+              captionLayout="dropdown"
+              defaultMonth={date}
+              onSelect={(selectedDate) => {
+                onDateChange(selectedDate)
+                setOpen(false)
+              }}
+            />
+          </PopoverContent>
+        </Popover>
+      </Field>
+
+      <Field className="w-40">
+        <FieldLabel htmlFor={`time-picker-${label}`}>{label} - Time</FieldLabel>
+        <Input
+          type="time"
+          id={`time-picker-${label}`}
+          step="1"
+          value={time}
+          onChange={(e) => onTimeChange(e.target.value)}
+          className="appearance-none bg-background [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+        />
+      </Field>
+    </FieldGroup>
+  )
+}
+Step 2: Update Create Activity Form Component
+typescript// app/admin/activities/create/page.tsx
+
+"use client"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { DatePickerTime } from "@/components/ui/date-picker-time"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { toast } from "sonner"
+
+interface CreateActivityFormData {
+  name: string;
+  type: string;
+  description: string;
+  targetYear: string;
+  maxParticipants: number;
+  startDate?: Date;
+  startTime: string;
+  endDate?: Date;
+  endTime: string;
+}
+
+export default function CreateActivityPage() {
+  const router = useRouter()
+  const [loading, setLoading] = useState(false)
+
+  // Form State
+  const [formData, setFormData] = useState<CreateActivityFormData>({
+    name: "",
+    type: "WORKSHOP",
+    description: "",
+    targetYear: "1",
+    maxParticipants: 50,
+    startDate: undefined,
+    startTime: "10:30:00",
+    endDate: undefined,
+    endTime: "11:30:00",
+  })
+
+  // Handle Text Input
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === "maxParticipants" ? parseInt(value) : value
+    }))
+  }
+
+  // Handle Textarea
+  const handleTextAreaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setFormData(prev => ({
+      ...prev,
+      description: e.target.value
+    }))
+  }
+
+  // Handle Select
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
+  // Handle Start Date Change
+  const handleStartDateChange = (date: Date | undefined) => {
+    setFormData(prev => ({
+      ...prev,
+      startDate: date
+    }))
+  }
+
+  // Handle Start Time Change
+  const handleStartTimeChange = (time: string) => {
+    setFormData(prev => ({
+      ...prev,
+      startTime: time
+    }))
+  }
+
+  // Handle End Date Change
+  const handleEndDateChange = (date: Date | undefined) => {
+    setFormData(prev => ({
+      ...prev,
+      endDate: date
+    }))
+  }
+
+  // Handle End Time Change
+  const handleEndTimeChange = (time: string) => {
+    setFormData(prev => ({
+      ...prev,
+      endTime: time
+    }))
+  }
+
+  // Combine Date + Time → DateTime
+  function combineDateAndTime(date: Date | undefined, time: string): Date | null {
+    if (!date) return null;
+
+    const [hours, minutes, seconds] = time.split(':').map(Number);
+    const combined = new Date(date);
+    combined.setHours(hours, minutes, seconds || 0);
+    return combined;
+  }
+
+  // Submit Form
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    // Validation
+    if (!formData.name.trim()) {
+      toast.error("Activity name is required")
+      return
+    }
+
+    if (!formData.startDate) {
+      toast.error("Start date is required")
+      return
+    }
+
+    if (!formData.endDate) {
+      toast.error("End date is required")
+      return
+    }
+
+    // Combine Date + Time
+    const startDateTime = combineDateAndTime(formData.startDate, formData.startTime)
+    const endDateTime = combineDateAndTime(formData.endDate, formData.endTime)
+
+    if (!startDateTime || !endDateTime) {
+      toast.error("Invalid date/time")
+      return
+    }
+
+    // Check if start time is before end time
+    if (startDateTime >= endDateTime) {
+      toast.error("Start time must be before end time")
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const response = await fetch("/api/activities/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formData.name,
+          type: formData.type,
+          description: formData.description,
+          targetYear: formData.targetYear,
+          maxParticipants: formData.maxParticipants,
+          startDate: startDateTime.toISOString(),  // ✅ Send combined DateTime
+          endDate: endDateTime.toISOString(),      // ✅ Send combined DateTime
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to create activity")
+      }
+
+      const data = await response.json()
+      toast.success("Activity created successfully!")
+      router.push("/admin/activities")
+    } catch (error) {
+      console.error("Error:", error)
+      toast.error("Failed to create activity")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="container mx-auto py-8">
+      <Card>
+        <CardHeader>
+          <CardTitle>Create New Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Activity Name */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Activity Name *
+              </label>
+              <Input
+                type="text"
+                name="name"
+                placeholder="Enter activity name"
+                value={formData.name}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+
+            {/* Activity Type */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Activity Type
+              </label>
+              <Select value={formData.type} onValueChange={(value) => handleSelectChange("type", value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="WORKSHOP">Workshop</SelectItem>
+                  <SelectItem value="SEMINAR">Seminar</SelectItem>
+                  <SelectItem value="COMPETITION">Competition</SelectItem>
+                  <SelectItem value="TRAINING">Training</SelectItem>
+                  <SelectItem value="PROJECT">Project</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Description
+              </label>
+              <Textarea
+                name="description"
+                placeholder="Enter activity description"
+                value={formData.description}
+                onChange={handleTextAreaChange}
+                rows={4}
+              />
+            </div>
+
+            {/* Target Year */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Target Year
+              </label>
+              <Select value={formData.targetYear} onValueChange={(value) => handleSelectChange("targetYear", value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">ปวช 1</SelectItem>
+                  <SelectItem value="2">ปวช 2</SelectItem>
+                  <SelectItem value="3">ปวช 3</SelectItem>
+                  <SelectItem value="4">ปวส 1</SelectItem>
+                  <SelectItem value="5">ปวส 2</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Max Participants */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Max Participants
+              </label>
+              <Input
+                type="number"
+                name="maxParticipants"
+                placeholder="Enter max participants"
+                value={formData.maxParticipants}
+                onChange={handleInputChange}
+                min="1"
+              />
+            </div>
+
+            {/* Start Date + Time */}
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <h3 className="font-semibold text-blue-900 mb-4">Activity Start Time</h3>
+              <DatePickerTime
+                label="Start"
+                date={formData.startDate}
+                time={formData.startTime}
+                onDateChange={handleStartDateChange}
+                onTimeChange={handleStartTimeChange}
+              />
+            </div>
+
+            {/* End Date + Time */}
+            <div className="bg-green-50 p-4 rounded-lg">
+              <h3 className="font-semibold text-green-900 mb-4">Activity End Time</h3>
+              <DatePickerTime
+                label="End"
+                date={formData.endDate}
+                time={formData.endTime}
+                onDateChange={handleEndDateChange}
+                onTimeChange={handleEndTimeChange}
+              />
+            </div>
+
+            {/* Display Combined DateTime (Preview) */}
+            {formData.startDate && formData.endDate && (
+              <div className="bg-gray-100 p-4 rounded-lg">
+                <h4 className="font-semibold mb-2">Preview:</h4>
+                <p className="text-sm">
+                  Start: {formData.startDate.toLocaleDateString()} {formData.startTime}
+                </p>
+                <p className="text-sm">
+                  End: {formData.endDate.toLocaleDateString()} {formData.endTime}
+                </p>
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <div className="flex gap-4">
+              <Button
+                type="submit"
+                disabled={loading}
+                className="flex-1"
+              >
+                {loading ? "Creating..." : "Create Activity"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => router.back()}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+Step 3: Update Backend API
+typescript// pages/api/activities/create.ts
+
+import { NextApiRequest, NextApiResponse } from "next"
+import { getServerSession } from "next-auth/next"
+import { prisma } from "@/lib/prisma"
+import { authOptions } from "./auth/[...nextauth]"
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" })
+  }
+
+  try {
+    // Check authentication
+    const session = await getServerSession(req, res, authOptions)
+    if (!session || session.user.role !== "ADMIN") {
+      return res.status(401).json({ error: "Unauthorized" })
+    }
+
+    const {
+      name,
+      type,
+      description,
+      targetYear,
+      maxParticipants,
+      startDate,  // ✅ ISO String
+      endDate,    // ✅ ISO String
+    } = req.body
+
+    // Validation
+    if (!name || !startDate || !endDate) {
+      return res.status(400).json({ error: "Missing required fields" })
+    }
+
+    // Convert ISO strings to Date
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+
+    // Validate dates
+    if (start >= end) {
+      return res.status(400).json({ error: "Start date must be before end date" })
+    }
+
+    // Create activity
+    const activity = await prisma.activity.create({
+      data: {
+        name,
+        type,
+        description,
+        targetYear: parseInt(targetYear),
+        maxParticipants,
+        startDate: start,      // ✅ Store DateTime
+        endDate: end,          // ✅ Store DateTime
+        createdBy: session.user.id,
+      },
+    })
+
+    return res.status(201).json(activity)
+  } catch (error) {
+    console.error("Error:", error)
+    return res.status(500).json({ error: "Internal server error" })
+  }
+}
+
+📊 Database Schema (Updated)
+sql-- Activity Table
+CREATE TABLE Activity (
+  id UUID PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  type VARCHAR(50),
+  description TEXT,
+  targetYear INT,
+  maxParticipants INT,
+  startDate TIMESTAMP NOT NULL,    ← ✅ NEW: Date + Time
+  endDate TIMESTAMP NOT NULL,      ← ✅ NEW: Date + Time
+  createdBy UUID,
+  createdAt TIMESTAMP,
+  updatedAt TIMESTAMP
+);
+Prisma Schema:
+prisma// prisma/schema.prisma
+
+model Activity {
+  id                String   @id @default(cuid())
+  name              String
+  type              String   // WORKSHOP, SEMINAR, etc.
+  description       String?
+  targetYear        Int
+  maxParticipants   Int
+  startDate         DateTime   ← ✅ NEW
+  endDate           DateTime   ← ✅ NEW
+  
+  createdBy         String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  codes             ActivityCode[]
+  participations    Participation[]
+  @@map("activities")
+}
+
+🧪 Test Cases
+Test 1: Create Activity with Start/End DateTime
+typescriptdescribe('Create Activity with DateTime', () => {
+  it('should create activity with correct start and end time', async () => {
+    // Arrange
+    const startDate = new Date('2024-05-25T10:30:00');
+    const endDate = new Date('2024-05-25T11:30:00');
+
+    const formData = {
+      name: "Workshop ABC",
+      type: "WORKSHOP",
+      startDate,
+      endDate,
+      startTime: "10:30:00",
+      endTime: "11:30:00",
+    };
+
+    // Act
+    const response = await fetch('/api/activities/create', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...formData,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      }),
+    });
+
+    // Assert
+    expect(response.status).toBe(201);
+    const data = await response.json();
+    expect(data.startDate).toBe(startDate.toISOString());
+    expect(data.endDate).toBe(endDate.toISOString());
+  });
+});
+Test 2: Validate Start Before End
+typescriptdescribe('DateTime Validation', () => {
+  it('should reject if start time is after end time', async () => {
+    const startDate = new Date('2024-05-25T11:30:00');
+    const endDate = new Date('2024-05-25T10:30:00');
+
+    const response = await fetch('/api/activities/create', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: "Invalid Activity",
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      }),
+    });
+
+    expect(response.status).toBe(400);
+    const error = await response.json();
+    expect(error.error).toContain("Start date must be before end date");
+  });
+});
+
+📋 Implementation Checklist
+✅ Create DatePickerTime Component
+✅ Add to Create Activity Form
+✅ Handle Date + Time Input
+✅ Combine Date + Time → DateTime
+✅ Validate Start < End
+✅ Send to Backend (ISO String)
+✅ Update Database Schema
+✅ Update Prisma Schema
+✅ Update Backend API
+✅ Test DateTime Creation
+✅ Test DateTime Validation
+✅ Display DateTime in Preview
+
+🎯 Summary
+ต้อง: เพิ่ม Date/Time Picker ในหน้า Create Activity
+Component:
+
+DatePickerTime (Date + Time)
+
+Steps:
+
+✅ Create DatePickerTime component
+✅ Add to Create Activity form
+✅ Handle Date + Time state
+✅ Combine → DateTime
+✅ Validate Start < End
+✅ Send to Backend
+✅ Update Database
+✅ Update API
+
+Result: Activity มี startDate + endDate พร้อม Time ✅

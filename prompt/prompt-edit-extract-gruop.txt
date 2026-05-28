@@ -1,0 +1,328 @@
+📋 PROMPT - Extract Group/Program จากชื่อแผนก
+🎯 ความต้องการ
+เมื่อ Import นักศึกษา ต้อง Extract:
+
+Admission Year (ปีการเข้า) - 2566, 2567, etc.
+Curriculum Type (ประเภท) - ช (Vocational) / ส (High Voc)
+Group/Program (กลุ่ม) - A1, A2, IT1, AU1, etc. ← ใหม่!
+
+
+📊 ตัวอย่างข้อมูล
+ปัจจุบัน (Existing):
+Department: เทคโนโลยีสารสนเทศ.../1 2566 (ช.66(IT1))
+├─ Extracted:
+│  ├─ Admission Year: 2566 ✅
+│  ├─ Curriculum Type: ช ✅
+│  └─ Group: IT1 ← ต้องเพิ่ม!
+
+Department: ช่างยนต์ กลุ่ม A1 2566 (ช.66(AU1))
+├─ Extracted:
+│  ├─ Admission Year: 2566 ✅
+│  ├─ Curriculum Type: ช ✅
+│  └─ Group: A1 หรือ AU1? ← ต้องเลือก!
+
+🔧 Logic - วิธีแยก Group
+Pattern ที่ใช้:
+[ชื่อแผนก] [กลุ่ม?] [ปี] (ประเภท.ปี(GROUP_CODE))
+
+ตัวอย่าง:
+1. เทคโนโลยีสารสนเทศ/1 2566 (ช.66(IT1))
+   ├─ Group (Bracketed): IT1 ← ใช้นี่!
+   
+2. ช่างยนต์ กลุ่ม A1 2566 (ช.66(AU1))
+   ├─ Group (Text): A1 ← ใช้นี่!
+   └─ Program Code (Bracketed): AU1 ← ถ้า A1 ไม่เจอ
+ลำดับความสำคัญ (Priority):
+1️⃣ ค้นหา "กลุ่ม [A-Z0-9]+" 
+   └─ เช่น "กลุ่ม A1" → Extract "A1"
+
+2️⃣ ค้นหาใน Bracketed "(ประเภท.ปี([A-Z0-9]+))"
+   └─ เช่น (ช.66(AU1)) → Extract "AU1"
+   
+3️⃣ ค้นหา "/[0-9]" 
+   └─ เช่น "/1" → อาจเป็น Group "1"
+
+💻 Pseudocode
+javascriptfunction extractGroupFromDepartment(departmentName) {
+  // Input: "ช่างยนต์ กลุ่ม A1 2566 (ช.66(AU1))"
+  
+  // 1️⃣ ลองหา "กลุ่ม [A-Z0-9]+"
+  const groupMatch = departmentName.match(/กลุ่ม\s+([A-Z0-9]+)/i);
+  if (groupMatch) {
+    return groupMatch[1]; // "A1"
+  }
+  
+  // 2️⃣ ลองหา Bracketed "(ประเภท.ปี([A-Z0-9]+))"
+  const bracketMatch = departmentName.match(/\(([ชส])\.(\d{2})\(([A-Z0-9]+)\)\)/);
+  if (bracketMatch) {
+    return bracketMatch[3]; // "AU1"
+  }
+  
+  // 3️⃣ ลองหา "/[0-9]" ที่อยู่หลัง department name
+  const slashMatch = departmentName.match(/\/(\d+)\s+\d{4}/);
+  if (slashMatch) {
+    return slashMatch[1]; // "1"
+  }
+  
+  // 4️⃣ ไม่เจอ group → return null
+  return null; // "No group found"
+}
+
+📋 Test Cases
+Test 1: กลุ่มแบบข้อความ (Text Group)
+Input: "ช่างยนต์ กลุ่ม A1 2566 (ช.66(AU1))"
+
+Expected Output:
+├─ Group: "A1" ← ใช้ Text ก่อน
+├─ Program: "AU1"
+├─ Admission Year: 2566
+└─ Curriculum Type: "ช"
+Test 2: กลุ่มแบบ Program Code (Bracketed)
+Input: "เทคโนโลยีสารสนเทศ/1 2566 (ช.66(IT1))"
+
+Expected Output:
+├─ Group: "IT1" ← ใช้ Bracketed
+├─ Program: "IT1"
+├─ Admission Year: 2566
+└─ Curriculum Type: "ช"
+Test 3: กลุ่มแบบ Slash
+Input: "เทคโนโลยีสารสนเทศ/2 2566 (ส.66(IT2))"
+
+Expected Output:
+├─ Group: "2" ← ใช้ Slash
+├─ Program: "IT2"
+├─ Admission Year: 2566
+└─ Curriculum Type: "ส"
+Test 4: ไม่มี Group
+Input: "ศิลปศาสตร์ 2566 (ช.66)"
+
+Expected Output:
+├─ Group: null ← ไม่เจอ
+├─ Program: null
+├─ Admission Year: 2566
+└─ Curriculum Type: "ช"
+
+🔄 Flow - Import + Extract Group
+1️⃣ Upload Excel File
+   └─ Student List with Department Names
+
+2️⃣ Parse Each Row
+   └─ For each student:
+      ├─ Extract: Admission Year
+      ├─ Extract: Curriculum Type (ช/ส)
+      └─ Extract: Group (NEW!) ← ตรงนี้!
+
+3️⃣ Validate Data
+   └─ Year valid? ✅
+   └─ Type valid? ✅
+   └─ Group valid? ✅
+
+4️⃣ Review Before Import
+   ├─ Show preview:
+   │  ├─ Student ID
+   │  ├─ Name
+   │  ├─ Department
+   │  ├─ Year (auto-detected)
+   │  ├─ Type (auto-detected)
+   │  └─ Group (auto-detected) ← ใหม่!
+   └─ Ask confirmation
+
+5️⃣ Import to Database
+   └─ Insert with Group field
+
+📊 Database Schema Update
+Student Table (Updated):
+sqlCREATE TABLE Student (
+  id UUID PRIMARY KEY,
+  studentId VARCHAR(10) UNIQUE,
+  firstName VARCHAR(100),
+  lastName VARCHAR(100),
+  department VARCHAR(200),
+  admissionYear INT,
+  curriculumType VARCHAR(1), -- 'ช' or 'ส'
+  currentYear INT,
+  group VARCHAR(50), ← NEW FIELD!
+  status VARCHAR(20),
+  userId UUID FOREIGN KEY,
+  createdAt TIMESTAMP,
+  updatedAt TIMESTAMP
+);
+
+🔐 Validation Rules
+javascript// Validate Group
+function isValidGroup(group) {
+  if (!group) return true; // Optional field
+  
+  // Group should be alphanumeric + Thai chars
+  // Pattern: A1, AU1, IT1, 1, 2, etc.
+  const pattern = /^[A-Z0-9ก-ฮ]+$/i;
+  return pattern.test(group);
+}
+
+// Max length
+const MAX_GROUP_LENGTH = 50;
+
+// Example valid groups:
+const validGroups = [
+  'A1', 'A2',        // Text groups
+  'AU1', 'IT1',      // Program codes
+  '1', '2',          // Numeric
+  'ห้อง1',          // Thai mixed
+];
+
+// Example invalid:
+const invalidGroups = [
+  'A/1',            // Special chars
+  'GROUP@1',        // Invalid chars
+];
+
+📝 Implementation Steps
+Step 1: Update Parse Function
+typescript// lib/parseStudentImport.ts
+
+interface StudentData {
+  studentId: string;
+  name: string;
+  department: string;
+  admissionYear: number;
+  curriculumType: 'ช' | 'ส';
+  currentYear: number;
+  group?: string; // ← ADD THIS
+}
+
+function parseStudentRow(row: any): StudentData {
+  const department = row.department;
+  
+  return {
+    studentId: row.studentId,
+    name: row.name,
+    department: department,
+    admissionYear: extractAdmissionYear(department),
+    curriculumType: extractCurriculumType(department),
+    currentYear: detectStudentYear(...),
+    group: extractGroup(department), // ← NEW
+  };
+}
+
+function extractGroup(departmentName: string): string | null {
+  // Use logic from above
+  const groupMatch = departmentName.match(/กลุ่ม\s+([A-Z0-9]+)/i);
+  if (groupMatch) return groupMatch[1];
+  
+  const bracketMatch = departmentName.match(/\(([ชส])\.(\d{2})\(([A-Z0-9]+)\)\)/);
+  if (bracketMatch) return bracketMatch[3];
+  
+  const slashMatch = departmentName.match(/\/(\d+)\s+\d{4}/);
+  if (slashMatch) return slashMatch[1];
+  
+  return null;
+}
+Step 2: Update Preview UI
+jsx// Show Group in preview table
+<table>
+  <thead>
+    <tr>
+      <th>Student ID</th>
+      <th>Name</th>
+      <th>Department</th>
+      <th>Year</th>
+      <th>Type</th>
+      <th>Group ← NEW</th>
+    </tr>
+  </thead>
+  <tbody>
+    {students.map(s => (
+      <tr key={s.studentId}>
+        <td>{s.studentId}</td>
+        <td>{s.name}</td>
+        <td>{s.department}</td>
+        <td>{s.currentYear}</td>
+        <td>{s.curriculumType}</td>
+        <td>{s.group || '-'}</td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+Step 3: Update Database Insert
+typescript// pages/api/students/import.ts
+
+const studentData = {
+  studentId: parsed.studentId,
+  firstName: firstName,
+  lastName: lastName,
+  department: parsed.department,
+  admissionYear: parsed.admissionYear,
+  curriculumType: parsed.curriculumType,
+  currentYear: parsed.currentYear,
+  group: parsed.group, // ← ADD THIS
+  status: 'ACTIVE',
+  userId: newUser.id,
+};
+
+await prisma.student.create({
+  data: studentData,
+});
+
+✅ Testing Checklist
+✅ Parse group from "กลุ่ม A1" format
+✅ Parse group from "(ช.66(AU1))" format
+✅ Parse group from "/1" format
+✅ Handle missing group (null/empty)
+✅ Validate group format
+✅ Display group in preview
+✅ Save group to database
+✅ Query students by group
+✅ Export students with group
+
+📊 Example: Full Import Flow
+User uploads: student_list.xlsx
+
+File content:
+├─ Row 1: "69201010001 | ชื่อสกุล | ช่างยนต์ กลุ่ม A1 2566 (ช.66(AU1))"
+├─ Row 2: "69201010002 | ชื่อสกุล | เทคโนโลยีสารสนเทศ/1 2566 (ช.66(IT1))"
+└─ Row 3: "69201010003 | ชื่อสกุล | ศิลปศาสตร์ 2566 (ช.66)"
+
+System parses:
+├─ Row 1:
+│  ├─ Year: 2566 ✅
+│  ├─ Type: ช ✅
+│  └─ Group: A1 ✅
+├─ Row 2:
+│  ├─ Year: 2566 ✅
+│  ├─ Type: ช ✅
+│  └─ Group: IT1 ✅
+└─ Row 3:
+   ├─ Year: 2566 ✅
+   ├─ Type: ช ✅
+   └─ Group: null ✅
+
+Preview shown to user:
+┌──────────────┬────────┬──────┬──────┐
+│ Student ID   │ Year   │ Type │ Group│
+├──────────────┼────────┼──────┼──────┤
+│ 69201010001  │ ปวช 1  │ ช    │ A1   │
+│ 69201010002  │ ปวช 1  │ ช    │ IT1  │
+│ 69201010003  │ ปวช 1  │ ช    │ -    │
+└──────────────┴────────┴──────┴──────┘
+
+User clicks "Confirm Import" ✅
+
+Database updated:
+├─ Student 1: group = "A1"
+├─ Student 2: group = "IT1"
+└─ Student 3: group = null
+
+🎯 สรุป
+ต้อง Extract Group จากชื่อแผนก:
+
+✅ ลองหา "กลุ่ม [A-Z0-9]+" ก่อน
+✅ ถ้าไม่เจอ ลองหา "([A-Z0-9]+)" ใน Bracket
+✅ ถ้าไม่เจอ ลองหา "/[0-9]"
+✅ ถ้าไม่เจอ ให้เป็น null (optional)
+
+เพิ่มใน Database:
+
+✅ Add field: group in Student table
+✅ Update import logic
+✅ Show in preview
+✅ Save to database

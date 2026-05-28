@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ActivityCategory, ActivityStatus } from "@/generated/prisma"
 import { CheckCircle2, Calendar, TrendingUp, ArrowRight, CheckCircle } from "lucide-react"
 import { SemesterTabs } from "@/components/activities/semester-tabs"
+import { formatThaiDate } from "@/lib/format"
 
 const CATEGORY_ICONS: Record<ActivityCategory, string> = {
   ACADEMIC: "📚",
@@ -193,11 +194,7 @@ export default async function DashboardPage() {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium font-thai text-sm truncate">{p.activity?.name ?? "[กิจกรรมที่ถูกลบ]"}</p>
                       <p className="text-xs text-gray-400 font-thai">
-                        {new Date(p.joinedAt).toLocaleDateString("th-TH", {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })}
+                        {formatThaiDate(p.joinedAt)}
                       </p>
                     </div>
                     <CheckCircle className="w-5 h-5 text-success shrink-0" />

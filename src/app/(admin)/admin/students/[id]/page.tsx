@@ -13,6 +13,7 @@ import {
 import { ArrowLeft, Mail, Phone, Pencil } from "lucide-react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
+import { formatThaiDate } from "@/lib/format"
 import ResetPasswordButton from "@/components/admin/reset-password-button"
 import { CATEGORY_NAMES } from "@/lib/constants"
 
@@ -148,11 +149,7 @@ export default async function StudentDetailPage({ params }: PageProps) {
                     {p.activity ? `${p.activity?.targetYear} / ${p.activity?.targetSemester}` : "—"}
                     </TableCell>
                     <TableCell className="font-thai text-sm">
-                      {new Date(p.joinedAt).toLocaleDateString("th-TH", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
+                      {formatThaiDate(p.joinedAt)}
                     </TableCell>
                   </TableRow>
                 ))}

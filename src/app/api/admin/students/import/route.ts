@@ -12,6 +12,7 @@ interface StudentRow {
   lastName: string
   department: string
   year: number
+  group: string | null
 }
 
 const YEAR_MAP: Record<number, string> = {
@@ -25,22 +26,40 @@ const YEAR_LEVEL_MAP: Record<string, number> = {
   "ปวช.1": 1, "ปวช.2": 2, "ปวช.3": 3, "ปวส.1": 4, "ปวส.2": 5,
 }
 
-// "(ช.68(A1))" → { level: "ปวช", admissionYear: 2568 }
-// "(ส.69(E1))" → { level: "ปวส", admissionYear: 2569 }
-// not found → { level: null, admissionYear: null }
+// Priority: 1) "กลุ่ม E1" → "E1"
+//           2) "E1 2566" (alpha-prefix before year) → "E1"
+//           3) "(ช.66(EL1))" bracket code → "EL1"
+//           4) "/1 2566" slash number → "1"
+function extractGroup(raw: string): string | null {
+  const groupMatch = raw.match(/กลุ่ม\s+([A-Z0-9]+)/i)
+  if (groupMatch) return groupMatch[1].toUpperCase()
+  // alpha-prefixed group sitting directly before a 4-digit year (e.g. "E1 2566", "IT1 2566")
+  const prefixMatch = raw.match(/\b([A-Z]{1,3}[0-9]{1,2})\s+\d{4}/)
+  if (prefixMatch) return prefixMatch[1].toUpperCase()
+  const bracketMatch = raw.match(/\([ชส]\.(\d{2})\(([A-Z0-9]+)\)\)/)
+  if (bracketMatch) return bracketMatch[2]
+  const slashMatch = raw.match(/\/(\d+)\s+\d{4}/)
+  if (slashMatch) return slashMatch[1]
+  return null
+}
+
+// "(ช.68(A1))" → { level: "ปวช", admissionYear: 2568, group: "A1" }
+// "(ส.69(E1))" → { level: "ปวส", admissionYear: 2569, group: "E1" }
+// not found → { level: null, admissionYear: null, group: null }
 function detectHeaderInfo(rows: string[][], firstStudentIdx: number): {
   level: "ปวช" | "ปวส" | null
   admissionYear: number | null
+  group: string | null
 } {
   for (let i = 0; i < firstStudentIdx; i++) {
     for (const cell of rows[i]) {
       const chMatch = cell.match(/\(ช\.(\d{2})/)
-      if (chMatch) return { level: "ปวช", admissionYear: 2500 + parseInt(chMatch[1]) }
+      if (chMatch) return { level: "ปวช", admissionYear: 2500 + parseInt(chMatch[1]), group: extractGroup(cell) }
       const soMatch = cell.match(/\(ส\.(\d{2})/)
-      if (soMatch) return { level: "ปวส", admissionYear: 2500 + parseInt(soMatch[1]) }
+      if (soMatch) return { level: "ปวส", admissionYear: 2500 + parseInt(soMatch[1]), group: extractGroup(cell) }
     }
   }
-  return { level: null, admissionYear: null }
+  return { level: null, admissionYear: null, group: null }
 }
 
 // Use admissionYear from department header first; fall back to student ID prefix.
@@ -204,9 +223,15 @@ function parseRows(rows: string[][], overrideDepartment?: string): {
       ? detectDepartmentFromHeaders(rows, firstStudentIdx)
       : "ไม่ระบุ")
 
-  const { level: detectedLevel, admissionYear: detectedAdmissionYear } = firstStudentIdx > 0
+  if (firstStudentIdx > 0) {
+    console.log("[import] header rows (raw cells):")
+    for (let i = 0; i < firstStudentIdx; i++) {
+      rows[i].forEach((cell, j) => { if (String(cell).trim()) console.log(`  row[${i}] col[${j}] = "${cell}"`) })
+    }
+  }
+  const { level: detectedLevel, admissionYear: detectedAdmissionYear, group: detectedGroup } = firstStudentIdx > 0
     ? detectHeaderInfo(rows, firstStudentIdx)
-    : { level: null, admissionYear: null }
+    : { level: null, admissionYear: null, group: null }
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]
@@ -237,7 +262,7 @@ function parseRows(rows: string[][], overrideDepartment?: string): {
       if (!firstName) throw new Error("ชื่อหายไป")
       if (!lastName) throw new Error("นามสกุลหายไป")
 
-      students.push({ studentId, prefix, firstName, lastName, department, year })
+      students.push({ studentId, prefix, firstName, lastName, department, year, group: detectedGroup })
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : "เกิดข้อผิดพลาด"
       errors.push({ row: i + 1, error: msg, data: row.map(String) })
@@ -343,6 +368,7 @@ export async function POST(req: NextRequest) {
             lastName: student.lastName,
             department: student.department,
             year: yearString,
+            group: student.group ?? null,
             isActive: true,
             isFirstLogin: true,
           },

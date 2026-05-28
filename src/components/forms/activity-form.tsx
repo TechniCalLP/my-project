@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
+import { DatePickerTime } from "@/components/ui/date-picker-time"
 import {
   Select,
   SelectContent,
@@ -46,10 +47,25 @@ const STATUS_LABELS: Record<ActivityStatus, string> = {
   CANCELLED: "ยกเลิก",
 }
 
-function toDateInput(val: Date | string | undefined): string {
-  if (!val) return ""
+function toDateObj(val: Date | string | undefined): Date | undefined {
+  if (!val) return undefined
   const d = new Date(val)
-  return d.toISOString().split("T")[0]
+  return isNaN(d.getTime()) ? undefined : d
+}
+
+function toTimeStr(val: Date | string | undefined): string {
+  if (!val) return "08:00"
+  const d = new Date(val)
+  if (isNaN(d.getTime())) return "08:00"
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+}
+
+function combineDatetime(date: Date | undefined, time: string): string {
+  if (!date) return ""
+  const [h, m] = time.split(":").map(Number)
+  const d = new Date(date)
+  d.setHours(h || 0, m || 0, 0, 0)
+  return d.toISOString()
 }
 
 export function ActivityForm({ activity, onSuccess }: ActivityFormProps) {
@@ -60,12 +76,15 @@ export function ActivityForm({ activity, onSuccess }: ActivityFormProps) {
   const [selectedDepts, setSelectedDepts] = useState<string[]>(
     activity?.targetDepartments ?? []
   )
+  const [startDate, setStartDate] = useState<Date | undefined>(toDateObj(activity?.startDate))
+  const [startTime, setStartTime] = useState(toTimeStr(activity?.startDate))
+  const [endDate, setEndDate] = useState<Date | undefined>(toDateObj(activity?.endDate))
+  const [endTime, setEndTime] = useState(toTimeStr(activity?.endDate))
 
   const {
     register,
     handleSubmit,
     setValue,
-    watch,
     formState: { errors },
   } = useForm<ActivityInput>({
     resolver: standardSchemaResolver(activitySchema),
@@ -76,13 +95,30 @@ export function ActivityForm({ activity, onSuccess }: ActivityFormProps) {
       targetYear: activity?.targetYear ?? "",
       targetSemester: activity?.targetSemester ?? "",
       targetDepartments: activity?.targetDepartments ?? [],
-      startDate: toDateInput(activity?.startDate),
-      endDate: toDateInput(activity?.endDate),
+      startDate: combineDatetime(toDateObj(activity?.startDate), toTimeStr(activity?.startDate)),
+      endDate: combineDatetime(toDateObj(activity?.endDate), toTimeStr(activity?.endDate)),
       location: activity?.location ?? "",
       maxSlots: activity?.maxSlots ?? undefined,
       status: activity?.status ?? ActivityStatus.DRAFT,
     },
   })
+
+  const handleStartDateChange = (date: Date | undefined) => {
+    setStartDate(date)
+    setValue("startDate", combineDatetime(date, startTime))
+  }
+  const handleStartTimeChange = (time: string) => {
+    setStartTime(time)
+    setValue("startDate", combineDatetime(startDate, time))
+  }
+  const handleEndDateChange = (date: Date | undefined) => {
+    setEndDate(date)
+    setValue("endDate", combineDatetime(date, endTime))
+  }
+  const handleEndTimeChange = (time: string) => {
+    setEndTime(time)
+    setValue("endDate", combineDatetime(endDate, time))
+  }
 
   const toggleDept = (dept: string) => {
     setSelectedDepts((prev) => {
@@ -254,17 +290,25 @@ export function ActivityForm({ activity, onSuccess }: ActivityFormProps) {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="startDate" className="font-thai">วันเริ่มต้น *</Label>
-          <Input id="startDate" type="date" {...register("startDate")} disabled={loading} />
-          {errors.startDate && <p className="text-sm text-red-500 font-thai">{errors.startDate.message}</p>}
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="endDate" className="font-thai">วันสิ้นสุด *</Label>
-          <Input id="endDate" type="date" {...register("endDate")} disabled={loading} />
-          {errors.endDate && <p className="text-sm text-red-500 font-thai">{errors.endDate.message}</p>}
-        </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <DatePickerTime
+          label="วันเริ่มต้น"
+          date={startDate}
+          time={startTime}
+          onDateChange={handleStartDateChange}
+          onTimeChange={handleStartTimeChange}
+          disabled={loading}
+          error={errors.startDate?.message}
+        />
+        <DatePickerTime
+          label="วันสิ้นสุด"
+          date={endDate}
+          time={endTime}
+          onDateChange={handleEndDateChange}
+          onTimeChange={handleEndTimeChange}
+          disabled={loading}
+          error={errors.endDate?.message}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-4">

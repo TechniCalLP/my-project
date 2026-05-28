@@ -19,6 +19,7 @@ import { GenerateCodesForm } from "@/components/admin/generate-codes-form"
 import { DeleteCodeButton } from "@/components/admin/delete-code-button"
 import { PrintCodesButton } from "@/components/admin/print-codes-button"
 import { CopyCodeButton } from "@/components/admin/copy-code-button"
+import { formatThaiDateTime } from "@/lib/format"
 
 export default async function CodesPage({
   params,
@@ -147,15 +148,7 @@ export default async function CodesPage({
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-gray-500 font-thai">
-                      {code.usedAt
-                        ? new Date(code.usedAt).toLocaleDateString("th-TH", {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
-                        : "-"}
+                      {code.usedAt ? formatThaiDateTime(code.usedAt) : "-"}
                     </TableCell>
                     <TableCell>
                       {!code.isUsed && (

@@ -10,7 +10,8 @@
       "Bash(npx prisma *)",
       "Bash(npm --version)",
       "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
-      "Bash(npx shadcn@latest add calendar popover --overwrite)"
+      "Bash(npx shadcn@latest add calendar popover --overwrite)",
+      "Bash(git push *)"
     ]
   }
 }

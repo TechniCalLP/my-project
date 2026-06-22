@@ -21,6 +21,7 @@ interface Student {
   lastName: string
   year: string
   department: string
+  group: string | null
   email: string | null
   isActive: boolean
   _count: { participations: number }
@@ -51,6 +52,7 @@ export default function StudentsTable({ students }: StudentsTableProps) {
                 <TableHead className="font-thai whitespace-nowrap">รหัสนักศึกษา</TableHead>
                 <TableHead className="font-thai whitespace-nowrap">ชื่อ-นามสกุล</TableHead>
                 <TableHead className="font-thai whitespace-nowrap hidden md:table-cell">แผนก</TableHead>
+                <TableHead className="font-thai whitespace-nowrap hidden lg:table-cell">กลุ่ม</TableHead>
                 <TableHead className="font-thai whitespace-nowrap hidden sm:table-cell">ระดับชั้น</TableHead>
                 <TableHead className="font-thai text-right whitespace-nowrap hidden sm:table-cell">กิจกรรม</TableHead>
                 <TableHead className="font-thai whitespace-nowrap">สถานะ</TableHead>
@@ -76,6 +78,8 @@ export default function StudentsTable({ students }: StudentsTableProps) {
                   </TableCell>
 
                   <TableCell className="font-thai text-sm hidden md:table-cell">{student.department}</TableCell>
+
+                  <TableCell className="font-thai text-sm hidden lg:table-cell">{student.group ?? "-"}</TableCell>
 
                   <TableCell className="hidden sm:table-cell">
                     <span className="font-thai text-sm">{student.year}</span>

@@ -11,7 +11,11 @@
       "Bash(npm --version)",
       "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
       "Bash(npx shadcn@latest add calendar popover --overwrite)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(Select-Object Name)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\usEr\\\\Projects\\\\student-activity-system\\\\src\\\\app\" -Recurse -Directory | Select-Object FullName | ForEach-Object { $_.FullName -replace [regex]::Escape\\(\"C:\\\\Users\\\\usEr\\\\Projects\\\\student-activity-system\\\\\"\\), \"\" })",
+      "mcp__visualize__read_me",
+      "mcp__visualize__show_widget"
     ]
   }
 }

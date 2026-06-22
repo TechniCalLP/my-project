@@ -47,6 +47,7 @@ export default async function PrintStudentsPage({ searchParams }: PageProps) {
               <th className="px-3 py-2 text-left w-32">รหัสนักศึกษา</th>
               <th className="px-3 py-2 text-left">ชื่อ-สกุล</th>
               <th className="px-3 py-2 text-left w-40">แผนก</th>
+              <th className="px-3 py-2 text-center w-16">กลุ่ม</th>
               <th className="px-3 py-2 text-center w-20">ชั้นปี</th>
               <th className="px-3 py-2 text-center w-20">สถานะ</th>
               <th className="px-3 py-2 text-center w-20">กิจกรรม</th>
@@ -59,6 +60,7 @@ export default async function PrintStudentsPage({ searchParams }: PageProps) {
                 <td className="px-3 py-1.5 font-mono text-xs">{s.studentId}</td>
                 <td className="px-3 py-1.5">{s.prefix}{s.firstName} {s.lastName}</td>
                 <td className="px-3 py-1.5 text-gray-600">{s.department}</td>
+                <td className="px-3 py-1.5 text-center">{s.group ?? "-"}</td>
                 <td className="px-3 py-1.5 text-center">{s.year}</td>
                 <td className="px-3 py-1.5 text-center">
                   <span className={s.isActive ? "text-green-700" : "text-gray-400"}>

@@ -56,11 +56,7 @@ export function LoginForm() {
       }
 
       const session = await getSession()
-      if (session?.user?.isFirstLogin) {
-        router.push("/settings")
-      } else {
-        router.push("/dashboard")
-      }
+      router.push("/dashboard")
       router.refresh()
     } catch {
       toast.error("เกิดข้อผิดพลาด กรุณาลองใหม่")

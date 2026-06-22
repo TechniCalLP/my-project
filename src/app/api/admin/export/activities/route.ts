@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
       participations: {
         include: {
           student: {
-            select: { studentId: true, prefix: true, firstName: true, lastName: true, department: true, year: true },
+            select: { studentId: true, prefix: true, firstName: true, lastName: true, department: true, group: true, year: true },
           },
         },
       },
@@ -82,6 +82,7 @@ export async function GET(req: NextRequest) {
         "รหัสนักศึกษา": p.student.studentId,
         "ชื่อ-สกุล": `${p.student.prefix}${p.student.firstName} ${p.student.lastName}`,
         "แผนก": p.student.department,
+        "กลุ่ม": p.student.group ?? "-",
         "ชั้นปี": p.student.year,
         "วันที่เข้าร่วม": p.joinedAt.toLocaleDateString("th-TH"),
       })
@@ -91,7 +92,7 @@ export async function GET(req: NextRequest) {
   const wsDetail = XLSX.utils.json_to_sheet(detailRows)
   wsDetail["!cols"] = [
     { wch: 6 }, { wch: 30 }, { wch: 16 }, { wch: 10 }, { wch: 14 },
-    { wch: 14 }, { wch: 24 }, { wch: 24 }, { wch: 8 }, { wch: 14 },
+    { wch: 14 }, { wch: 24 }, { wch: 24 }, { wch: 8 }, { wch: 8 }, { wch: 14 },
   ]
   XLSX.utils.book_append_sheet(wb, wsDetail, "รายละเอียดผู้เข้าร่วม")
 

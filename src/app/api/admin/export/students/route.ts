@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
     "ชื่อ": s.firstName,
     "นามสกุล": s.lastName,
     "แผนก": s.department,
+    "กลุ่ม": s.group ?? "-",
     "ชั้นปี": s.year,
     "สถานะ": s.isActive ? "ใช้งาน" : "ปิดใช้งาน",
     "กิจกรรมที่เข้าร่วม": s._count.participations,
@@ -41,7 +42,7 @@ export async function GET(req: NextRequest) {
   const ws = XLSX.utils.json_to_sheet(rows)
   ws["!cols"] = [
     { wch: 6 }, { wch: 14 }, { wch: 8 }, { wch: 16 }, { wch: 20 },
-    { wch: 24 }, { wch: 8 }, { wch: 10 }, { wch: 16 },
+    { wch: 24 }, { wch: 8 }, { wch: 8 }, { wch: 10 }, { wch: 16 },
   ]
 
   const wb = XLSX.utils.book_new()

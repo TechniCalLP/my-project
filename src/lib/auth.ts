@@ -91,13 +91,16 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   callbacks: {
-    jwt({ token, user }) {
+    jwt({ token, user, trigger, session }) {
       if (user) {
         token.role = (user as { role?: string }).role
         token.isActive = (user as { isActive?: boolean }).isActive
         token.isFirstLogin = (user as { isFirstLogin?: boolean }).isFirstLogin
         token.year = (user as { year?: string }).year
         token.department = (user as { department?: string }).department
+      }
+      if (trigger === "update" && session?.isFirstLogin !== undefined) {
+        token.isFirstLogin = session.isFirstLogin
       }
       return token
     },

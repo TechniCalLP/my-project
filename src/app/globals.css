@@ -76,6 +76,13 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  --animate-loading-bar: loading-bar 1.8s ease-in-out infinite;
+}
+
+@keyframes loading-bar {
+  0%   { width: 5%; }
+  70%  { width: 80%; }
+  100% { width: 95%; }
 }
 
 :root {

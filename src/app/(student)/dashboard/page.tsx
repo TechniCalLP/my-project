@@ -8,6 +8,7 @@ import { ActivityCategory, ActivityStatus } from "@/generated/prisma"
 import { CheckCircle2, Calendar, TrendingUp, ArrowRight, CheckCircle } from "lucide-react"
 import { SemesterTabs } from "@/components/activities/semester-tabs"
 import { formatThaiDate } from "@/lib/format"
+import FirstLoginModal from "@/components/student/first-login-modal"
 
 const CATEGORY_ICONS: Record<ActivityCategory, string> = {
   ACADEMIC: "📚",
@@ -17,8 +18,7 @@ const CATEGORY_ICONS: Record<ActivityCategory, string> = {
 }
 
 function getCurrentSemesterTab(): string {
-  const month = new Date().getMonth() + 1
-  return month >= 6 && month <= 10 ? "ภาคเรียนที่ 1" : "ภาคเรียนที่ 2"
+  return "ภาคเรียนที่ 1"
 }
 
 export default async function DashboardPage() {
@@ -77,6 +77,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      <FirstLoginModal />
       {/* Welcome header */}
       <div>
         <h1 className="text-2xl lg:text-3xl font-bold font-thai">

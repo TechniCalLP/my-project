@@ -19,6 +19,7 @@ interface StudentFormProps {
     lastName: string
     year: string
     department: string
+    group: string | null
     email: string | null
     phone: string | null
     isActive: boolean
@@ -33,6 +34,7 @@ export default function StudentForm({ initialData, isEdit = false }: StudentForm
   const [department, setDepartment] = useState(initialData?.department || "")
   const [year, setYear] = useState(initialData?.year || "")
   const [isActive, setIsActive] = useState(String(initialData?.isActive ?? true))
+  const [group, setGroup] = useState(initialData?.group || "")
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -48,6 +50,7 @@ export default function StudentForm({ initialData, isEdit = false }: StudentForm
       phone: formData.get("phone") as string || null,
       department,
       year,
+      group: group || null,
       isActive: isActive === "true",
     }
 
@@ -156,6 +159,16 @@ export default function StudentForm({ initialData, isEdit = false }: StudentForm
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="font-thai">กลุ่ม</Label>
+        <Input
+          value={group}
+          onChange={(e) => setGroup(e.target.value)}
+          className="font-mono"
+          placeholder="เช่น A1, E1 (ไม่บังคับ)"
+        />
       </div>
 
       {isEdit && (

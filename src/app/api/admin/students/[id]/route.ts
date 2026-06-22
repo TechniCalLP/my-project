@@ -26,6 +26,7 @@ export async function PUT(
         ...(data.phone !== undefined && { phone: data.phone }),
         ...(data.department !== undefined && { department: data.department }),
         ...(data.year !== undefined && { year: data.year }),
+        ...(data.group !== undefined && { group: data.group }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
       },
     })

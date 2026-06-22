@@ -5,8 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { SemesterTabs } from "@/components/activities/semester-tabs"
 
 function getCurrentSemesterTab(): string {
-  const month = new Date().getMonth() + 1
-  return month >= 6 && month <= 10 ? "ภาคเรียนที่ 1" : "ภาคเรียนที่ 2"
+  return "ภาคเรียนที่ 1"
 }
 
 export default async function ActivitiesPage() {

@@ -28,7 +28,7 @@ export default async function PrintActivityPage({ params }: PageProps) {
       participations: {
         include: {
           student: {
-            select: { studentId: true, prefix: true, firstName: true, lastName: true, year: true, department: true },
+            select: { studentId: true, prefix: true, firstName: true, lastName: true, year: true, department: true, group: true },
           },
         },
         orderBy: { joinedAt: "asc" },
@@ -78,6 +78,7 @@ export default async function PrintActivityPage({ params }: PageProps) {
                 <th className="px-3 py-2 text-left">ชื่อ-สกุล</th>
                 <th className="px-3 py-2 text-center w-20">ระดับชั้น</th>
                 <th className="px-3 py-2 text-left">แผนก</th>
+                <th className="px-3 py-2 text-center w-16">กลุ่ม</th>
                 <th className="px-3 py-2 text-center w-32">วันที่เข้าร่วม</th>
               </tr>
             </thead>
@@ -89,6 +90,7 @@ export default async function PrintActivityPage({ params }: PageProps) {
                   <td className="px-3 py-1.5">{p.student.prefix}{p.student.firstName} {p.student.lastName}</td>
                   <td className="px-3 py-1.5 text-center">{p.student.year}</td>
                   <td className="px-3 py-1.5 text-gray-600">{p.student.department}</td>
+                  <td className="px-3 py-1.5 text-center">{p.student.group ?? "-"}</td>
                   <td className="px-3 py-1.5 text-center text-gray-600">
                     {new Date(p.joinedAt).toLocaleDateString("th-TH")}
                   </td>

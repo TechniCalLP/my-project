@@ -27,7 +27,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       participations: {
         include: {
           student: {
-            select: { studentId: true, prefix: true, firstName: true, lastName: true, year: true, department: true },
+            select: { studentId: true, prefix: true, firstName: true, lastName: true, year: true, department: true, group: true },
           },
         },
         orderBy: { joinedAt: "asc" },
@@ -61,6 +61,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     "ชื่อ": p.student.firstName,
     "นามสกุล": p.student.lastName,
     "แผนก": p.student.department,
+    "กลุ่ม": p.student.group ?? "-",
     "ชั้นปี": p.student.year,
     "วันที่เข้าร่วม": formatThaiDateTime(p.joinedAt),
   }))
@@ -68,7 +69,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const wsParticipants = XLSX.utils.json_to_sheet(
     participantRows.length > 0 ? participantRows : [{ "หมายเหตุ": "ยังไม่มีผู้เข้าร่วม" }]
   )
-  wsParticipants["!cols"] = [{ wch: 6 }, { wch: 14 }, { wch: 18 }, { wch: 20 }, { wch: 26 }, { wch: 10 }, { wch: 22 }]
+  wsParticipants["!cols"] = [{ wch: 6 }, { wch: 14 }, { wch: 18 }, { wch: 20 }, { wch: 26 }, { wch: 8 }, { wch: 10 }, { wch: 22 }]
   XLSX.utils.book_append_sheet(wb, wsParticipants, "รายชื่อผู้เข้าร่วม")
 
 

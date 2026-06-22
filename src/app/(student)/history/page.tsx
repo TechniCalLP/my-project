@@ -8,8 +8,7 @@ import { Button } from "@/components/ui/button"
 import { FileText } from "lucide-react"
 
 function getCurrentSemesterTab(): string {
-  const month = new Date().getMonth() + 1
-  return month >= 6 && month <= 10 ? "ภาคเรียนที่ 1" : "ภาคเรียนที่ 2"
+  return "ภาคเรียนที่ 1"
 }
 
 export default async function HistoryPage() {

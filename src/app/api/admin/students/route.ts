@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
         phone: data.phone || null,
         department: data.department,
         year: data.year,
+        group: data.group || null,
         password: hashedPassword,
         isActive: true,
         isFirstLogin: true,

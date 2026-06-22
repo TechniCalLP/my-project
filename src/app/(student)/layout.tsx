@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { TopNav } from "@/components/layout/top-nav"
 import { BottomNav } from "@/components/layout/bottom-nav"
 import { MobileHeader } from "@/components/layout/mobile-header"
+import { StudentLoadingSkeleton } from "@/components/layout/loading-skeleton"
 import type { Session } from "next-auth"
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
@@ -31,13 +32,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   }, [session, status, router])
 
   if (!isAuthorized || !session) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <p className="text-lg text-muted-foreground">กำลังตรวจสอบสิทธิ์...</p>
-        </div>
-      </div>
-    )
+    return <StudentLoadingSkeleton />
   }
 
   return (

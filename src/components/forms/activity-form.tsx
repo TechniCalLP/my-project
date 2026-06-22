@@ -106,10 +106,27 @@ export function ActivityForm({ activity, onSuccess }: ActivityFormProps) {
   const handleStartDateChange = (date: Date | undefined) => {
     setStartDate(date)
     setValue("startDate", combineDatetime(date, startTime))
+    // auto-set end date ถ้ายังไม่ได้เลือก หรือ end < start
+    if (!endDate || (date && endDate < date)) {
+      setEndDate(date)
+      setValue("endDate", combineDatetime(date, endTime))
+    }
   }
   const handleStartTimeChange = (time: string) => {
     setStartTime(time)
     setValue("startDate", combineDatetime(startDate, time))
+    // auto-set end time ถ้าเป็นวันเดียวกันและ end time <= start time
+    if (startDate && endDate && startDate.toDateString() === endDate.toDateString()) {
+      const [sh, sm] = time.split(":").map(Number)
+      const [eh, em] = endTime.split(":").map(Number)
+      if (eh < sh || (eh === sh && em <= sm)) {
+        // เพิ่ม 1 ชั่วโมง
+        const newHour = String(Math.min(sh + 1, 23)).padStart(2, "0")
+        const newTime = `${newHour}:${String(sm).padStart(2, "0")}`
+        setEndTime(newTime)
+        setValue("endDate", combineDatetime(endDate, newTime))
+      }
+    }
   }
   const handleEndDateChange = (date: Date | undefined) => {
     setEndDate(date)

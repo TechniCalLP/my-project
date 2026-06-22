@@ -1,5 +1,7 @@
-const Sk = ({ className }: { className?: string }) => (
-  <div className={`animate-pulse rounded-md bg-gray-200 ${className ?? ""}`} />
+import React from "react"
+
+const Sk = ({ className, style }: { className?: string; style?: React.CSSProperties }) => (
+  <div className={`animate-pulse rounded-md bg-gray-200 ${className ?? ""}`} style={style} />
 )
 
 export function AdminLoadingSkeleton() {

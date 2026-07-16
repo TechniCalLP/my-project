@@ -66,7 +66,7 @@ export default async function CodesPage({
             <p className="text-gray-500 font-thai">{activity.name}</p>
           </div>
         </div>
-        <PrintCodesButton codes={serializedCodes} activityTitle={activity.name} />
+        <PrintCodesButton codes={serializedCodes} activityTitle={activity.name} targetYear={activity.targetYear} />
       </div>
 
       {/* Stats Cards */}

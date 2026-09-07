@@ -1,7 +1,8 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { ActivityStatus } from "@/generated/prisma"
+import { requiredActivityFilter } from "@/lib/evaluation"
+import { resolveDepartmentVariants } from "@/lib/department"
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -13,19 +14,12 @@ export async function GET() {
   const studentYear = session.user.year ?? ""
   const studentDept = session.user.department ?? ""
 
-  const yearFilter = {
-    isDeleted: false,
-    targetYear: studentYear,
-    status: ActivityStatus.ACTIVE,
-    OR: [
-      { targetDepartments: { isEmpty: true } },
-      { targetDepartments: { has: studentDept } },
-    ],
-  }
+  const departmentVariants = await resolveDepartmentVariants(studentDept)
+  const activityFilter = requiredActivityFilter(studentYear, departmentVariants)
 
   const [joined, total] = await Promise.all([
-    prisma.participation.count({ where: { studentId: studentDbId } }),
-    prisma.activity.count({ where: yearFilter }),
+    prisma.participation.count({ where: { studentId: studentDbId, activity: activityFilter } }),
+    prisma.activity.count({ where: activityFilter }),
   ])
 
   const remaining = Math.max(0, total - joined)

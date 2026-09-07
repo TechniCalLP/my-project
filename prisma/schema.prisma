@@ -8,22 +8,23 @@ datasource db {
 }
 
 model Student {
-  id             String          @id @default(cuid())
-  studentId      String          @unique
-  prefix         String
-  firstName      String
-  lastName       String
-  year           String
-  department     String
-  group          String?
-  email          String?
-  phone          String?
-  password       String
-  isActive       Boolean         @default(true)
-  isFirstLogin   Boolean         @default(true)
-  participations Participation[]
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id                       String                     @id @default(cuid())
+  studentId                String                     @unique
+  prefix                   String
+  firstName                String
+  lastName                 String
+  year                     String
+  department               String
+  group                    String?
+  email                    String?
+  phone                    String?
+  password                 String
+  isActive                 Boolean                    @default(true)
+  isFirstLogin             Boolean                    @default(true)
+  participations           Participation[]
+  vocationalActivityScores VocationalActivityScore[]
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
 
   @@index([studentId])
   @@index([year])
@@ -100,11 +101,68 @@ model Participation {
 }
 
 model Admin {
-  id         String     @id @default(cuid())
-  username   String     @unique
-  password   String
-  name       String
-  activities Activity[]
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  id                     String                     @id @default(cuid())
+  username               String                     @unique
+  password               String
+  name                   String
+  role                   AdminRole                  @default(ADMIN)
+  departmentId           String?
+  department             Department?                @relation(fields: [departmentId], references: [id])
+  activities             Activity[]
+  vocationalScoresEntered VocationalActivityScore[]
+  createdAt              DateTime                   @default(now())
+  updatedAt              DateTime                   @updatedAt
+
+  @@index([role])
+  @@index([departmentId])
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  TEACHER
+}
+
+model Department {
+  id                  String               @id @default(cuid())
+  name                String               @unique
+  aliases             String[]             @default([])
+  isActive            Boolean              @default(true)
+  admins              Admin[]
+  vocationalActivities VocationalActivity[] @relation("VocationalActivityDepartments")
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+}
+
+model VocationalActivity {
+  id            String                    @id @default(cuid())
+  name          String
+  academicYear  String
+  semester      String
+  targetYears   String[]                  @default([])
+  passThreshold Float                     @default(60)
+  departments   Department[]              @relation("VocationalActivityDepartments")
+  scores        VocationalActivityScore[]
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+
+  @@index([academicYear, semester])
+}
+
+model VocationalActivityScore {
+  id                   String             @id @default(cuid())
+  vocationalActivityId String
+  vocationalActivity   VocationalActivity @relation(fields: [vocationalActivityId], references: [id], onDelete: Cascade)
+  studentId            String
+  student              Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  score                Float
+  isDraft              Boolean            @default(true)
+  enteredById          String
+  enteredBy            Admin              @relation(fields: [enteredById], references: [id])
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@unique([vocationalActivityId, studentId])
+  @@index([studentId])
+  @@index([vocationalActivityId])
 }

@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "backup": "tsx --env-file=.env.local scripts/backup.ts",
+    "restore": "tsx --env-file=.env.local scripts/restore.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

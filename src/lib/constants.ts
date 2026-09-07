@@ -14,3 +14,14 @@ export const CATEGORY_NAMES = {
   HEALTH: "สุขภาพ",
   SCOUT: "ลูกเสือ"
 } as const
+
+export const ADMIN_ROLE_NAMES = {
+  SUPER_ADMIN: "ผู้ดูแลระบบสูงสุด",
+  ADMIN: "ผู้ดูแลระบบ",
+  TEACHER: "อาจารย์",
+} as const
+
+const CURRENT_BE_YEAR = new Date().getFullYear() + 543
+export const ACADEMIC_YEARS = [CURRENT_BE_YEAR, CURRENT_BE_YEAR - 1, CURRENT_BE_YEAR - 2].map(String)
+
+export const DEFAULT_VOCATIONAL_PASS_THRESHOLD = 60

@@ -5,27 +5,51 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
 import type { Session } from "next-auth"
-import { LayoutDashboard, CalendarDays, Users, LogOut, Menu, X } from "lucide-react"
+import { LayoutDashboard, CalendarDays, Users, LogOut, Menu, UserCog, Building2, ClipboardCheck, ListChecks } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { ADMIN_ROLE_NAMES } from "@/lib/constants"
 
 interface AdminNavProps {
   session: Session
 }
 
-const navItems = [
+const ADMIN_NAV_ITEMS = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/activities", label: "กิจกรรม", icon: CalendarDays },
   { href: "/admin/students", label: "นักศึกษา", icon: Users },
+  { href: "/admin/vocational-activities", label: "กิจกรรมองค์การวิชาชีพ", icon: ClipboardCheck },
+  { href: "/admin/summary", label: "สรุปผลการประเมิน", icon: ListChecks },
 ]
+
+const SUPER_ADMIN_NAV_ITEMS = [
+  ...ADMIN_NAV_ITEMS,
+  { href: "/admin/accounts", label: "บัญชีผู้ใช้", icon: UserCog },
+  { href: "/admin/departments", label: "แผนก", icon: Building2 },
+]
+
+const TEACHER_NAV_ITEMS = [
+  { href: "/admin/evaluation", label: "ประเมินกิจกรรมองค์การวิชาชีพ", icon: ClipboardCheck },
+  { href: "/admin/my-students", label: "รายชื่อนักศึกษา", icon: Users },
+  { href: "/admin/summary", label: "สรุปผลการประเมิน", icon: ListChecks },
+]
+
+function getNavItems(adminRole?: string) {
+  if (adminRole === "SUPER_ADMIN") return SUPER_ADMIN_NAV_ITEMS
+  if (adminRole === "TEACHER") return TEACHER_NAV_ITEMS
+  return ADMIN_NAV_ITEMS
+}
 
 function NavContent({ session, onNavigate }: { session: Session; onNavigate?: () => void }) {
   const pathname = usePathname()
+  const adminRole = (session.user as { adminRole?: string }).adminRole
+  const navItems = getNavItems(adminRole)
+  const roleLabel = adminRole ? ADMIN_ROLE_NAMES[adminRole as keyof typeof ADMIN_ROLE_NAMES] : "ผู้ดูแลระบบ"
 
   return (
     <div className="flex flex-col h-full bg-gray-900 text-white">
       <div className="p-6 border-b border-gray-700">
-        <p className="text-xs text-gray-400 font-thai">ผู้ดูแลระบบ</p>
+        <p className="text-xs text-gray-400 font-thai">{roleLabel}</p>
         <p className="font-semibold truncate font-thai text-sm mt-0.5">{session.user.name}</p>
       </div>
       <div className="flex-1 py-4">

@@ -10,6 +10,8 @@ declare module "next-auth" {
       isFirstLogin: boolean
       year: string
       department: string
+      adminRole?: string
+      departmentId?: string | null
     } & DefaultSession["user"]
   }
 }
@@ -21,5 +23,7 @@ declare module "next-auth/jwt" {
     isFirstLogin?: boolean
     year?: string
     department?: string
+    adminRole?: string
+    departmentId?: string | null
   }
 }

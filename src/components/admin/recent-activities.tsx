@@ -11,8 +11,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Eye, Pencil, Users, Ticket } from "lucide-react"
-import { CATEGORY_NAMES } from "@/lib/constants"
-import { ActivityCategory, ActivityStatus } from "@/generated/prisma"
+import { ACTIVITY_TYPE_NAMES } from "@/lib/constants"
+import { ActivityCategory, ActivityStatus, ActivityType } from "@/generated/prisma"
 import { DeleteActivityButton } from "@/components/admin/delete-activity-button"
 
 const STATUS_COLORS: Record<ActivityStatus, string> = {
@@ -29,10 +29,16 @@ const STATUS_LABELS: Record<ActivityStatus, string> = {
   CANCELLED: "ยกเลิก",
 }
 
+const TYPE_COLORS: Record<ActivityType, string> = {
+  MANDATORY: "bg-primary-100 text-primary-700",
+  OPTIONAL: "bg-gray-100 text-gray-600",
+}
+
 interface Activity {
   id: string
   name: string
   category: ActivityCategory
+  type: ActivityType
   status: ActivityStatus
   targetYear: string
   targetSemester: string
@@ -63,7 +69,7 @@ export default function RecentActivities({ activities }: RecentActivitiesProps) 
               <TableHeader>
                 <TableRow>
                   <TableHead className="font-thai whitespace-nowrap">ชื่อกิจกรรม</TableHead>
-                  <TableHead className="font-thai whitespace-nowrap hidden sm:table-cell">ประเภท</TableHead>
+                  <TableHead className="font-thai whitespace-nowrap hidden sm:table-cell">ประเภทการเข้าร่วม</TableHead>
                   <TableHead className="font-thai whitespace-nowrap">สถานะ</TableHead>
                   <TableHead className="font-thai text-right whitespace-nowrap hidden sm:table-cell">ผู้เข้าร่วม</TableHead>
                   <TableHead className="font-thai whitespace-nowrap">จัดการ</TableHead>
@@ -77,12 +83,14 @@ export default function RecentActivities({ activities }: RecentActivitiesProps) 
                         <p className="whitespace-nowrap">{a.name}</p>
                         <p className="text-xs text-gray-400">{a.targetYear} / {a.targetSemester}</p>
                         <p className="text-xs text-gray-400 sm:hidden mt-0.5">
-                          {CATEGORY_NAMES[a.category]} · {a._count.participations} คน
+                          {ACTIVITY_TYPE_NAMES[a.type]} · {a._count.participations} คน
                         </p>
                       </div>
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">
-                      <span className="text-xs font-thai text-gray-600">{CATEGORY_NAMES[a.category]}</span>
+                      <Badge className={`${TYPE_COLORS[a.type]} border-0 font-thai text-xs whitespace-nowrap`}>
+                        {ACTIVITY_TYPE_NAMES[a.type]}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge className={`${STATUS_COLORS[a.status]} border-0 font-thai text-xs whitespace-nowrap`}>

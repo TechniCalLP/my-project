@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Upload, CheckCircle, CheckCircle2, XCircle, AlertCircle, Loader2, FileSpreadsheet } from "lucide-react"
+import { Upload, CheckCircle, CheckCircle2, XCircle, Loader2, FileSpreadsheet } from "lucide-react"
 import { toast } from "sonner"
+import { FileDropzone } from "@/components/ui/file-dropzone"
 import {
   Table,
   TableBody,
@@ -49,7 +50,6 @@ export default function ImportStudentsForm() {
     errors: ImportError[]
   } | null>(null)
   const [step, setStep] = useState<"upload" | "preview" | "result">("upload")
-  const [dragActive, setDragActive] = useState(false)
 
   const handleFile = (selected: File | null) => {
     if (!selected) return
@@ -58,24 +58,6 @@ export default function ImportStudentsForm() {
     setDepartment("")
     setImportResult(null)
     setStep("upload")
-  }
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    handleFile(e.target.files?.[0] ?? null)
-  }
-
-  const handleDrag = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true)
-    else if (e.type === "dragleave") setDragActive(false)
-  }
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setDragActive(false)
-    handleFile(e.dataTransfer.files?.[0] ?? null)
   }
 
   const handlePreview = async () => {
@@ -154,58 +136,13 @@ export default function ImportStudentsForm() {
             <CardTitle className="font-thai">นำเข้าข้อมูลนักศึกษา</CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
-            {/* Drag & Drop Zone */}
-            <div
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-              onClick={() => document.getElementById("file-input")?.click()}
-              className={`border-2 border-dashed rounded-lg p-12 text-center transition-all cursor-pointer select-none ${
-                dragActive
-                  ? "border-[#2E3192] bg-blue-50 shadow-md"
-                  : "border-gray-300 hover:border-[#2E3192] hover:bg-gray-50"
-              }`}
-            >
-              <div className="flex justify-center mb-4">
-                <div className={`p-4 rounded-full ${dragActive ? "bg-blue-100" : "bg-gray-100"}`}>
-                  <FileSpreadsheet
-                    className={`h-12 w-12 transition-colors ${dragActive ? "text-[#2E3192]" : "text-gray-400"}`}
-                  />
-                </div>
-              </div>
-              <p className="font-semibold text-lg mb-1 text-gray-900 font-thai">
-                {dragActive ? "วางไฟล์ที่นี่" : "ลากไฟล์มาวางที่นี่"}
-              </p>
-              <p className="text-sm text-gray-500 font-thai">หรือคลิกเพื่อเลือกไฟล์</p>
-              <Input
-                id="file-input"
-                type="file"
-                accept=".csv,.xls,.xlsx"
-                onChange={handleFileChange}
-                className="hidden"
-                onClick={e => e.stopPropagation()}
-              />
-            </div>
-
-            {/* Selected file info */}
-            {file && (
-              <div className="flex items-center gap-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
-                <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-green-900 truncate text-sm">{file.name}</p>
-                  <p className="text-xs text-green-700">{(file.size / 1024).toFixed(2)} KB</p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setFile(null)}
-                  className="text-green-600 hover:text-red-500 flex-shrink-0 h-7 w-7 p-0"
-                >
-                  ×
-                </Button>
-              </div>
-            )}
+            <FileDropzone
+              id="file-input"
+              accept=".csv,.xls,.xlsx"
+              icon={FileSpreadsheet}
+              file={file}
+              onFileChange={(f) => (f ? handleFile(f) : setFile(null))}
+            />
 
             <Button
               onClick={handlePreview}

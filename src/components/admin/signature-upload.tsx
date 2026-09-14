@@ -3,9 +3,10 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Loader2, Upload, Trash2 } from "lucide-react"
+import { Loader2, Upload, Trash2, ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { FileDropzone } from "@/components/ui/file-dropzone"
 
 interface SignatureUploadProps {
   initialSignature: string | null
@@ -19,11 +20,9 @@ export default function SignatureUpload({ initialSignature }: SignatureUploadPro
   const [uploading, setUploading] = useState(false)
   const [removing, setRemoving] = useState(false)
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0]
-    if (!f) return
+  const handleFileChange = (f: File | null) => {
     setFile(f)
-    setPreview(URL.createObjectURL(f))
+    setPreview(f ? URL.createObjectURL(f) : null)
   }
 
   const handleUpload = async () => {
@@ -67,8 +66,6 @@ export default function SignatureUpload({ initialSignature }: SignatureUploadPro
     }
   }
 
-  const displayed = preview ?? signature
-
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
@@ -78,33 +75,43 @@ export default function SignatureUpload({ initialSignature }: SignatureUploadPro
         </p>
       </div>
 
-      {displayed && (
-        <div className="border rounded-md p-4 w-fit bg-gray-50">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={displayed} alt="ลายเซ็น" className="h-16 object-contain" />
-        </div>
-      )}
-
-      <div className="flex flex-wrap items-center gap-2">
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          className="text-sm font-thai"
-        />
-        {file && (
-          <Button onClick={handleUpload} disabled={uploading} size="sm" className="font-thai gap-1.5">
-            {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-            บันทึกลายเซ็น
-          </Button>
-        )}
-        {signature && !file && (
+      {signature && !file && (
+        <div className="flex items-center justify-between gap-3 border rounded-md p-4 bg-gray-50">
+          <div className="flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={signature} alt="ลายเซ็น" className="h-16 object-contain" />
+            <p className="text-sm text-gray-500 font-thai">ลายเซ็นปัจจุบัน</p>
+          </div>
           <Button onClick={handleRemove} disabled={removing} size="sm" variant="outline" className="font-thai gap-1.5 text-secondary-600">
             {removing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
             ลบลายเซ็น
           </Button>
-        )}
-      </div>
+        </div>
+      )}
+
+      <FileDropzone
+        id="signature-input"
+        accept="image/*"
+        icon={ImageIcon}
+        file={file}
+        onFileChange={handleFileChange}
+        title="ลากไฟล์รูปลายเซ็นมาวางที่นี่"
+        subtitle="หรือคลิกเพื่อเลือกไฟล์ (JPG, PNG ไม่เกิน 2MB)"
+      />
+
+      {preview && (
+        <div className="border rounded-md p-4 w-fit bg-gray-50">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={preview} alt="ตัวอย่างลายเซ็นใหม่" className="h-16 object-contain" />
+        </div>
+      )}
+
+      {file && (
+        <Button onClick={handleUpload} disabled={uploading} size="sm" className="font-thai gap-1.5">
+          {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+          บันทึกลายเซ็น
+        </Button>
+      )}
     </div>
   )
 }

@@ -6,7 +6,18 @@ import { getToken } from "next-auth/jwt"
 const TEACHER_ALLOWED_PREFIXES = ["/admin/my-students", "/admin/evaluation", "/admin/summary"]
 
 // Path prefixes restricted to SUPER_ADMIN only (account & department management).
-const SUPER_ADMIN_ONLY_PREFIXES = ["/admin/accounts", "/admin/departments", "/api/admin/accounts", "/api/admin/departments"]
+const SUPER_ADMIN_ONLY_PREFIXES = [
+  "/admin/accounts",
+  "/admin/departments",
+  "/admin/clubs",
+  "/admin/correction-requests",
+  "/admin/settings",
+  "/api/admin/accounts",
+  "/api/admin/departments",
+  "/api/admin/clubs",
+  "/api/admin/correction-requests",
+  "/api/admin/settings",
+]
 
 function adminHomePath(adminRole: string | undefined) {
   return adminRole === "TEACHER" ? "/admin/evaluation" : "/admin/dashboard"

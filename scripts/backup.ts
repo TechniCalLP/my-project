@@ -9,21 +9,23 @@ const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
 const prisma = new PrismaClient({ adapter })
 
 async function main() {
-  const [departments, admins, students, activities, activityCodes, participations, vocationalActivities, vocationalActivityScores] =
+  const [departments, clubs, admins, students, activities, activityCodes, participations, vocationalActivities, vocationalActivityScores] =
     await Promise.all([
       prisma.department.findMany(),
+      prisma.club.findMany({ include: { departments: { select: { id: true } } } }),
       prisma.admin.findMany(),
       prisma.student.findMany(),
       prisma.activity.findMany(),
       prisma.activityCode.findMany(),
       prisma.participation.findMany(),
-      prisma.vocationalActivity.findMany({ include: { departments: { select: { id: true } } } }),
+      prisma.vocationalActivity.findMany({ include: { clubs: { select: { id: true } } } }),
       prisma.vocationalActivityScore.findMany(),
     ])
 
   const backup = {
     createdAt: new Date().toISOString(),
     departments,
+    clubs,
     admins,
     students,
     activities,
@@ -41,6 +43,7 @@ async function main() {
 
   console.log(`✓ Backup written to ${filepath}`)
   console.log(`  Departments      : ${departments.length}`)
+  console.log(`  Clubs            : ${clubs.length}`)
   console.log(`  Admins           : ${admins.length}`)
   console.log(`  Students         : ${students.length}`)
   console.log(`  Activities       : ${activities.length}`)

@@ -13,9 +13,9 @@ interface PageProps {
 export default async function EditAccountPage({ params }: PageProps) {
   const { id } = await params
 
-  const [account, departments] = await Promise.all([
+  const [account, clubs] = await Promise.all([
     prisma.admin.findUnique({ where: { id } }),
-    prisma.department.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
+    prisma.club.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
   ])
 
   if (!account) notFound()
@@ -38,7 +38,7 @@ export default async function EditAccountPage({ params }: PageProps) {
           <CardTitle className="font-thai">ข้อมูลบัญชี</CardTitle>
         </CardHeader>
         <CardContent>
-          <AccountForm departments={departments} initialData={account} isEdit />
+          <AccountForm clubs={clubs} initialData={account} isEdit />
         </CardContent>
       </Card>
     </div>

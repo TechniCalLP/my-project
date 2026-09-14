@@ -6,7 +6,7 @@ import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
 export default async function CreateAccountPage() {
-  const departments = await prisma.department.findMany({ where: { isActive: true }, orderBy: { name: "asc" } })
+  const clubs = await prisma.club.findMany({ where: { isActive: true }, orderBy: { name: "asc" } })
 
   return (
     <div className="p-8 max-w-2xl mx-auto space-y-6">
@@ -18,7 +18,7 @@ export default async function CreateAccountPage() {
           </Button>
         </Link>
         <h1 className="text-2xl font-bold font-thai">เพิ่มบัญชีผู้ใช้</h1>
-        <p className="text-gray-500 font-thai mt-1">สร้างบัญชีผู้ดูแลระบบ หรืออาจารย์ประจำแผนก</p>
+        <p className="text-gray-500 font-thai mt-1">สร้างบัญชีผู้ดูแลระบบ หรืออาจารย์ประจำชมรม</p>
       </div>
 
       <Card>
@@ -26,7 +26,7 @@ export default async function CreateAccountPage() {
           <CardTitle className="font-thai">ข้อมูลบัญชี</CardTitle>
         </CardHeader>
         <CardContent>
-          <AccountForm departments={departments} />
+          <AccountForm clubs={clubs} />
         </CardContent>
       </Card>
     </div>

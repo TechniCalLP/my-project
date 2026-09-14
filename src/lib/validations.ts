@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { ActivityCategory, ActivityStatus, AdminRole } from "@/generated/prisma"
+import { ActivityCategory, ActivityStatus, ActivityType, AdminRole } from "@/generated/prisma"
 
 export const loginSchema = z.object({
   studentId: z.string().length(11, "รหัสนักศึกษาต้องมี 11 หลัก").regex(/^\d{11}$/, "รหัสนักศึกษาต้องเป็นตัวเลขเท่านั้น"),
@@ -15,6 +15,7 @@ export const activitySchema = z.object({
   name: z.string().min(1, "กรุณากรอกชื่อกิจกรรม"),
   description: z.string().optional(),
   category: z.nativeEnum(ActivityCategory),
+  type: z.nativeEnum(ActivityType),
   targetYear: z.string().min(1, "กรุณาเลือกระดับชั้น"),
   targetSemester: z.string().min(1, "กรุณาเลือกภาคเรียน"),
   targetDepartments: z.array(z.string()),
@@ -53,22 +54,27 @@ export const departmentSchema = z.object({
   aliases: z.array(z.string().min(1)).default([]),
 })
 
+export const clubSchema = z.object({
+  name: z.string().min(1, "กรุณากรอกชื่อชมรม"),
+  departmentIds: z.array(z.string()).min(1, "กรุณาเลือกอย่างน้อย 1 แผนก"),
+})
+
 export const adminAccountBaseSchema = z.object({
   username: z.string().min(1, "กรุณากรอกชื่อผู้ใช้"),
   password: z.string().min(4, "รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร").optional(),
   name: z.string().min(1, "กรุณากรอกชื่อ-นามสกุล"),
   role: z.nativeEnum(AdminRole),
-  departmentId: z.string().optional().nullable(),
+  clubId: z.string().optional().nullable(),
 })
 
 export const adminAccountSchema = adminAccountBaseSchema.refine(
-  (data) => data.role !== "TEACHER" || !!data.departmentId,
-  { message: "กรุณาเลือกแผนกสำหรับอาจารย์", path: ["departmentId"] }
+  (data) => data.role !== "TEACHER" || !!data.clubId,
+  { message: "กรุณาเลือกชมรมสำหรับอาจารย์", path: ["clubId"] }
 )
 
 export const adminAccountUpdateSchema = adminAccountBaseSchema.partial().refine(
-  (data) => data.role !== "TEACHER" || !!data.departmentId,
-  { message: "กรุณาเลือกแผนกสำหรับอาจารย์", path: ["departmentId"] }
+  (data) => data.role !== "TEACHER" || !!data.clubId,
+  { message: "กรุณาเลือกชมรมสำหรับอาจารย์", path: ["clubId"] }
 )
 
 export const vocationalActivitySchema = z.object({
@@ -77,7 +83,7 @@ export const vocationalActivitySchema = z.object({
   semester: z.string().min(1, "กรุณาเลือกภาคเรียน"),
   targetYears: z.array(z.string()),
   passThreshold: z.number().min(0, "เกณฑ์ผ่านต้องอยู่ระหว่าง 0-100").max(100, "เกณฑ์ผ่านต้องอยู่ระหว่าง 0-100"),
-  departmentIds: z.array(z.string()).min(1, "กรุณาเลือกอย่างน้อย 1 แผนก"),
+  clubIds: z.array(z.string()).min(1, "กรุณาเลือกอย่างน้อย 1 ชมรม"),
 })
 
 export const bulkVocationalScoreSchema = z.object({
@@ -104,6 +110,18 @@ export const gradeBulkScoreSchema = z.object({
   isDraft: z.boolean(),
 })
 
+export const scoreCorrectionRequestSchema = z.object({
+  activityId: z.string().min(1),
+  studentId: z.string().min(1),
+  proposedScore: z.number().min(0, "คะแนนต้องอยู่ระหว่าง 0-100").max(100, "คะแนนต้องอยู่ระหว่าง 0-100"),
+  reason: z.string().min(1, "กรุณาระบุเหตุผลที่ขอแก้ไข"),
+})
+
+export const scoreCorrectionReviewSchema = z.object({
+  status: z.enum(["APPROVED", "REJECTED"]),
+  reviewNote: z.string().optional(),
+})
+
 export type LoginInput = z.infer<typeof loginSchema>
 export type AdminLoginInput = z.infer<typeof adminLoginSchema>
 export type ActivityInput = z.infer<typeof activitySchema>
@@ -111,7 +129,10 @@ export type PasswordInput = z.infer<typeof passwordSchema>
 export type JoinInput = z.infer<typeof joinSchema>
 export type CodeGenerateInput = z.infer<typeof codeGenerateSchema>
 export type DepartmentInput = z.infer<typeof departmentSchema>
+export type ClubInput = z.infer<typeof clubSchema>
 export type AdminAccountInput = z.infer<typeof adminAccountSchema>
 export type VocationalActivityInput = z.infer<typeof vocationalActivitySchema>
 export type BulkVocationalScoreInput = z.infer<typeof bulkVocationalScoreSchema>
 export type GradeBulkScoreInput = z.infer<typeof gradeBulkScoreSchema>
+export type ScoreCorrectionRequestInput = z.infer<typeof scoreCorrectionRequestSchema>
+export type ScoreCorrectionReviewInput = z.infer<typeof scoreCorrectionReviewSchema>

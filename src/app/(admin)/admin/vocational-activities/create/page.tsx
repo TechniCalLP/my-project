@@ -12,10 +12,10 @@ interface PageProps {
 export default async function CreateVocationalActivityPage({ searchParams }: PageProps) {
   const { copyFrom } = await searchParams
 
-  const [departments, source] = await Promise.all([
-    prisma.department.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
+  const [clubs, source] = await Promise.all([
+    prisma.club.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
     copyFrom
-      ? prisma.vocationalActivity.findUnique({ where: { id: copyFrom }, include: { departments: true } })
+      ? prisma.vocationalActivity.findUnique({ where: { id: copyFrom }, include: { clubs: true } })
       : null,
   ])
 
@@ -32,7 +32,7 @@ export default async function CreateVocationalActivityPage({ searchParams }: Pag
         <p className="text-gray-500 font-thai mt-1">
           {source
             ? `คัดลอกข้อมูลจาก "${source.name}" — แก้ไขแล้วบันทึกเป็นกิจกรรมใหม่ได้เลย`
-            : "กำหนดกิจกรรมที่อาจารย์แผนกที่เลือกจะต้องประเมินคะแนนนักศึกษา"}
+            : "กำหนดกิจกรรมที่อาจารย์ชมรมที่เลือกจะต้องประเมินคะแนนนักศึกษา"}
         </p>
       </div>
 
@@ -41,7 +41,7 @@ export default async function CreateVocationalActivityPage({ searchParams }: Pag
           <CardTitle className="font-thai">ข้อมูลกิจกรรม</CardTitle>
         </CardHeader>
         <CardContent>
-          <VocationalActivityForm departments={departments} initialData={source ?? undefined} />
+          <VocationalActivityForm clubs={clubs} initialData={source ?? undefined} />
         </CardContent>
       </Card>
     </div>

@@ -20,7 +20,8 @@ interface SummaryExportButtonsProps {
 export default function SummaryExportButtons({ year, academicYear, semester, className }: SummaryExportButtonsProps) {
   const exportParams = new URLSearchParams({ year, academicYear, semester })
   const excelUrl = `/api/admin/summary/export?${exportParams.toString()}`
-  const printUrl = `/admin/summary/print?${exportParams.toString()}`
+  const printUrl17 = `/admin/summary/print?${exportParams.toString()}&formType=17`
+  const printUrl15 = `/admin/summary/print?${exportParams.toString()}&formType=15`
 
   const handleExcel = async () => {
     try {
@@ -43,8 +44,12 @@ export default function SummaryExportButtons({ year, academicYear, semester, cla
     }
   }
 
-  const handlePdf = () => {
-    window.open(printUrl, "_blank")
+  const handlePdf17 = () => {
+    window.open(printUrl17, "_blank")
+  }
+
+  const handlePdf15 = () => {
+    window.open(printUrl15, "_blank")
   }
 
   return (
@@ -60,9 +65,13 @@ export default function SummaryExportButtons({ year, academicYear, semester, cla
           <FileSpreadsheet className="w-4 h-4 text-green-600" />
           Export Excel
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={handlePdf} className="gap-2 cursor-pointer">
+        <DropdownMenuItem onClick={handlePdf17} className="gap-2 cursor-pointer">
           <FileText className="w-4 h-4 text-red-500" />
-          Export PDF
+          Export PDF (อวท.17)
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handlePdf15} className="gap-2 cursor-pointer">
+          <FileText className="w-4 h-4 text-red-500" />
+          Export PDF (อวท.15)
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

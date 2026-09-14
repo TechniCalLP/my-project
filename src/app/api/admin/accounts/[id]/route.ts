@@ -28,7 +28,7 @@ export async function PUT(
         ...(data.name !== undefined && { name: data.name }),
         ...(data.role !== undefined && { role: data.role }),
         ...(data.role !== undefined && {
-          departmentId: data.role === "TEACHER" ? data.departmentId : null,
+          clubId: data.role === "TEACHER" ? data.clubId : null,
         }),
       },
     })

@@ -17,13 +17,13 @@ import { toast } from "sonner"
 import { Loader2, ChevronDown } from "lucide-react"
 import { ACADEMIC_YEARS, SEMESTERS, YEARS, DEFAULT_VOCATIONAL_PASS_THRESHOLD } from "@/lib/constants"
 
-interface Department {
+interface Club {
   id: string
   name: string
 }
 
 interface VocationalActivityFormProps {
-  departments: Department[]
+  clubs: Club[]
   initialData?: {
     id: string
     name: string
@@ -31,18 +31,18 @@ interface VocationalActivityFormProps {
     semester: string
     targetYears: string[]
     passThreshold: number
-    departments: Department[]
+    clubs: Club[]
   }
   isEdit?: boolean
 }
 
-export default function VocationalActivityForm({ departments, initialData, isEdit = false }: VocationalActivityFormProps) {
+export default function VocationalActivityForm({ clubs, initialData, isEdit = false }: VocationalActivityFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [academicYear, setAcademicYear] = useState(initialData?.academicYear || ACADEMIC_YEARS[0])
   const [semester, setSemester] = useState(initialData?.semester || SEMESTERS[0])
-  const [selectedDeptIds, setSelectedDeptIds] = useState<string[]>(
-    initialData?.departments.map((d) => d.id) ?? []
+  const [selectedClubIds, setSelectedClubIds] = useState<string[]>(
+    initialData?.clubs.map((c) => c.id) ?? []
   )
   const [allYears, setAllYears] = useState(
     !!initialData && initialData.targetYears.length === 0
@@ -51,8 +51,8 @@ export default function VocationalActivityForm({ departments, initialData, isEdi
     initialData?.targetYears ?? []
   )
 
-  const toggleDept = (id: string) => {
-    setSelectedDeptIds((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]))
+  const toggleClub = (id: string) => {
+    setSelectedClubIds((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]))
   }
 
   const toggleYear = (year: string) => {
@@ -62,8 +62,8 @@ export default function VocationalActivityForm({ departments, initialData, isEdi
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
-    if (selectedDeptIds.length === 0) {
-      toast.error("กรุณาเลือกอย่างน้อย 1 แผนก")
+    if (selectedClubIds.length === 0) {
+      toast.error("กรุณาเลือกอย่างน้อย 1 ชมรม")
       return
     }
     if (!allYears && selectedYears.length === 0) {
@@ -79,7 +79,7 @@ export default function VocationalActivityForm({ departments, initialData, isEdi
       semester,
       targetYears: allYears ? [] : selectedYears,
       passThreshold: Number(formData.get("passThreshold")),
-      departmentIds: selectedDeptIds,
+      clubIds: selectedClubIds,
     }
 
     try {
@@ -207,45 +207,45 @@ export default function VocationalActivityForm({ departments, initialData, isEdi
       </div>
 
       <div className="space-y-1.5">
-        <Label className="font-thai">แผนกที่เกี่ยวข้อง *</Label>
+        <Label className="font-thai">ชมรมวิชาชีพที่เกี่ยวข้อง *</Label>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button type="button" variant="outline" className="w-full justify-between font-thai font-normal">
-              <span className={selectedDeptIds.length === 0 ? "text-muted-foreground" : ""}>
-                {selectedDeptIds.length === 0
-                  ? "เลือกแผนก"
-                  : selectedDeptIds.length === departments.length
-                    ? "ทุกแผนก"
-                    : `เลือกแล้ว ${selectedDeptIds.length} แผนก`}
+              <span className={selectedClubIds.length === 0 ? "text-muted-foreground" : ""}>
+                {selectedClubIds.length === 0
+                  ? "เลือกชมรม"
+                  : selectedClubIds.length === clubs.length
+                    ? "ทุกชมรม"
+                    : `เลือกแล้ว ${selectedClubIds.length} ชมรม`}
               </span>
               <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="min-w-(--radix-dropdown-menu-trigger-width) max-h-80 overflow-y-auto">
             <DropdownMenuCheckboxItem
-              checked={selectedDeptIds.length === departments.length && departments.length > 0}
-              onCheckedChange={(checked) => setSelectedDeptIds(checked ? departments.map((d) => d.id) : [])}
+              checked={selectedClubIds.length === clubs.length && clubs.length > 0}
+              onCheckedChange={(checked) => setSelectedClubIds(checked ? clubs.map((c) => c.id) : [])}
               onSelect={(e) => e.preventDefault()}
               className="font-thai font-medium"
             >
-              เลือกทุกแผนก
+              เลือกทุกชมรม
             </DropdownMenuCheckboxItem>
             <div className="my-1 border-t" />
-            {departments.map((dept) => (
+            {clubs.map((club) => (
               <DropdownMenuCheckboxItem
-                key={dept.id}
-                checked={selectedDeptIds.includes(dept.id)}
-                onCheckedChange={() => toggleDept(dept.id)}
+                key={club.id}
+                checked={selectedClubIds.includes(club.id)}
+                onCheckedChange={() => toggleClub(club.id)}
                 onSelect={(e) => e.preventDefault()}
                 className="font-thai"
               >
-                {dept.name}
+                {club.name}
               </DropdownMenuCheckboxItem>
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
         <p className="text-xs text-gray-500 font-thai">
-          เลือกได้หลายแผนกในครั้งเดียว ไม่ต้องสร้างกิจกรรมซ้ำทีละแผนก
+          เลือกได้หลายชมรมในครั้งเดียว ไม่ต้องสร้างกิจกรรมซ้ำทีละชมรม
         </p>
       </div>
 

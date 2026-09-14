@@ -3,7 +3,8 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getStudentEvaluations } from "@/lib/evaluation"
-import { departmentVariants, resolveDepartmentVariants } from "@/lib/department"
+import { resolveDepartmentVariants } from "@/lib/department"
+import { clubDepartmentVariants } from "@/lib/club"
 import * as XLSX from "xlsx"
 
 export async function GET(req: NextRequest) {
@@ -25,12 +26,12 @@ export async function GET(req: NextRequest) {
   if (session.user.adminRole === "TEACHER") {
     const teacher = await prisma.admin.findUnique({
       where: { id: session.user.id },
-      include: { department: true },
+      include: { club: { include: { departments: true } } },
     })
-    if (!teacher?.department) {
-      return NextResponse.json({ error: "บัญชีของท่านยังไม่ได้ผูกกับแผนก" }, { status: 403 })
+    if (!teacher?.club) {
+      return NextResponse.json({ error: "บัญชีของท่านยังไม่ได้ผูกกับชมรม" }, { status: 403 })
     }
-    deptVariants = departmentVariants(teacher.department)
+    deptVariants = clubDepartmentVariants(teacher.club)
   } else {
     const department = searchParams.get("department") ?? undefined
     deptVariants = department ? await resolveDepartmentVariants(department) : undefined

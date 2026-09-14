@@ -62,6 +62,7 @@ export async function PATCH(
       name: data.name,
       description: data.description || null,
       category: data.category,
+      type: data.type,
       targetYear: data.targetYear,
       targetSemester: data.targetSemester,
       targetDepartments: data.targetDepartments,

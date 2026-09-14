@@ -8,7 +8,7 @@ import { Suspense } from "react"
 import EvaluationPeriodSelect from "@/components/admin/evaluation-period-select"
 import GradeEvaluationCard from "@/components/admin/grade-evaluation-card"
 import { ACADEMIC_YEARS, SEMESTERS, YEARS } from "@/lib/constants"
-import { departmentVariants } from "@/lib/department"
+import { clubDepartmentVariants } from "@/lib/club"
 
 interface PageProps {
   searchParams: Promise<{ academicYear?: string; semester?: string }>
@@ -22,15 +22,15 @@ export default async function EvaluationPage({ searchParams }: PageProps) {
 
   const teacher = await prisma.admin.findUnique({
     where: { id: session.user.id },
-    include: { department: true },
+    include: { club: { include: { departments: true } } },
   })
 
-  if (!teacher?.department) {
+  if (!teacher?.club) {
     return (
       <div className="p-4 md:p-8">
         <Card>
           <CardContent className="py-12 text-center text-gray-500 font-thai">
-            บัญชีของท่านยังไม่ได้ผูกกับแผนก กรุณาติดต่อผู้ดูแลระบบ
+            บัญชีของท่านยังไม่ได้ผูกกับชมรม กรุณาติดต่อผู้ดูแลระบบ
           </CardContent>
         </Card>
       </div>
@@ -45,7 +45,7 @@ export default async function EvaluationPage({ searchParams }: PageProps) {
     where: {
       academicYear,
       semester,
-      departments: { some: { id: teacher.departmentId! } },
+      clubs: { some: { id: teacher.clubId! } },
     },
     select: { id: true, name: true, targetYears: true },
   })
@@ -59,7 +59,7 @@ export default async function EvaluationPage({ searchParams }: PageProps) {
 
       if (applicableActivityIds.length === 0) return null
 
-      const yearWhere = { department: { in: departmentVariants(teacher.department!) }, isActive: true, year }
+      const yearWhere = { department: { in: clubDepartmentVariants(teacher.club!) }, isActive: true, year }
 
       const [total, scoreCounts, groupRows] = await Promise.all([
         prisma.student.count({ where: yearWhere }),
@@ -74,13 +74,14 @@ export default async function EvaluationPage({ searchParams }: PageProps) {
       if (total === 0) return null
 
       const filled = scoreCounts.filter((c) => c._count.vocationalActivityId === applicableActivityIds.length).length
-      const groupCount = new Set(groupRows.map((g) => g.group ?? "")).size
+      const groups = [...new Set(groupRows.map((g) => g.group).filter((g): g is string => g != null))].sort()
 
       return {
         year,
         total,
         filled,
-        groupCount,
+        groupCount: groups.length,
+        groups,
         activityNames: applicableActivities.map((a) => a.name),
       }
     })
@@ -96,7 +97,7 @@ export default async function EvaluationPage({ searchParams }: PageProps) {
           <h1 className="text-xl md:text-2xl font-bold font-thai">ประเมินกิจกรรมองค์การวิชาชีพ</h1>
         </div>
         <p className="text-gray-500 font-thai mt-1 text-sm">
-          กรอกคะแนนนักศึกษาแผนก{teacher.department.name} แยกตามชั้นปี
+          กรอกคะแนนนักศึกษาชมรม{teacher.club.name} แยกตามชั้นปี
         </p>
       </div>
 
@@ -121,6 +122,7 @@ export default async function EvaluationPage({ searchParams }: PageProps) {
               total={g.total}
               filled={g.filled}
               groupCount={g.groupCount}
+              groups={g.groups}
               activityNames={g.activityNames}
             />
           ))}

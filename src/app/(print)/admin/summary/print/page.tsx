@@ -5,10 +5,12 @@ import { prisma } from "@/lib/prisma"
 import Image from "next/image"
 import AutoPrint from "@/components/admin/auto-print"
 import { getStudentEvaluations, type PartStatus } from "@/lib/evaluation"
-import { departmentVariants, resolveDepartmentVariants } from "@/lib/department"
+import { resolveDepartmentVariants } from "@/lib/department"
+import { clubDepartmentVariants, resolveClubForDepartment } from "@/lib/club"
+import { getDeputyDirectorSignature } from "@/lib/settings"
 
 interface PageProps {
-  searchParams: Promise<{ year?: string; academicYear?: string; semester?: string; department?: string }>
+  searchParams: Promise<{ year?: string; academicYear?: string; semester?: string; department?: string; formType?: string }>
 }
 
 const COLLEGE_NAME = "วิทยาลัยเทคนิคลำปาง"
@@ -20,14 +22,15 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
   const params = await searchParams
   const { year, academicYear, semester } = params
   if (!year || !academicYear || !semester) redirect("/admin/summary")
+  const formType = params.formType === "15" ? "15" : "17"
 
   let deptVariants: string[] | undefined
   if (session.user.adminRole === "TEACHER") {
     const teacher = await prisma.admin.findUnique({
       where: { id: session.user.id },
-      include: { department: true },
+      include: { club: { include: { departments: true } } },
     })
-    deptVariants = teacher?.department ? departmentVariants(teacher.department) : undefined
+    deptVariants = teacher?.club ? clubDepartmentVariants(teacher.club) : undefined
   } else {
     const department = params.department ?? undefined
     deptVariants = department ? await resolveDepartmentVariants(department) : undefined
@@ -40,12 +43,21 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
 
   const evaluations = await getStudentEvaluations(students.map((s) => s.id), academicYear, semester)
 
+  const uniqueDepartments = [...new Set(students.map((s) => s.department))]
+  const clubNameByDepartment = new Map(
+    await Promise.all(
+      uniqueDepartments.map(async (dept) => [dept, (await resolveClubForDepartment(dept))?.name ?? dept] as const)
+    )
+  )
+
   const pages = new Map<string, { department: string; group: string | null; students: typeof students }>()
   for (const s of students) {
     const key = `${s.department}::${s.group ?? ""}`
     if (!pages.has(key)) pages.set(key, { department: s.department, group: s.group, students: [] })
     pages.get(key)!.students.push(s)
   }
+
+  const signature = await getDeputyDirectorSignature()
 
   const printedAt = new Date().toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" })
 
@@ -67,14 +79,16 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
             key={pageIndex}
             className={`max-w-4xl mx-auto p-10 print:p-8 ${pageIndex > 0 ? "print:break-before-page" : ""}`}
           >
-            <p className="text-right text-xs text-gray-400 mb-2">แบบ อวท.17</p>
+            <p className="text-right text-xs text-gray-400 mb-2">แบบ อวท.{formType}</p>
 
             <div className="text-center mb-6">
               <div className="flex justify-center mb-2">
                 <Image src="/logo-college.png" alt="Logo วิทยาลัย" width={64} height={64} className="object-contain" />
               </div>
               <h1 className="text-lg font-bold">ประกาศผลการประเมินกิจกรรมองค์การวิชาชีพ</h1>
-              <p className="text-sm">ชมรมวิชาชีพ{pageGroup.department} {COLLEGE_NAME}</p>
+              <p className="text-sm">
+                ชมรมวิชาชีพ{clubNameByDepartment.get(pageGroup.department) ?? pageGroup.department} {COLLEGE_NAME}
+              </p>
               <p className="text-sm mt-1">
                 ภาคเรียนที่ {semester.replace("ภาคเรียนที่ ", "")} ปีการศึกษา {academicYear}
               </p>
@@ -130,7 +144,12 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
 
             <div className="mt-12 flex justify-end">
               <div className="text-center text-sm space-y-1">
-                <p>ลงชื่อ.................................</p>
+                {signature ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={signature} alt="ลายเซ็น" className="h-14 mx-auto object-contain" />
+                ) : (
+                  <p>ลงชื่อ.................................</p>
+                )}
                 <p>(.................................)</p>
                 <p>รองผู้อำนวยการฝ่ายพัฒนากิจการนักเรียน นักศึกษา</p>
                 <p>ประธานกรรมการการประเมินผลกิจกรรมองค์การวิชาชีพ</p>

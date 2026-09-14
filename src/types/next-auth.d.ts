@@ -11,7 +11,7 @@ declare module "next-auth" {
       year: string
       department: string
       adminRole?: string
-      departmentId?: string | null
+      clubId?: string | null
     } & DefaultSession["user"]
   }
 }
@@ -24,6 +24,6 @@ declare module "next-auth/jwt" {
     year?: string
     department?: string
     adminRole?: string
-    departmentId?: string | null
+    clubId?: string | null
   }
 }

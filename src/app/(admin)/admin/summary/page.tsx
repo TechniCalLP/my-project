@@ -9,7 +9,7 @@ import EvaluationPeriodSelect from "@/components/admin/evaluation-period-select"
 import SummaryGradeCard from "@/components/admin/summary-grade-card"
 import { getStudentEvaluations } from "@/lib/evaluation"
 import { ACADEMIC_YEARS, SEMESTERS, YEARS } from "@/lib/constants"
-import { departmentMatchesName, departmentVariants } from "@/lib/department"
+import { clubDepartmentVariants } from "@/lib/club"
 
 interface PageProps {
   searchParams: Promise<{ academicYear?: string; semester?: string }>
@@ -20,27 +20,29 @@ export default async function SummaryPage({ searchParams }: PageProps) {
   if (!session || session.user.role !== "admin") redirect("/admin/login")
 
   const isTeacher = session.user.adminRole === "TEACHER"
-  let teacherDepartmentName: string | null = null
+  let teacherClubId: string | null = null
+  let teacherClubName: string | null = null
   let teacherDepartmentVariants: string[] | null = null
 
   if (isTeacher) {
     const teacher = await prisma.admin.findUnique({
       where: { id: session.user.id },
-      include: { department: true },
+      include: { club: { include: { departments: true } } },
     })
-    if (!teacher?.department) {
+    if (!teacher?.club) {
       return (
         <div className="p-4 md:p-8">
           <Card>
             <CardContent className="py-12 text-center text-gray-500 font-thai">
-              บัญชีของท่านยังไม่ได้ผูกกับแผนก กรุณาติดต่อผู้ดูแลระบบ
+              บัญชีของท่านยังไม่ได้ผูกกับชมรม กรุณาติดต่อผู้ดูแลระบบ
             </CardContent>
           </Card>
         </div>
       )
     }
-    teacherDepartmentName = teacher.department.name
-    teacherDepartmentVariants = departmentVariants(teacher.department)
+    teacherClubId = teacher.club.id
+    teacherClubName = teacher.club.name
+    teacherDepartmentVariants = clubDepartmentVariants(teacher.club)
   }
 
   const params = await searchParams
@@ -51,7 +53,7 @@ export default async function SummaryPage({ searchParams }: PageProps) {
     where: {
       academicYear,
       semester,
-      ...(teacherDepartmentName ? { departments: { some: departmentMatchesName(teacherDepartmentName) } } : {}),
+      ...(teacherClubId ? { clubs: { some: { id: teacherClubId } } } : {}),
     },
     select: { name: true, targetYears: true },
   })
@@ -99,7 +101,7 @@ export default async function SummaryPage({ searchParams }: PageProps) {
         </div>
         <p className="text-gray-500 font-thai mt-1 text-sm">
           ผลรวมกิจกรรมภาคบังคับและกิจกรรมองค์การวิชาชีพ แยกตามชั้นปี
-          {teacherDepartmentName && ` — แผนก${teacherDepartmentName}`}
+          {teacherClubName && ` — ชมรม${teacherClubName}`}
         </p>
       </div>
 

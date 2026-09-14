@@ -29,7 +29,7 @@ export default async function VocationalActivitiesPage({ searchParams }: PagePro
 
   const activities = await prisma.vocationalActivity.findMany({
     where,
-    include: { departments: true, _count: { select: { scores: true } } },
+    include: { clubs: true, _count: { select: { scores: true } } },
     orderBy: { createdAt: "desc" },
   })
 
@@ -64,7 +64,7 @@ export default async function VocationalActivitiesPage({ searchParams }: PagePro
                   <TableHead className="font-thai whitespace-nowrap">ชื่อกิจกรรม</TableHead>
                   <TableHead className="font-thai whitespace-nowrap">ปีการศึกษา / ภาคเรียน</TableHead>
                   <TableHead className="font-thai whitespace-nowrap">ชั้นปี</TableHead>
-                  <TableHead className="font-thai whitespace-nowrap">แผนก</TableHead>
+                  <TableHead className="font-thai whitespace-nowrap">ชมรม</TableHead>
                   <TableHead className="font-thai whitespace-nowrap">เกณฑ์ผ่าน</TableHead>
                   <TableHead className="font-thai whitespace-nowrap">คะแนนที่กรอกแล้ว</TableHead>
                   <TableHead className="font-thai text-right whitespace-nowrap">จัดการ</TableHead>
@@ -89,9 +89,9 @@ export default async function VocationalActivitiesPage({ searchParams }: PagePro
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1 max-w-xs">
-                          {a.departments.map((d) => (
-                            <Badge key={d.id} variant="outline" className="font-thai text-xs whitespace-nowrap">
-                              {d.name}
+                          {a.clubs.map((c) => (
+                            <Badge key={c.id} variant="outline" className="font-thai text-xs whitespace-nowrap">
+                              {c.name}
                             </Badge>
                           ))}
                         </div>

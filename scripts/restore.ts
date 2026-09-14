@@ -31,6 +31,17 @@ async function main() {
     await prisma.department.upsert({ where: { id: row.id }, update: row, create: row })
     count++
   }
+  for (const c of raw.clubs ?? []) {
+    const { departments, ...scalarFields } = c as { departments?: { id: string }[] } & Record<string, unknown>
+    const row = withDates(scalarFields, ["createdAt", "updatedAt"])
+    const deptIds = (departments ?? []).map((d) => ({ id: d.id }))
+    await prisma.club.upsert({
+      where: { id: row.id as string },
+      update: { ...row, departments: { set: deptIds } },
+      create: { ...row, departments: { connect: deptIds } } as never,
+    })
+    count++
+  }
   for (const a of raw.admins ?? []) {
     const row = withDates(a, ["createdAt", "updatedAt"])
     await prisma.admin.upsert({ where: { id: row.id }, update: row, create: row })
@@ -57,13 +68,13 @@ async function main() {
     count++
   }
   for (const v of raw.vocationalActivities ?? []) {
-    const { departments, ...scalarFields } = v as { departments?: { id: string }[] } & Record<string, unknown>
+    const { clubs, ...scalarFields } = v as { clubs?: { id: string }[] } & Record<string, unknown>
     const row = withDates(scalarFields, ["createdAt", "updatedAt"])
-    const deptIds = (departments ?? []).map((d) => ({ id: d.id }))
+    const clubIds = (clubs ?? []).map((c) => ({ id: c.id }))
     await prisma.vocationalActivity.upsert({
       where: { id: row.id as string },
-      update: { ...row, departments: { set: deptIds } },
-      create: { ...row, departments: { connect: deptIds } } as never,
+      update: { ...row, clubs: { set: clubIds } },
+      create: { ...row, clubs: { connect: clubIds } } as never,
     })
     count++
   }

@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
 import type { Session } from "next-auth"
-import { LayoutDashboard, CalendarDays, Users, LogOut, Menu, UserCog, Building2, ClipboardCheck, ListChecks } from "lucide-react"
+import { LayoutDashboard, CalendarDays, Users, LogOut, Menu, UserCog, Building2, Users2, ClipboardCheck, ListChecks, FileEdit, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { ADMIN_ROLE_NAMES } from "@/lib/constants"
@@ -25,7 +25,10 @@ const ADMIN_NAV_ITEMS = [
 const SUPER_ADMIN_NAV_ITEMS = [
   ...ADMIN_NAV_ITEMS,
   { href: "/admin/accounts", label: "บัญชีผู้ใช้", icon: UserCog },
+  { href: "/admin/clubs", label: "ชมรมวิชาชีพ", icon: Users2 },
   { href: "/admin/departments", label: "แผนก", icon: Building2 },
+  { href: "/admin/correction-requests", label: "คำขอแก้ไขคะแนน", icon: FileEdit },
+  { href: "/admin/settings", label: "ตั้งค่าระบบ", icon: Settings },
 ]
 
 const TEACHER_NAV_ITEMS = [

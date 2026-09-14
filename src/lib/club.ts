@@ -38,3 +38,32 @@ export async function resolveClubDepartmentVariants(studentDepartment: string): 
   if (!club) return [studentDepartment]
   return clubDepartmentVariants(club)
 }
+
+/**
+ * Batched version of resolveClubForDepartment for resolving many raw
+ * Student.department strings to their club's display name at once (e.g.
+ * page headers when printing/exporting across several departments) — one
+ * query for all clubs instead of two queries per department. Falls back
+ * to the input string itself for any name that doesn't belong to a club.
+ */
+export async function resolveClubNamesForDepartments(departmentNames: string[]): Promise<Map<string, string>> {
+  const uniqueNames = [...new Set(departmentNames)]
+  const result = new Map<string, string>()
+  if (uniqueNames.length === 0) return result
+
+  const clubs = await prisma.club.findMany({
+    include: { departments: { select: { name: true, aliases: true } } },
+  })
+
+  const variantToClubName = new Map<string, string>()
+  for (const club of clubs) {
+    for (const variant of clubDepartmentVariants(club)) {
+      variantToClubName.set(variant, club.name)
+    }
+  }
+
+  for (const name of uniqueNames) {
+    result.set(name, variantToClubName.get(name) ?? name)
+  }
+  return result
+}

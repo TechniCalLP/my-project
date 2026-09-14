@@ -6,7 +6,7 @@ import Image from "next/image"
 import AutoPrint from "@/components/admin/auto-print"
 import { getStudentEvaluations, type PartStatus } from "@/lib/evaluation"
 import { resolveDepartmentVariants } from "@/lib/department"
-import { clubDepartmentVariants, resolveClubForDepartment } from "@/lib/club"
+import { clubDepartmentVariants, resolveClubNamesForDepartments } from "@/lib/club"
 import { getDeputyDirectorSignature } from "@/lib/settings"
 
 interface PageProps {
@@ -43,12 +43,7 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
 
   const evaluations = await getStudentEvaluations(students.map((s) => s.id), academicYear, semester)
 
-  const uniqueDepartments = [...new Set(students.map((s) => s.department))]
-  const clubNameByDepartment = new Map(
-    await Promise.all(
-      uniqueDepartments.map(async (dept) => [dept, (await resolveClubForDepartment(dept))?.name ?? dept] as const)
-    )
-  )
+  const clubNameByDepartment = await resolveClubNamesForDepartments(students.map((s) => s.department))
 
   const pages = new Map<string, { department: string; group: string | null; students: typeof students }>()
   for (const s of students) {

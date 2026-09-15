@@ -2,18 +2,17 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
-import { ListChecks } from "lucide-react"
+import { ListChecks, Users, CheckCircle2, Clock, AlertTriangle } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Suspense } from "react"
-import EvaluationPeriodSelect from "@/components/admin/evaluation-period-select"
-import SummaryGradeCard from "@/components/admin/summary-grade-card"
-import SummaryClubFilter from "@/components/admin/summary-club-filter"
+import SummaryFilters from "@/components/admin/summary-filters"
+import SummaryClubSection from "@/components/admin/summary-club-section"
 import { getStudentEvaluations } from "@/lib/evaluation"
 import { ACADEMIC_YEARS, SEMESTERS, YEARS } from "@/lib/constants"
 import { clubDepartmentVariants, resolveClubById } from "@/lib/club"
 
 interface PageProps {
-  searchParams: Promise<{ academicYear?: string; semester?: string; club?: string }>
+  searchParams: Promise<{ academicYear?: string; semester?: string; club?: string; search?: string; status?: string }>
 }
 
 export default async function SummaryPage({ searchParams }: PageProps) {
@@ -58,6 +57,8 @@ export default async function SummaryPage({ searchParams }: PageProps) {
 
   const academicYear = params.academicYear ?? ACADEMIC_YEARS[0]
   const semester = params.semester ?? SEMESTERS[0]
+  const search = params.search?.trim().toLowerCase() ?? ""
+  const status = params.status === "pass" || params.status === "fail" || params.status === "pending" ? params.status : "all"
 
   const activities = await prisma.vocationalActivity.findMany({
     where: {
@@ -133,59 +134,115 @@ export default async function SummaryPage({ searchParams }: PageProps) {
     })
   )
 
-  const visibleGroups = gradeGroups
+  const scopedGroups = gradeGroups
     .filter((g): g is NonNullable<typeof g> => g !== null)
     .sort((a, b) => YEARS.indexOf(a.year as (typeof YEARS)[number]) - YEARS.indexOf(b.year as (typeof YEARS)[number]) || a.clubName.localeCompare(b.clubName, "th"))
+
+  // KPI totals reflect the scoped (period + club) data — not the search/status
+  // filters below, so the top numbers stay a stable overview while the card
+  // list is narrowed.
+  const totalStudents = scopedGroups.reduce((sum, g) => sum + g.total, 0)
+  const totalPass = scopedGroups.reduce((sum, g) => sum + g.passCount, 0)
+  const totalFail = scopedGroups.reduce((sum, g) => sum + g.failCount, 0)
+  const totalPending = scopedGroups.reduce((sum, g) => sum + g.pendingCount, 0)
+  const passPct = totalStudents > 0 ? Math.round((totalPass / totalStudents) * 1000) / 10 : 0
+
+  const filteredGroups = scopedGroups.filter((g) => {
+    if (search) {
+      const haystack = `${g.clubName} ${g.activityNames.join(" ")}`.toLowerCase()
+      if (!haystack.includes(search)) return false
+    }
+    if (status === "pass" && g.passCount === 0) return false
+    if (status === "fail" && g.failCount === 0) return false
+    if (status === "pending" && g.pendingCount === 0) return false
+    return true
+  })
+
+  const sectionsByClub = new Map<string, { clubName: string; cards: typeof filteredGroups }>()
+  for (const g of filteredGroups) {
+    if (!sectionsByClub.has(g.clubId)) sectionsByClub.set(g.clubId, { clubName: g.clubName, cards: [] })
+    sectionsByClub.get(g.clubId)!.cards.push(g)
+  }
+  const sections = [...sectionsByClub.values()].sort((a, b) => a.clubName.localeCompare(b.clubName, "th"))
+
+  const kpis = [
+    {
+      icon: Users,
+      label: `จำนวนผู้เรียนรวม${scopedClubName ? "" : "ทุกชมรม"}`,
+      value: `${totalStudents.toLocaleString("th-TH")} คน`,
+      subtitle: scopedClubName ? `ชมรม${scopedClubName}` : "ทุกชมรมวิชาชีพที่มีกิจกรรมในภาคเรียนนี้",
+      color: "text-gray-900",
+    },
+    {
+      icon: CheckCircle2,
+      label: "ผ่านการประเมินแล้ว",
+      value: `${passPct}%`,
+      subtitle: `ผ่านเกณฑ์ ${totalPass.toLocaleString("th-TH")} คน จาก ${totalStudents.toLocaleString("th-TH")} คน`,
+      color: "text-success",
+    },
+    {
+      icon: Clock,
+      label: "รอดำเนินการตรวจสอบ",
+      value: `${totalPending.toLocaleString("th-TH")} คน`,
+      subtitle: "รอครูกรอกคะแนนหรือยืนยันผล",
+      color: "text-gray-500",
+    },
+    {
+      icon: AlertTriangle,
+      label: "ยังไม่ผ่านเกณฑ์ขั้นต่ำ",
+      value: `${totalFail.toLocaleString("th-TH")} คน`,
+      subtitle: "ควรติดตามช่วยเหลือเพิ่มเติม",
+      color: "text-destructive",
+    },
+  ]
 
   return (
     <div className="p-4 md:p-8 space-y-6">
       <div>
         <div className="flex items-center gap-2">
           <ListChecks className="w-5 h-5 text-primary-600" />
-          <h1 className="text-xl md:text-2xl font-bold font-thai">สรุปผลการประเมิน</h1>
+          <h1 className="text-xl md:text-2xl font-bold font-thai">สรุปผลการประเมินกิจกรรมชมรม</h1>
         </div>
         <p className="text-gray-500 font-thai mt-1 text-sm">
-          ผลรวมกิจกรรมภาคบังคับและกิจกรรมองค์การวิชาชีพ แยกตามชั้นปี
+          ผลรวมกิจกรรมภาคบังคับและกิจกรรมองค์การวิชาชีพ แยกตามชมรมและชั้นปี
           {scopedClubName && ` — ชมรม${scopedClubName}`}
         </p>
       </div>
 
-      <Card>
-        <CardContent className="pt-4">
-          <div className="flex flex-wrap gap-3 items-center">
-            <Suspense>
-              <EvaluationPeriodSelect academicYear={academicYear} semester={semester} basePath="/admin/summary" wrapInCard={false} />
-            </Suspense>
-            {!isTeacher && (
-              <Suspense>
-                <SummaryClubFilter clubs={allClubs} />
-              </Suspense>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpis.map((kpi) => (
+          <Card key={kpi.label}>
+            <CardContent className="p-4 space-y-1">
+              <div className="flex items-center gap-1.5 text-gray-500">
+                <kpi.icon className="w-3.5 h-3.5" />
+                <span className="text-xs font-thai">{kpi.label}</span>
+              </div>
+              <p className={`text-2xl font-bold ${kpi.color}`}>{kpi.value}</p>
+              <p className="text-xs text-gray-400 font-thai">{kpi.subtitle}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
-      {visibleGroups.length === 0 ? (
+      <Suspense>
+        <SummaryFilters academicYear={academicYear} semester={semester} isTeacher={isTeacher} clubs={allClubs} />
+      </Suspense>
+
+      {sections.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-gray-500 font-thai">
-            ยังไม่พบนักศึกษาสำหรับช่วงเวลานี้
+            ไม่พบข้อมูลตามเงื่อนไขที่เลือก
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {visibleGroups.map((g) => (
-            <SummaryGradeCard
-              key={`${g.clubId}::${g.year}`}
-              year={g.year}
+        <div className="space-y-8">
+          {sections.map((section) => (
+            <SummaryClubSection
+              key={section.clubName}
+              clubName={section.clubName}
+              cards={section.cards}
               academicYear={academicYear}
               semester={semester}
-              clubId={g.clubId}
-              clubName={g.clubName}
-              total={g.total}
-              passCount={g.passCount}
-              failCount={g.failCount}
-              pendingCount={g.pendingCount}
-              activityNames={g.activityNames}
             />
           ))}
         </div>

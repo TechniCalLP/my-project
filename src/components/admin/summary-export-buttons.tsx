@@ -54,7 +54,7 @@ export default function SummaryExportButtons({ year, academicYear, semester, clu
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className={`font-thai gap-1.5 shrink-0 ${className ?? ""}`}>
           <FileOutput className="w-3.5 h-3.5" />
-          Export
+          ส่งออก
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="font-thai">

@@ -1,43 +1,35 @@
 "use client"
 
+import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { X, Search } from "lucide-react"
-import { useState } from "react"
-import { YEARS, ACADEMIC_YEARS, SEMESTERS } from "@/lib/constants"
+import { Input } from "@/components/ui/input"
+import { Search, X } from "lucide-react"
+import EvaluationPeriodSelect from "@/components/admin/evaluation-period-select"
+import SummaryClubFilter from "@/components/admin/summary-club-filter"
 
 const ALL_VALUE = "__all__"
 
-interface Department {
-  id: string
-  name: string
-}
-
 interface SummaryFiltersProps {
-  departments?: Department[]
+  academicYear: string
+  semester: string
+  isTeacher: boolean
+  clubs: { id: string; name: string }[]
 }
 
-export default function SummaryFilters({ departments }: SummaryFiltersProps) {
+export default function SummaryFilters({ academicYear, semester, isTeacher, clubs }: SummaryFiltersProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "")
-  const academicYear = searchParams.get("academicYear") || ACADEMIC_YEARS[0]
-  const semester = searchParams.get("semester") || SEMESTERS[0]
-  const currentYear = searchParams.get("year") || ""
-  const currentDepartment = searchParams.get("department") || ""
+  const currentStatus = searchParams.get("status") ?? ""
 
   const updateFilter = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString())
-    if (value && value !== ALL_VALUE) {
-      params.set(key, value)
-    } else {
-      params.delete(key)
-    }
-    params.delete("page")
+    if (value && value !== ALL_VALUE) params.set(key, value)
+    else params.delete(key)
     router.push(`/admin/summary?${params.toString()}`)
   }
 
@@ -46,87 +38,51 @@ export default function SummaryFilters({ departments }: SummaryFiltersProps) {
     updateFilter("search", searchTerm)
   }
 
+  const hasFilters = searchTerm || currentStatus || searchParams.get("club")
+
   const clearFilters = () => {
     setSearchTerm("")
     router.push("/admin/summary")
   }
 
-  const hasFilters = currentYear || currentDepartment || searchTerm
-
   return (
     <Card>
-      <CardContent className="pt-4 space-y-3">
-        <div className="flex flex-wrap gap-3 items-center">
-          <Select value={academicYear} onValueChange={(v) => updateFilter("academicYear", v)}>
-            <SelectTrigger className="w-40 font-thai">
-              <SelectValue placeholder="ปีการศึกษา" />
-            </SelectTrigger>
-            <SelectContent>
-              {ACADEMIC_YEARS.map((y) => (
-                <SelectItem key={y} value={y} className="font-thai">ปีการศึกษา {y}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={semester} onValueChange={(v) => updateFilter("semester", v)}>
-            <SelectTrigger className="w-40 font-thai">
-              <SelectValue placeholder="ภาคเรียน" />
-            </SelectTrigger>
-            <SelectContent>
-              {SEMESTERS.map((s) => (
-                <SelectItem key={s} value={s} className="font-thai">{s}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
+      <CardContent className="pt-4">
         <div className="flex flex-wrap gap-3 items-center">
           <form onSubmit={handleSearch} className="flex gap-2 flex-1 min-w-48">
-            <Input
-              placeholder="ค้นหา รหัส, ชื่อ, นามสกุล"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 font-thai"
-            />
-            <Button type="submit" size="sm" className="gap-1.5 font-thai">
+            <div className="relative flex-1">
+              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <Input
+                placeholder="ค้นหาชื่อชมรม หรือกิจกรรม..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 font-thai"
+              />
+            </div>
+            <Button type="submit" size="sm" className="gap-1.5 font-thai shrink-0">
               <Search className="w-3.5 h-3.5" />
               ค้นหา
             </Button>
           </form>
 
-          <Select value={currentYear || ALL_VALUE} onValueChange={(v) => updateFilter("year", v)}>
-            <SelectTrigger className="w-36 font-thai">
-              <SelectValue placeholder="ระดับชั้น" />
+          <EvaluationPeriodSelect academicYear={academicYear} semester={semester} basePath="/admin/summary" wrapInCard={false} />
+
+          {!isTeacher && <SummaryClubFilter clubs={clubs} />}
+
+          <Select value={currentStatus || ALL_VALUE} onValueChange={(v) => updateFilter("status", v)}>
+            <SelectTrigger className="w-44 font-thai">
+              <SelectValue placeholder="สถานะประเมิน" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL_VALUE} className="font-thai">ทุกระดับชั้น</SelectItem>
-              {YEARS.map((y) => (
-                <SelectItem key={y} value={y} className="font-thai">{y}</SelectItem>
-              ))}
+              <SelectItem value={ALL_VALUE} className="font-thai">แสดงผลทั้งหมด</SelectItem>
+              <SelectItem value="pass" className="font-thai">มีผู้ผ่านเกณฑ์</SelectItem>
+              <SelectItem value="fail" className="font-thai">มีผู้ไม่ผ่านเกณฑ์</SelectItem>
+              <SelectItem value="pending" className="font-thai">มีผู้รอดำเนินการ</SelectItem>
             </SelectContent>
           </Select>
 
-          {departments && (
-            <Select value={currentDepartment || ALL_VALUE} onValueChange={(v) => updateFilter("department", v)}>
-              <SelectTrigger className="w-48 font-thai">
-                <SelectValue placeholder="แผนก" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_VALUE} className="font-thai">ทุกแผนก</SelectItem>
-                {departments.map((d) => (
-                  <SelectItem key={d.id} value={d.name} className="font-thai">{d.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-
           {hasFilters && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearFilters}
-              className="gap-1.5 font-thai text-gray-500"
-            >
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1.5 font-thai text-gray-500">
               <X className="w-3.5 h-3.5" />
               ล้างตัวกรอง
             </Button>

@@ -10,7 +10,6 @@ interface SummaryGradeCardProps {
   academicYear: string
   semester: string
   clubId?: string
-  clubName?: string
   total: number
   passCount: number
   failCount: number
@@ -23,7 +22,6 @@ export default function SummaryGradeCard({
   academicYear,
   semester,
   clubId,
-  clubName,
   total,
   passCount,
   failCount,
@@ -33,6 +31,7 @@ export default function SummaryGradeCard({
   const passPct = total > 0 ? Math.round((passCount / total) * 100) : 0
   const failPct = total > 0 ? Math.round((failCount / total) * 100) : 0
   const pendingPct = total > 0 ? Math.max(0, 100 - passPct - failPct) : 0
+  const activityLabel = activityNames.join(", ")
 
   const detailParams = new URLSearchParams({ academicYear, semester, ...(clubId ? { club: clubId } : {}) })
 
@@ -41,19 +40,31 @@ export default function SummaryGradeCard({
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex flex-col gap-1.5 min-w-0">
-            <span className="font-thai font-semibold text-base">{activityNames.join(", ")}</span>
+            <span className="font-thai font-semibold text-base truncate" title={activityLabel}>
+              {activityLabel}
+            </span>
             <div className="flex flex-wrap items-center gap-2">
-              {clubName && <Badge className="font-thai text-xs">ชมรม{clubName}</Badge>}
               <Badge variant="outline" className="font-thai text-xs">{year}</Badge>
-              <Badge variant="outline" className="font-thai text-xs">{total} คน</Badge>
+              <Badge variant="outline" className="font-thai text-xs">ทั้งหมด {total} คน</Badge>
             </div>
           </div>
           <SummaryExportButtons year={year} academicYear={academicYear} semester={semester} clubId={clubId} />
         </div>
 
-        <p className="text-xs text-gray-400 font-thai">
-          ผ่าน {passCount} · ไม่ผ่าน {failCount} · รอดำเนินการ {pendingCount}
-        </p>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 font-thai">
+          <span className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-success" />
+            ผ่าน: {passCount}
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
+            ไม่ผ่าน: {failCount}
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+            รอดำเนินการ: {pendingCount}
+          </span>
+        </div>
 
         <div className="space-y-1">
           <div className="h-3 rounded-full bg-gray-100 overflow-hidden flex w-full">

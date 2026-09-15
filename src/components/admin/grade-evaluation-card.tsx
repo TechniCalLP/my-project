@@ -183,27 +183,11 @@ export default function GradeEvaluationCard({
   }
 
   const handleSaveFinal = () => {
-    if (!data) return
     const entries = collectEntries()
     if (!entries) return
-
-    const wasCompleteBefore = (row: StudentRow) =>
-      data.activities.every((a) => row.scores[a.id]?.score != null && row.scores[a.id]?.isDraft === false)
-    const willBeCompleteAfter = (row: StudentRow) =>
-      data.activities.every((a) => {
-        const typed = values[row.id]?.[a.id]
-        if (typed !== undefined && typed !== "") return true
-        const existing = row.scores[a.id]
-        return existing?.score != null && existing?.isDraft === false
-      })
-    const newlyCompleted = data.rows.filter((r) => !wasCompleteBefore(r) && willBeCompleteAfter(r)).length
-    const predictedFilled = filled + newlyCompleted
-
-    if (total > 0 && predictedFilled === total) {
-      setConfirmEntries(entries)
-      return
-    }
-    submitEntries(entries, false)
+    // The button is only enabled once allFilledOnPage is true, so reaching
+    // here always means a complete page — always confirm before writing.
+    setConfirmEntries(entries)
   }
 
   const filledLabel = filled === total && total > 0 ? "กรอกแล้ว" : "รอดำเนินการ"
@@ -399,10 +383,10 @@ export default function GradeEvaluationCard({
       <Dialog open={confirmEntries !== null} onOpenChange={(o) => !o && setConfirmEntries(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="font-thai">ยืนยันข้อมูลถูกต้อง?</DialogTitle>
+            <DialogTitle className="font-thai">ยืนยันการบันทึกคะแนน</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-gray-500 font-thai">
-            การบันทึกครั้งนี้จะทำให้นักศึกษาชั้น {year} กรอกคะแนนครบทุกคนแล้ว กรุณาตรวจสอบว่าข้อมูลที่กรอกถูกต้องก่อนยืนยัน
+            กรอกคะแนนครบทุกคนในหน้านี้แล้ว ({confirmEntries?.length ?? 0} รายการ) กรุณาตรวจสอบว่าข้อมูลที่กรอกถูกต้องก่อนยืนยันบันทึกลงระบบ
           </p>
           <DialogFooter>
             <Button

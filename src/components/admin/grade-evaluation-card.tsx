@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
 import {
   Table,
   TableBody,
@@ -17,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { ChevronDown, ChevronUp, Save, FileText, Loader2, Search, ChevronLeft, ChevronRight, Lock } from "lucide-react"
+import { ChevronDown, ChevronUp, Save, FileText, Loader2, Search, ChevronLeft, ChevronRight } from "lucide-react"
 import { toast } from "sonner"
 
 interface ActivityColumn {
@@ -64,14 +63,6 @@ type StatusFilter = "all" | "filled" | "unfilled"
 type Entry = { studentId: string; activityId: string; score: number }
 const ALL_GROUPS = "__all__"
 
-interface CorrectionTarget {
-  studentId: string
-  activityId: string
-  studentName: string
-  activityName: string
-  currentScore: number
-}
-
 export default function GradeEvaluationCard({
   year,
   academicYear,
@@ -94,12 +85,6 @@ export default function GradeEvaluationCard({
   const [values, setValues] = useState<Record<string, Record<string, string>>>({})
   const [saving, setSaving] = useState(false)
   const [confirmEntries, setConfirmEntries] = useState<Entry[] | null>(null)
-  const [correctionDialogOpen, setCorrectionDialogOpen] = useState(false)
-  const [correctionStudentId, setCorrectionStudentId] = useState("")
-  const [correctionActivityId, setCorrectionActivityId] = useState("")
-  const [correctionScore, setCorrectionScore] = useState("")
-  const [correctionReason, setCorrectionReason] = useState("")
-  const [submittingCorrection, setSubmittingCorrection] = useState(false)
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -219,88 +204,16 @@ export default function GradeEvaluationCard({
     submitEntries(entries, false)
   }
 
-  const correctableOptions: CorrectionTarget[] = data
-    ? data.rows.flatMap((row) =>
-        data.activities
-          .filter((a) => {
-            const cell = row.scores[a.id]
-            return cell?.score != null && !cell.isDraft
-          })
-          .map((a) => ({
-            studentId: row.id,
-            activityId: a.id,
-            studentName: `${row.prefix}${row.firstName} ${row.lastName}`,
-            activityName: a.name,
-            currentScore: row.scores[a.id].score!,
-          }))
-      )
-    : []
-
-  const correctableStudents = [...new Map(correctableOptions.map((o) => [o.studentId, o])).values()]
-  const activitiesForStudent = correctableOptions.filter((o) => o.studentId === correctionStudentId)
-  const correctionTarget = activitiesForStudent.find((o) => o.activityId === correctionActivityId) ?? null
-
-  const openCorrectionDialog = () => {
-    setCorrectionDialogOpen(true)
-    const first = correctableOptions[0]
-    setCorrectionStudentId(first?.studentId ?? "")
-    setCorrectionActivityId(first?.activityId ?? "")
-    setCorrectionScore("")
-    setCorrectionReason("")
-  }
-
-  const selectCorrectionStudent = (studentId: string) => {
-    setCorrectionStudentId(studentId)
-    const firstActivity = correctableOptions.find((o) => o.studentId === studentId)
-    setCorrectionActivityId(firstActivity?.activityId ?? "")
-    setCorrectionScore("")
-  }
-
-  const selectCorrectionActivity = (activityId: string) => {
-    setCorrectionActivityId(activityId)
-    setCorrectionScore("")
-  }
-
-  const submitCorrectionRequest = async () => {
-    if (!correctionTarget) return
-    const num = Number(correctionScore)
-    if (Number.isNaN(num) || num < 0 || num > 100) {
-      toast.error("คะแนนที่ขอแก้ไขต้องอยู่ระหว่าง 0-100")
-      return
-    }
-    if (!correctionReason.trim()) {
-      toast.error("กรุณาระบุเหตุผลที่ขอแก้ไข")
-      return
-    }
-    setSubmittingCorrection(true)
-    try {
-      const res = await fetch("/api/teacher/vocational-activities/correction-requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          activityId: correctionTarget.activityId,
-          studentId: correctionTarget.studentId,
-          proposedScore: num,
-          reason: correctionReason.trim(),
-        }),
-      })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || "เกิดข้อผิดพลาด")
-      }
-      toast.success("ส่งคำขอแก้ไขคะแนนแล้ว รอผู้ดูแลระบบอนุมัติ")
-      setCorrectionDialogOpen(false)
-      setCorrectionStudentId("")
-      setCorrectionActivityId("")
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "กรุณาลองใหม่อีกครั้ง"
-      toast.error(message)
-    } finally {
-      setSubmittingCorrection(false)
-    }
-  }
-
   const filledLabel = filled === total && total > 0 ? "กรอกแล้ว" : "รอดำเนินการ"
+
+  const isRowComplete = (row: StudentRow) =>
+    data?.activities.every((a) => {
+      const typed = values[row.id]?.[a.id]
+      if (typed !== undefined && typed !== "") return true
+      return row.scores[a.id]?.score != null
+    }) ?? false
+
+  const allFilledOnPage = data ? data.rows.length > 0 && data.rows.every(isRowComplete) : false
 
   return (
     <Card>
@@ -391,6 +304,7 @@ export default function GradeEvaluationCard({
                     <TableRow>
                       <TableHead className="font-thai whitespace-nowrap">รหัสนักศึกษา</TableHead>
                       <TableHead className="font-thai whitespace-nowrap">ชื่อ-นามสกุล</TableHead>
+                      <TableHead className="font-thai whitespace-nowrap">สถานะ</TableHead>
                       {data.activities.map((a) => (
                         <TableHead key={a.id} className="font-thai whitespace-nowrap">
                           {a.name}
@@ -409,9 +323,17 @@ export default function GradeEvaluationCard({
                           </p>
                           {student.group && <p className="text-xs text-gray-400 font-thai">กลุ่ม {student.group}</p>}
                         </TableCell>
+                        <TableCell>
+                          <Badge
+                            className={`font-thai text-xs border-0 whitespace-nowrap ${
+                              isRowComplete(student) ? "bg-success/10 text-success" : "bg-gray-100 text-gray-500"
+                            }`}
+                          >
+                            {isRowComplete(student) ? "กรอกครบแล้ว" : "รอดำเนินการ"}
+                          </Badge>
+                        </TableCell>
                         {data.activities.map((a) => {
                           const cell = student.scores[a.id]
-                          const isFinalized = cell?.score != null && !cell.isDraft
                           return (
                             <TableCell key={a.id}>
                               <div className="flex flex-col gap-0.5">
@@ -419,19 +341,12 @@ export default function GradeEvaluationCard({
                                   type="number"
                                   min={0}
                                   max={100}
-                                  value={isFinalized ? cell!.score! : (values[student.id]?.[a.id] ?? "")}
+                                  value={values[student.id]?.[a.id] ?? ""}
                                   onChange={(e) => setValue(student.id, a.id, e.target.value)}
-                                  disabled={isFinalized}
                                   className="w-20 font-mono"
                                 />
                                 {cell?.score != null && cell.isDraft && (
                                   <span className="text-[10px] text-amber-600 font-thai">ฉบับร่าง</span>
-                                )}
-                                {isFinalized && (
-                                  <span className="flex items-center gap-1 text-[10px] text-gray-400 font-thai">
-                                    <Lock className="w-2.5 h-2.5" />
-                                    บันทึกแล้ว
-                                  </span>
                                 )}
                               </div>
                             </TableCell>
@@ -445,7 +360,12 @@ export default function GradeEvaluationCard({
 
               <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t">
                 <div className="flex gap-2">
-                  <Button onClick={handleSaveFinal} disabled={saving} className="font-thai gap-1.5">
+                  <Button
+                    onClick={handleSaveFinal}
+                    disabled={saving}
+                    variant={allFilledOnPage ? "default" : "outline"}
+                    className="font-thai gap-1.5"
+                  >
                     {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                     บันทึก
                   </Button>
@@ -458,16 +378,6 @@ export default function GradeEvaluationCard({
                     {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
                     บันทึกฉบับร่าง
                   </Button>
-                  {correctableOptions.length > 0 && (
-                    <Button
-                      onClick={openCorrectionDialog}
-                      variant="outline"
-                      className="font-thai gap-1.5 text-gray-600"
-                    >
-                      <Lock className="w-3.5 h-3.5" />
-                      ขอแก้ไขคะแนน
-                    </Button>
-                  )}
                 </div>
 
                 {data.totalPages > 1 && (
@@ -533,118 +443,6 @@ export default function GradeEvaluationCard({
             >
               {saving && <Loader2 className="w-4 h-4 animate-spin" />}
               ตกลง
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={correctionDialogOpen}
-        onOpenChange={(o) => {
-          setCorrectionDialogOpen(o)
-          if (!o) {
-            setCorrectionStudentId("")
-            setCorrectionActivityId("")
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="font-thai">ขอแก้ไขคะแนน</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="font-thai">นักศึกษา *</Label>
-                <Select value={correctionStudentId} onValueChange={selectCorrectionStudent}>
-                  <SelectTrigger className="w-full font-thai">
-                    <SelectValue placeholder="เลือกนักศึกษา" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {correctableStudents.map((o) => (
-                      <SelectItem key={o.studentId} value={o.studentId} className="font-thai">
-                        {o.studentName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="font-thai">กิจกรรม *</Label>
-                <Select value={correctionActivityId} onValueChange={selectCorrectionActivity}>
-                  <SelectTrigger className="w-full font-thai">
-                    <SelectValue placeholder="เลือกกิจกรรม" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activitiesForStudent.map((o) => (
-                      <SelectItem key={o.activityId} value={o.activityId} className="font-thai">
-                        {o.activityName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {correctionTarget && (
-              <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="font-thai text-gray-500">คะแนนเดิม</Label>
-                    <Input
-                      type="number"
-                      value={correctionTarget.currentScore}
-                      disabled
-                      className="font-mono bg-gray-50"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="font-thai">คะแนนใหม่ *</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={correctionScore}
-                      onChange={(e) => setCorrectionScore(e.target.value)}
-                      placeholder="กรอกคะแนนใหม่"
-                      autoFocus
-                      className="font-mono"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="font-thai">เหตุผลที่ขอแก้ไข *</Label>
-                  <textarea
-                    value={correctionReason}
-                    onChange={(e) => setCorrectionReason(e.target.value)}
-                    placeholder="เช่น กรอกคะแนนผิดพลาด"
-                    className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm font-thai"
-                  />
-                </div>
-                <p className="text-xs text-gray-400 font-thai">คำขอนี้จะถูกส่งให้ผู้ดูแลระบบอนุมัติก่อนคะแนนจะถูกแก้ไขจริง</p>
-              </>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setCorrectionDialogOpen(false)
-                setCorrectionStudentId("")
-                setCorrectionActivityId("")
-              }}
-              disabled={submittingCorrection}
-              className="font-thai"
-            >
-              ยกเลิก
-            </Button>
-            <Button
-              onClick={submitCorrectionRequest}
-              disabled={submittingCorrection || !correctionTarget}
-              className="font-thai gap-2"
-            >
-              {submittingCorrection && <Loader2 className="w-4 h-4 animate-spin" />}
-              ส่งคำขอ
             </Button>
           </DialogFooter>
         </DialogContent>

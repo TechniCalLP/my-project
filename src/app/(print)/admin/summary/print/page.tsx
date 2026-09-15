@@ -7,7 +7,7 @@ import AutoPrint from "@/components/admin/auto-print"
 import { getStudentEvaluations, type PartStatus } from "@/lib/evaluation"
 import { resolveDepartmentVariants } from "@/lib/department"
 import { clubDepartmentVariants, resolveClubNamesForDepartments, resolveClubById } from "@/lib/club"
-import { getDeputyDirectorSignature } from "@/lib/settings"
+import { getActiveDocumentSignature } from "@/lib/settings"
 
 interface PageProps {
   searchParams: Promise<{ year?: string; academicYear?: string; semester?: string; department?: string; club?: string; formType?: string }>
@@ -55,7 +55,7 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
     pages.get(key)!.students.push(s)
   }
 
-  const signature = await getDeputyDirectorSignature()
+  const signature = await getActiveDocumentSignature()
 
   const now = new Date()
   const printedAt = now.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" })
@@ -212,13 +212,19 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
             <div className="mt-12 flex justify-end">
               <div className="text-center text-sm space-y-1">
                 {signature ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={signature} alt="ลายเซ็น" className="h-14 mx-auto object-contain" />
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={signature.imageData} alt="ลายเซ็น" className="h-14 mx-auto object-contain" />
+                    <p>({signature.name})</p>
+                    <p>{signature.position}</p>
+                  </>
                 ) : (
-                  <p>ลงชื่อ.................................</p>
+                  <>
+                    <p>ลงชื่อ.................................</p>
+                    <p>(.................................)</p>
+                    <p>รองผู้อำนวยการฝ่ายพัฒนากิจการนักเรียน นักศึกษา</p>
+                  </>
                 )}
-                <p>(.................................)</p>
-                <p>รองผู้อำนวยการฝ่ายพัฒนากิจการนักเรียน นักศึกษา</p>
                 <p>ประธานกรรมการการประเมินผลกิจกรรมองค์การวิชาชีพ</p>
                 <p>{COLLEGE_NAME}</p>
                 <p>{printDay} / {printMonth} / {printYear}</p>

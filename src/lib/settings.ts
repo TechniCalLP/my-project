@@ -1,8 +1,13 @@
 import { prisma } from "@/lib/prisma"
 
-export const DEPUTY_DIRECTOR_SIGNATURE_KEY = "deputy_director_signature"
+export interface ActiveSignature {
+  name: string
+  position: string
+  imageData: string
+}
 
-export async function getDeputyDirectorSignature(): Promise<string | null> {
-  const setting = await prisma.systemSetting.findUnique({ where: { key: DEPUTY_DIRECTOR_SIGNATURE_KEY } })
-  return setting?.value ?? null
+export async function getActiveDocumentSignature(): Promise<ActiveSignature | null> {
+  const signature = await prisma.documentSignature.findFirst({ where: { isActive: true } })
+  if (!signature) return null
+  return { name: signature.name, position: signature.position, imageData: signature.imageData }
 }

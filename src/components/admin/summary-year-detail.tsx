@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Table,
@@ -23,9 +24,12 @@ interface SummaryYearDetailProps {
   academicYear: string
   semester: string
   isAdminView: boolean
+  selectedIds?: Set<string>
+  onToggleRow?: (row: StudentRow) => void
+  onToggleAllVisible?: (rows: StudentRow[]) => void
 }
 
-interface VocationalActivityResult {
+export interface VocationalActivityResult {
   id: string
   name: string
   passThreshold: number
@@ -33,7 +37,7 @@ interface VocationalActivityResult {
   status: PartStatus
 }
 
-interface StudentRow {
+export interface StudentRow {
   id: string
   studentId: string
   prefix: string
@@ -62,7 +66,16 @@ function OverallBadge({ status }: { status: PartStatus }) {
   return <Badge className="bg-gray-100 text-gray-500 border-0 font-thai text-xs">รอดำเนินการ</Badge>
 }
 
-export default function SummaryYearDetail({ year, academicYear, semester, isAdminView }: SummaryYearDetailProps) {
+export default function SummaryYearDetail({
+  year,
+  academicYear,
+  semester,
+  isAdminView,
+  selectedIds,
+  onToggleRow,
+  onToggleAllVisible,
+}: SummaryYearDetailProps) {
+  const selectable = selectedIds !== undefined
   const [searchInput, setSearchInput] = useState("")
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState<StatusFilter>("all")
@@ -147,6 +160,15 @@ export default function SummaryYearDetail({ year, academicYear, semester, isAdmi
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      {selectable && (
+                        <TableHead className="w-10">
+                          <Checkbox
+                            checked={data.rows.length > 0 && data.rows.every((r) => selectedIds!.has(r.id))}
+                            onCheckedChange={() => onToggleAllVisible?.(data.rows)}
+                            aria-label="เลือกทั้งหมด"
+                          />
+                        </TableHead>
+                      )}
                       <TableHead className="font-thai whitespace-nowrap">รหัสนักศึกษา</TableHead>
                       <TableHead className="font-thai whitespace-nowrap">ชื่อ-นามสกุล</TableHead>
                       {isAdminView && <TableHead className="font-thai whitespace-nowrap">แผนก</TableHead>}
@@ -158,6 +180,15 @@ export default function SummaryYearDetail({ year, academicYear, semester, isAdmi
                   <TableBody>
                     {data.rows.map((student) => (
                       <TableRow key={student.id} className="hover:bg-gray-50">
+                        {selectable && (
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedIds!.has(student.id)}
+                              onCheckedChange={() => onToggleRow?.(student)}
+                              aria-label={`เลือก ${student.prefix}${student.firstName} ${student.lastName}`}
+                            />
+                          </TableCell>
+                        )}
                         <TableCell className="font-mono text-sm whitespace-nowrap">{student.studentId}</TableCell>
                         <TableCell className="whitespace-nowrap">
                           <p className="font-thai font-medium">

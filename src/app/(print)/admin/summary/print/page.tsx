@@ -75,6 +75,13 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
         const passPct = total > 0 ? ((passCount / total) * 100).toFixed(2) : "0.00"
         const failPct = total > 0 ? ((failCount / total) * 100).toFixed(2) : "0.00"
 
+        const activityColumns: { id: string; name: string }[] = []
+        for (const s of pageGroup.students) {
+          for (const a of evaluations.get(s.id)?.vocationalActivities ?? []) {
+            if (!activityColumns.some((c) => c.id === a.id)) activityColumns.push({ id: a.id, name: a.name })
+          }
+        }
+
         return (
           <div
             key={pageIndex}
@@ -106,7 +113,13 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
                     <th className="border border-gray-800 px-2 py-1.5 w-32">รหัสนักศึกษา</th>
                     <th className="border border-gray-800 px-2 py-1.5">ชื่อ - สกุล</th>
                     <th className="border border-gray-800 px-2 py-1.5 w-28">กิจกรรมภาคบังคับ</th>
-                    <th className="border border-gray-800 px-2 py-1.5">กิจกรรมองค์การวิชาชีพ</th>
+                    {activityColumns.length === 0 ? (
+                      <th className="border border-gray-800 px-2 py-1.5">กิจกรรมองค์การวิชาชีพ</th>
+                    ) : (
+                      activityColumns.map((col) => (
+                        <th key={col.id} className="border border-gray-800 px-2 py-1.5">{col.name}</th>
+                      ))
+                    )}
                     <th className="border border-gray-800 px-2 py-1.5 w-20">ผลรวม</th>
                   </tr>
                 </thead>
@@ -124,19 +137,20 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
                         <td className="border border-gray-800 px-2 py-1 text-center">
                           {participation.progress}%
                         </td>
-                        <td className="border border-gray-800 px-2 py-1">
-                          {vocationalActivities.length === 0 ? (
+                        {activityColumns.length === 0 ? (
+                          <td className="border border-gray-800 px-2 py-1 text-center">
                             <span className="text-xs text-gray-400">ไม่มีกิจกรรม</span>
-                          ) : (
-                            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
-                              {vocationalActivities.map((a) => (
-                                <span key={a.id}>
-                                  {a.name}: {a.score != null ? `${a.score}%` : "รอกรอก"}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </td>
+                          </td>
+                        ) : (
+                          activityColumns.map((col) => {
+                            const a = vocationalActivities.find((va) => va.id === col.id)
+                            return (
+                              <td key={col.id} className="border border-gray-800 px-2 py-1 text-center">
+                                {a ? (a.score != null ? `${a.score}%` : "รอกรอก") : "-"}
+                              </td>
+                            )
+                          })
+                        )}
                         <td className="border border-gray-800 px-2 py-1 text-center">
                           {statusLabel(overall)}
                         </td>

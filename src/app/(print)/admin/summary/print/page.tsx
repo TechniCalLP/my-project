@@ -59,8 +59,6 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
   const overallForStudent = (studentId: string): PartStatus => evaluations.get(studentId)?.overall ?? "PENDING"
 
   const statusLabel = (s: PartStatus) => (s === "PASS" ? "ผ่าน" : s === "FAIL" ? "ไม่ผ่าน" : "รอดำเนินการ")
-  const statusColorClass = (s: PartStatus) =>
-    s === "PASS" ? "text-success" : s === "FAIL" ? "text-destructive" : "text-gray-500"
 
   return (
     <div className="min-h-screen bg-white font-thai">
@@ -119,8 +117,8 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
                         <td className="border border-gray-800 px-2 py-1 text-center">{i + 1}</td>
                         <td className="border border-gray-800 px-2 py-1 font-mono text-xs">{s.studentId}</td>
                         <td className="border border-gray-800 px-2 py-1">{s.prefix}{s.firstName} {s.lastName}</td>
-                        <td className={`border border-gray-800 px-2 py-1 text-center ${statusColorClass(participation.status)}`}>
-                          {statusLabel(participation.status)} {participation.progress}%
+                        <td className="border border-gray-800 px-2 py-1 text-center">
+                          {participation.progress}%
                         </td>
                         <td className="border border-gray-800 px-2 py-1">
                           {vocationalActivities.length === 0 ? (
@@ -128,14 +126,14 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
                           ) : (
                             <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
                               {vocationalActivities.map((a) => (
-                                <span key={a.id} className={statusColorClass(a.status)}>
+                                <span key={a.id}>
                                   {a.name}: {a.score != null ? `${a.score}%` : "รอกรอก"}
                                 </span>
                               ))}
                             </div>
                           )}
                         </td>
-                        <td className={`border border-gray-800 px-2 py-1 text-center ${statusColorClass(overall)}`}>
+                        <td className="border border-gray-800 px-2 py-1 text-center">
                           {statusLabel(overall)}
                         </td>
                       </tr>

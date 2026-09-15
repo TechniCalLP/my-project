@@ -7,7 +7,8 @@ import { Suspense } from "react"
 import SignatureFilters from "@/components/admin/signature-filters"
 import SignatureFormDialog from "@/components/admin/signature-form-dialog"
 import SignatureRowActions from "@/components/admin/signature-row-actions"
-import CollegeLogoUpload from "@/components/admin/college-logo-upload"
+import LogoRowActions from "@/components/admin/logo-row-actions"
+import { CollegeLogoImage } from "@/components/layout/college-logo-image"
 import { PaginationNav } from "@/components/ui/pagination-nav"
 import { getCollegeLogo } from "@/lib/settings"
 
@@ -35,7 +36,7 @@ export default async function AdminSettingsPage({ searchParams }: PageProps) {
     ...(status === "active" ? { isActive: true } : status === "inactive" ? { isActive: false } : {}),
   }
 
-  const [total, signatures] = await Promise.all([
+  const [total, signatures, logo] = await Promise.all([
     prisma.documentSignature.count({ where }),
     prisma.documentSignature.findMany({
       where,
@@ -43,10 +44,10 @@ export default async function AdminSettingsPage({ searchParams }: PageProps) {
       skip: (currentPage - 1) * ITEMS_PER_PAGE,
       take: ITEMS_PER_PAGE,
     }),
+    getCollegeLogo(),
   ])
 
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE)
-  const logo = await getCollegeLogo()
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -59,20 +60,11 @@ export default async function AdminSettingsPage({ searchParams }: PageProps) {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="font-thai text-base">โลโก้วิทยาลัย</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CollegeLogoUpload initialLogo={logo} />
-        </CardContent>
-      </Card>
-
-      <Card>
         <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
           <div>
-            <CardTitle className="font-thai text-base">รายการลายเซ็นสำหรับเอกสาร</CardTitle>
+            <CardTitle className="font-thai text-base">เอกสารที่ใช้ในระบบ</CardTitle>
             <p className="text-sm text-gray-500 font-thai mt-1">
-              ลายเซ็นดิจิทัลสำหรับประทับเอกสารสำคัญ ใบรับรอง และรายงานการประเมินองค์การวิชาชีพ
+              เอกสารที่ใช้ในเอกสารสำคัญ ใบรับรอง และอื่นๆ
             </p>
           </div>
           <SignatureFormDialog
@@ -131,6 +123,25 @@ export default async function AdminSettingsPage({ searchParams }: PageProps) {
           <Suspense>
             <PaginationNav currentPage={currentPage} totalPages={totalPages} totalItems={total} itemsPerPage={ITEMS_PER_PAGE} />
           </Suspense>
+
+          <div className="flex flex-wrap items-center justify-between gap-4 border rounded-lg p-4">
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="w-20 h-14 shrink-0 border rounded-md bg-gray-50 flex items-center justify-center overflow-hidden">
+                <CollegeLogoImage logoUrl={logo} width={80} height={56} className="max-w-full max-h-full" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-thai font-semibold truncate">โลโก้วิทยาลัย</p>
+                  <Badge className="bg-success/10 text-success border-0 font-thai text-xs shrink-0">ใช้งานอยู่</Badge>
+                </div>
+                <p className="text-sm text-gray-500 font-thai truncate">
+                  ใช้แสดงในหน้าเข้าสู่ระบบ เมนูของนักศึกษา ใบรับรอง และเอกสาร Export ทั้งหมด
+                </p>
+              </div>
+            </div>
+
+            <LogoRowActions logo={logo} />
+          </div>
         </CardContent>
       </Card>
     </div>

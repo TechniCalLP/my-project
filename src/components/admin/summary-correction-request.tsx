@@ -126,7 +126,7 @@ export default function SummaryCorrectionRequest({ year, academicYear, selectedR
       </Button>
 
       <Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : closeDialog())}>
-        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
           <DialogHeader className="shrink-0">
             <DialogTitle className="font-thai">ส่งคำขออนุมัติแก้ไขคะแนนรายบุคคล</DialogTitle>
           </DialogHeader>

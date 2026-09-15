@@ -4,6 +4,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
@@ -19,37 +21,31 @@ interface SummaryExportButtonsProps {
 
 export default function SummaryExportButtons({ year, academicYear, semester, className }: SummaryExportButtonsProps) {
   const exportParams = new URLSearchParams({ year, academicYear, semester })
-  const excelUrl = `/api/admin/summary/export?${exportParams.toString()}`
-  const printUrl17 = `/admin/summary/print?${exportParams.toString()}&formType=17`
-  const printUrl15 = `/admin/summary/print?${exportParams.toString()}&formType=15`
 
-  const handleExcel = async () => {
+  const handleExcel = async (formType: "15" | "17") => {
     try {
-      const res = await fetch(excelUrl)
+      const url = `/api/admin/summary/export?${exportParams.toString()}&formType=${formType}`
+      const res = await fetch(url)
       if (!res.ok) throw new Error("Download failed")
       const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
+      const blobUrl = URL.createObjectURL(blob)
       const link = document.createElement("a")
-      link.href = url
+      link.href = blobUrl
       const disposition = res.headers.get("Content-Disposition") ?? ""
       const match = disposition.match(/filename\*?=(?:UTF-8'')?([^;]+)/i)
       link.download = match ? decodeURIComponent(match[1]) : "summary.xlsx"
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      URL.revokeObjectURL(url)
+      URL.revokeObjectURL(blobUrl)
       toast.success("ดาวน์โหลด Excel สำเร็จ")
     } catch {
       toast.error("ดาวน์โหลดไม่สำเร็จ กรุณาลองใหม่")
     }
   }
 
-  const handlePdf17 = () => {
-    window.open(printUrl17, "_blank")
-  }
-
-  const handlePdf15 = () => {
-    window.open(printUrl15, "_blank")
+  const handlePdf = (formType: "15" | "17") => {
+    window.open(`/admin/summary/print?${exportParams.toString()}&formType=${formType}`, "_blank")
   }
 
   return (
@@ -61,17 +57,28 @@ export default function SummaryExportButtons({ year, academicYear, semester, cla
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="font-thai">
-        <DropdownMenuItem onClick={handleExcel} className="gap-2 cursor-pointer">
-          <FileSpreadsheet className="w-4 h-4 text-green-600" />
-          Export Excel
+        <DropdownMenuLabel className="flex items-center gap-2 text-green-600">
+          <FileSpreadsheet className="w-4 h-4" />
+          Excel
+        </DropdownMenuLabel>
+        <DropdownMenuItem onClick={() => handleExcel("15")} className="cursor-pointer pl-8">
+          อวท.15
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={handlePdf17} className="gap-2 cursor-pointer">
-          <FileText className="w-4 h-4 text-red-500" />
-          Export PDF (อวท.17)
+        <DropdownMenuItem onClick={() => handleExcel("17")} className="cursor-pointer pl-8">
+          อวท.17
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={handlePdf15} className="gap-2 cursor-pointer">
-          <FileText className="w-4 h-4 text-red-500" />
-          Export PDF (อวท.15)
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuLabel className="flex items-center gap-2 text-red-500">
+          <FileText className="w-4 h-4" />
+          PDF
+        </DropdownMenuLabel>
+        <DropdownMenuItem onClick={() => handlePdf("15")} className="cursor-pointer pl-8">
+          อวท.15
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handlePdf("17")} className="cursor-pointer pl-8">
+          อวท.17
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
   const year = searchParams.get("year")
   const academicYear = searchParams.get("academicYear")
   const semester = searchParams.get("semester")
+  const formType = searchParams.get("formType") === "17" ? "17" : "15"
 
   if (!year || !academicYear || !semester) {
     return NextResponse.json({ error: "Missing parameters" }, { status: 400 })
@@ -48,6 +49,21 @@ export async function GET(req: NextRequest) {
 
   const rows = students.map((s, i) => {
     const evaluation = evaluations.get(s.id)!
+
+    if (formType === "17") {
+      return {
+        "ลำดับ": i + 1,
+        "รหัสนักศึกษา": s.studentId,
+        "ชื่อ-สกุล": `${s.prefix}${s.firstName} ${s.lastName}`,
+        "แผนก": s.department,
+        "กลุ่ม": s.group ?? "-",
+        "ชั้นปี": s.year,
+        "ผ่าน": evaluation.overall === "PASS" ? "✓" : "",
+        "ไม่ผ่าน": evaluation.overall === "FAIL" ? "✓" : "",
+        "หมายเหตุ": evaluation.overall === "PENDING" ? "รอดำเนินการ" : "",
+      } satisfies Record<string, string | number>
+    }
+
     const row: Record<string, string | number> = {
       "ลำดับ": i + 1,
       "รหัสนักศึกษา": s.studentId,
@@ -69,7 +85,7 @@ export async function GET(req: NextRequest) {
   XLSX.utils.book_append_sheet(wb, ws, "สรุปผลการประเมิน")
 
   const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" })
-  const fileName = `summary_${year}_${academicYear}_${semester}.xlsx`
+  const fileName = `summary_${year}_${academicYear}_${semester}_avt${formType}.xlsx`
 
   return new NextResponse(buf, {
     headers: {

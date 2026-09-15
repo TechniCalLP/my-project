@@ -113,18 +113,8 @@ export default async function SummaryPage({ searchParams }: PageProps) {
 
       const evaluations = await getStudentEvaluations(students.map((s) => s.id), academicYear, semester)
 
-      let passCount = 0
-      let failCount = 0
-      let pendingCount = 0
-      for (const evaluation of evaluations.values()) {
-        if (evaluation.overall === "PASS") passCount++
-        else if (evaluation.overall === "FAIL") failCount++
-        else pendingCount++
-      }
-
-      // Per-activity breakdown, reusing the evaluations already fetched above
-      // — this is what actually renders as individual cards below, while the
-      // aggregate numbers here still feed the KPI totals.
+      // Per-activity breakdown — both the card grid and the KPI totals above
+      // are built from this, so the two always add up to each other.
       const activityBreakdown = group.activities.map((activity) => {
         let aPass = 0
         let aFail = 0
@@ -144,9 +134,6 @@ export default async function SummaryPage({ searchParams }: PageProps) {
         clubId: group.clubId,
         clubName: group.clubName,
         total: students.length,
-        passCount,
-        failCount,
-        pendingCount,
         activityBreakdown,
       }
     })
@@ -156,30 +143,30 @@ export default async function SummaryPage({ searchParams }: PageProps) {
     .filter((g): g is NonNullable<typeof g> => g !== null)
     .sort((a, b) => YEARS.indexOf(a.year as (typeof YEARS)[number]) - YEARS.indexOf(b.year as (typeof YEARS)[number]) || a.clubName.localeCompare(b.clubName, "th"))
 
-  const activityCards = scopedGroups.flatMap((g) =>
-    g.activityBreakdown.map((a) => ({
-      year: g.year,
-      clubId: g.clubId,
-      clubName: g.clubName,
-      activityId: a.activityId,
-      total: g.total,
-      passCount: a.passCount,
-      failCount: a.failCount,
-      pendingCount: a.pendingCount,
-      activityNames: [a.activityName],
-    }))
-  )
+  // One card per (club, year) — combining all its activities back together,
+  // summing pass/fail/pending across them so the card's numbers, and the KPI
+  // totals below (summed the same way), always add up to each other.
+  const yearCards = scopedGroups.map((g) => ({
+    year: g.year,
+    clubId: g.clubId,
+    clubName: g.clubName,
+    total: g.total,
+    passCount: g.activityBreakdown.reduce((sum, a) => sum + a.passCount, 0),
+    failCount: g.activityBreakdown.reduce((sum, a) => sum + a.failCount, 0),
+    pendingCount: g.activityBreakdown.reduce((sum, a) => sum + a.pendingCount, 0),
+    activityCount: g.activityBreakdown.length,
+    activityNames: g.activityBreakdown.map((a) => a.activityName),
+  }))
 
   // KPI totals reflect the scoped (period + club) data — not the search/status
   // filters below, so the top numbers stay a stable overview while the card
-  // list is narrowed. Counted per activity card (not per distinct student),
-  // so these add up to what's shown across the cards below.
+  // list is narrowed.
   const totalStudents = scopedGroups.reduce((sum, g) => sum + g.total, 0)
-  const totalPass = activityCards.reduce((sum, c) => sum + c.passCount, 0)
-  const totalFail = activityCards.reduce((sum, c) => sum + c.failCount, 0)
-  const totalPending = activityCards.reduce((sum, c) => sum + c.pendingCount, 0)
+  const totalPass = yearCards.reduce((sum, c) => sum + c.passCount, 0)
+  const totalFail = yearCards.reduce((sum, c) => sum + c.failCount, 0)
+  const totalPending = yearCards.reduce((sum, c) => sum + c.pendingCount, 0)
 
-  const filteredGroups = activityCards.filter((g) => {
+  const filteredGroups = yearCards.filter((g) => {
     if (search) {
       const haystack = `${g.clubName} ${g.activityNames.join(" ")}`.toLowerCase()
       if (!haystack.includes(search)) return false

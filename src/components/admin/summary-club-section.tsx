@@ -9,12 +9,11 @@ const PREVIEW_COUNT = 3
 interface CardData {
   year: string
   clubId: string
-  activityId: string
   total: number
   passCount: number
   failCount: number
   pendingCount: number
-  activityNames: string[]
+  activityCount: number
 }
 
 interface SummaryClubSectionProps {
@@ -46,7 +45,7 @@ export default function SummaryClubSection({ clubName, cards, academicYear, seme
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {visibleCards.map((c) => (
           <SummaryGradeCard
-            key={`${c.clubId}::${c.year}::${c.activityId}`}
+            key={`${c.clubId}::${c.year}`}
             year={c.year}
             academicYear={academicYear}
             semester={semester}
@@ -55,7 +54,7 @@ export default function SummaryClubSection({ clubName, cards, academicYear, seme
             passCount={c.passCount}
             failCount={c.failCount}
             pendingCount={c.pendingCount}
-            activityNames={c.activityNames}
+            activityCount={c.activityCount}
           />
         ))}
       </div>

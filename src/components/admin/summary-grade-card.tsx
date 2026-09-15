@@ -14,7 +14,7 @@ interface SummaryGradeCardProps {
   passCount: number
   failCount: number
   pendingCount: number
-  activityNames: string[]
+  activityCount: number
 }
 
 export default function SummaryGradeCard({
@@ -26,12 +26,11 @@ export default function SummaryGradeCard({
   passCount,
   failCount,
   pendingCount,
-  activityNames,
+  activityCount,
 }: SummaryGradeCardProps) {
   const passPct = total > 0 ? Math.round((passCount / total) * 100) : 0
   const failPct = total > 0 ? Math.round((failCount / total) * 100) : 0
   const pendingPct = total > 0 ? Math.max(0, 100 - passPct - failPct) : 0
-  const activityLabel = activityNames.join(", ")
 
   const detailParams = new URLSearchParams({ academicYear, semester, ...(clubId ? { club: clubId } : {}) })
 
@@ -40,12 +39,10 @@ export default function SummaryGradeCard({
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="flex flex-col gap-1.5 min-w-0">
-            <span className="font-thai font-semibold text-base truncate" title={activityLabel}>
-              {activityLabel}
-            </span>
+            <span className="font-thai font-semibold text-base truncate">{year}</span>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="font-thai text-xs">{year}</Badge>
-              <Badge variant="outline" className="font-thai text-xs">ทั้งหมด {total} คน</Badge>
+              <Badge variant="outline" className="font-thai text-xs">{total} คน</Badge>
+              <Badge variant="outline" className="font-thai text-xs">{activityCount} กิจกรรม</Badge>
             </div>
           </div>
           <SummaryExportButtons year={year} academicYear={academicYear} semester={semester} clubId={clubId} />

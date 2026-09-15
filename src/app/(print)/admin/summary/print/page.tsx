@@ -54,7 +54,11 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
 
   const signature = await getDeputyDirectorSignature()
 
-  const printedAt = new Date().toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" })
+  const now = new Date()
+  const printedAt = now.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" })
+  const printDay = now.toLocaleDateString("th-TH", { day: "numeric" })
+  const printMonth = now.toLocaleDateString("th-TH", { month: "long" })
+  const printYear = now.toLocaleDateString("th-TH", { year: "numeric" })
 
   const overallForStudent = (studentId: string): PartStatus => evaluations.get(studentId)?.overall ?? "PENDING"
 
@@ -200,7 +204,7 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
                 <p>รองผู้อำนวยการฝ่ายพัฒนากิจการนักเรียน นักศึกษา</p>
                 <p>ประธานกรรมการการประเมินผลกิจกรรมองค์การวิชาชีพ</p>
                 <p>{COLLEGE_NAME}</p>
-                <p>............/............/............</p>
+                <p>{printDay} / {printMonth} / {printYear}</p>
               </div>
             </div>
 

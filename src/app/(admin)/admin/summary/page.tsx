@@ -2,9 +2,10 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
-import { ListChecks, Users, CheckCircle2, Clock, AlertTriangle } from "lucide-react"
+import { ListChecks } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Suspense } from "react"
+import StatsCards from "@/components/admin/stats-cards"
 import SummaryFilters from "@/components/admin/summary-filters"
 import SummaryClubSection from "@/components/admin/summary-club-section"
 import { getStudentEvaluations } from "@/lib/evaluation"
@@ -167,32 +168,30 @@ export default async function SummaryPage({ searchParams }: PageProps) {
 
   const kpis = [
     {
-      icon: Users,
+      icon: "users" as const,
       label: `จำนวนผู้เรียนรวม${scopedClubName ? "" : "ทุกชมรม"}`,
       value: `${totalStudents.toLocaleString("th-TH")} คน`,
       subtitle: scopedClubName ? `ชมรม${scopedClubName}` : "ทุกชมรมวิชาชีพที่มีกิจกรรมในภาคเรียนนี้",
-      color: "text-gray-900",
     },
     {
-      icon: CheckCircle2,
+      icon: "check" as const,
       label: "ผ่านการประเมินแล้ว",
       value: `${passPct}%`,
       subtitle: `ผ่านเกณฑ์ ${totalPass.toLocaleString("th-TH")} คน จาก ${totalStudents.toLocaleString("th-TH")} คน`,
-      color: "text-success",
+      valueClass: "text-success",
     },
     {
-      icon: Clock,
+      icon: "clock" as const,
       label: "รอดำเนินการตรวจสอบ",
       value: `${totalPending.toLocaleString("th-TH")} คน`,
       subtitle: "รอครูกรอกคะแนนหรือยืนยันผล",
-      color: "text-gray-500",
     },
     {
-      icon: AlertTriangle,
+      icon: "alert" as const,
       label: "ยังไม่ผ่านเกณฑ์ขั้นต่ำ",
       value: `${totalFail.toLocaleString("th-TH")} คน`,
       subtitle: "ควรติดตามช่วยเหลือเพิ่มเติม",
-      color: "text-destructive",
+      valueClass: "text-destructive",
     },
   ]
 
@@ -209,20 +208,7 @@ export default async function SummaryPage({ searchParams }: PageProps) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {kpis.map((kpi) => (
-          <Card key={kpi.label}>
-            <CardContent className="p-4 space-y-1">
-              <div className="flex items-center gap-1.5 text-gray-500">
-                <kpi.icon className="w-3.5 h-3.5" />
-                <span className="text-xs font-thai">{kpi.label}</span>
-              </div>
-              <p className={`text-2xl font-bold ${kpi.color}`}>{kpi.value}</p>
-              <p className="text-xs text-gray-400 font-thai">{kpi.subtitle}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <StatsCards stats={kpis} />
 
       <Suspense>
         <SummaryFilters academicYear={academicYear} semester={semester} isTeacher={isTeacher} clubs={allClubs} />

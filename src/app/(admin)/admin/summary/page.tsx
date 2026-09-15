@@ -154,7 +154,6 @@ export default async function SummaryPage({ searchParams }: PageProps) {
     passCount: g.activityBreakdown.reduce((sum, a) => sum + a.passCount, 0),
     failCount: g.activityBreakdown.reduce((sum, a) => sum + a.failCount, 0),
     pendingCount: g.activityBreakdown.reduce((sum, a) => sum + a.pendingCount, 0),
-    activityCount: g.activityBreakdown.length,
     activityNames: g.activityBreakdown.map((a) => a.activityName),
   }))
 

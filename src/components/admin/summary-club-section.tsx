@@ -13,7 +13,7 @@ interface CardData {
   passCount: number
   failCount: number
   pendingCount: number
-  activityCount: number
+  activityNames: string[]
 }
 
 interface SummaryClubSectionProps {
@@ -54,7 +54,7 @@ export default function SummaryClubSection({ clubName, cards, academicYear, seme
             passCount={c.passCount}
             failCount={c.failCount}
             pendingCount={c.pendingCount}
-            activityCount={c.activityCount}
+            activityNames={c.activityNames}
           />
         ))}
       </div>

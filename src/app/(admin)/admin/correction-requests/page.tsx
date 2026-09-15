@@ -10,22 +10,49 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { FileEdit } from "lucide-react"
+import { Suspense } from "react"
 import { CorrectionRequestActions } from "@/components/admin/correction-request-actions"
+import CorrectionRequestFilters from "@/components/admin/correction-request-filters"
+import type { CorrectionStatus, Prisma } from "@/generated/prisma"
 
-const STATUS_LABELS = {
+const STATUS_LABELS: Record<CorrectionStatus, string> = {
   PENDING: "รอดำเนินการ",
   APPROVED: "อนุมัติแล้ว",
   REJECTED: "ปฏิเสธแล้ว",
-} as const
+}
 
-const STATUS_COLORS = {
+const STATUS_COLORS: Record<CorrectionStatus, string> = {
   PENDING: "bg-orange-100 text-orange-700",
   APPROVED: "bg-success/10 text-success",
   REJECTED: "bg-secondary-100 text-secondary-700",
-} as const
+}
 
-export default async function CorrectionRequestsPage() {
+interface PageProps {
+  searchParams: Promise<{ search?: string; status?: string }>
+}
+
+export default async function CorrectionRequestsPage({ searchParams }: PageProps) {
+  const params = await searchParams
+  const search = params.search?.trim()
+  const status = params.status as CorrectionStatus | undefined
+
+  const where: Prisma.VocationalScoreCorrectionRequestWhereInput = {
+    ...(status ? { status } : {}),
+    ...(search
+      ? {
+          student: {
+            OR: [
+              { studentId: { contains: search } },
+              { firstName: { contains: search } },
+              { lastName: { contains: search } },
+            ],
+          },
+        }
+      : {}),
+  }
+
   const requests = await prisma.vocationalScoreCorrectionRequest.findMany({
+    where,
     include: {
       vocationalActivity: { select: { name: true, academicYear: true, semester: true } },
       student: { select: { studentId: true, prefix: true, firstName: true, lastName: true, department: true } },
@@ -46,6 +73,10 @@ export default async function CorrectionRequestsPage() {
         </p>
       </div>
 
+      <Suspense>
+        <CorrectionRequestFilters />
+      </Suspense>
+
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -54,7 +85,8 @@ export default async function CorrectionRequestsPage() {
                 <TableRow>
                   <TableHead className="font-thai whitespace-nowrap">นักศึกษา</TableHead>
                   <TableHead className="font-thai whitespace-nowrap">กิจกรรม</TableHead>
-                  <TableHead className="font-thai whitespace-nowrap">คะแนนเดิม → ที่ขอแก้</TableHead>
+                  <TableHead className="font-thai whitespace-nowrap">คะแนนเดิม</TableHead>
+                  <TableHead className="font-thai whitespace-nowrap">คะแนนที่ขอแก้</TableHead>
                   <TableHead className="font-thai whitespace-nowrap">เหตุผล</TableHead>
                   <TableHead className="font-thai whitespace-nowrap">ผู้ขอ</TableHead>
                   <TableHead className="font-thai whitespace-nowrap">สถานะ</TableHead>
@@ -64,8 +96,8 @@ export default async function CorrectionRequestsPage() {
               <TableBody>
                 {requests.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-gray-500 font-thai py-8">
-                      ยังไม่มีคำขอแก้ไขคะแนน
+                    <TableCell colSpan={8} className="text-center text-gray-500 font-thai py-8">
+                      {search || status ? "ไม่พบคำขอที่ตรงกับเงื่อนไข" : "ยังไม่มีคำขอแก้ไขคะแนน"}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -81,9 +113,8 @@ export default async function CorrectionRequestsPage() {
                           {r.vocationalActivity.academicYear} / {r.vocationalActivity.semester}
                         </p>
                       </TableCell>
-                      <TableCell className="font-mono text-sm whitespace-nowrap">
-                        {r.currentScore} → {r.proposedScore}
-                      </TableCell>
+                      <TableCell className="font-mono text-sm whitespace-nowrap">{r.currentScore}</TableCell>
+                      <TableCell className="font-mono text-sm whitespace-nowrap font-medium">{r.proposedScore}</TableCell>
                       <TableCell className="font-thai text-sm max-w-xs">{r.reason}</TableCell>
                       <TableCell className="font-thai text-sm whitespace-nowrap">{r.requestedBy.name}</TableCell>
                       <TableCell>

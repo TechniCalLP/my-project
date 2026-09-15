@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
@@ -9,6 +9,8 @@ import { LayoutDashboard, CalendarDays, Users, LogOut, Menu, UserCog, Building2,
 import { cn } from "@/lib/utils"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { ADMIN_ROLE_NAMES } from "@/lib/constants"
+
+const PENDING_COUNT_POLL_MS = 60000
 
 interface AdminNavProps {
   session: Session
@@ -43,7 +45,15 @@ function getNavItems(adminRole?: string) {
   return ADMIN_NAV_ITEMS
 }
 
-function NavContent({ session, onNavigate }: { session: Session; onNavigate?: () => void }) {
+function NavContent({
+  session,
+  onNavigate,
+  pendingCorrectionCount,
+}: {
+  session: Session
+  onNavigate?: () => void
+  pendingCorrectionCount: number
+}) {
   const pathname = usePathname()
   const adminRole = (session.user as { adminRole?: string }).adminRole
   const navItems = getNavItems(adminRole)
@@ -69,7 +79,12 @@ function NavContent({ session, onNavigate }: { session: Session; onNavigate?: ()
             )}
           >
             <Icon size={18} />
-            {label}
+            <span className="flex-1">{label}</span>
+            {href === "/admin/correction-requests" && pendingCorrectionCount > 0 && (
+              <span className="flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-secondary-500 text-white text-[11px] font-medium">
+                {pendingCorrectionCount > 99 ? "99+" : pendingCorrectionCount}
+              </span>
+            )}
           </Link>
         ))}
       </div>
@@ -88,13 +103,38 @@ function NavContent({ session, onNavigate }: { session: Session; onNavigate?: ()
 
 export function AdminNav({ session }: AdminNavProps) {
   const [open, setOpen] = useState(false)
+  const [pendingCorrectionCount, setPendingCorrectionCount] = useState(0)
+  const adminRole = (session.user as { adminRole?: string }).adminRole
+
+  useEffect(() => {
+    if (adminRole !== "SUPER_ADMIN") return
+
+    let cancelled = false
+    const fetchCount = async () => {
+      try {
+        const res = await fetch("/api/admin/correction-requests/pending-count")
+        if (!res.ok) return
+        const data = await res.json()
+        if (!cancelled) setPendingCorrectionCount(data.count ?? 0)
+      } catch {
+        // ignore — badge just stays at its last known value
+      }
+    }
+
+    fetchCount()
+    const interval = setInterval(fetchCount, PENDING_COUNT_POLL_MS)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [adminRole])
 
   return (
     <>
       {/* Desktop sidebar */}
       <nav className="hidden lg:flex w-64 min-h-screen flex-shrink-0">
         <div className="w-full">
-          <NavContent session={session} />
+          <NavContent session={session} pendingCorrectionCount={pendingCorrectionCount} />
         </div>
       </nav>
 
@@ -107,7 +147,11 @@ export function AdminNav({ session }: AdminNavProps) {
             </button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0 w-64 bg-gray-900 border-gray-700" showCloseButton={false}>
-            <NavContent session={session} onNavigate={() => setOpen(false)} />
+            <NavContent
+              session={session}
+              onNavigate={() => setOpen(false)}
+              pendingCorrectionCount={pendingCorrectionCount}
+            />
           </SheetContent>
         </Sheet>
         <span className="font-semibold font-thai text-sm">ระบบจัดการกิจกรรม</span>

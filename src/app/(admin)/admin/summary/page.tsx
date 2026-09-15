@@ -156,15 +156,6 @@ export default async function SummaryPage({ searchParams }: PageProps) {
     .filter((g): g is NonNullable<typeof g> => g !== null)
     .sort((a, b) => YEARS.indexOf(a.year as (typeof YEARS)[number]) - YEARS.indexOf(b.year as (typeof YEARS)[number]) || a.clubName.localeCompare(b.clubName, "th"))
 
-  // KPI totals reflect the scoped (period + club) data — not the search/status
-  // filters below, so the top numbers stay a stable overview while the card
-  // list is narrowed.
-  const totalStudents = scopedGroups.reduce((sum, g) => sum + g.total, 0)
-  const totalPass = scopedGroups.reduce((sum, g) => sum + g.passCount, 0)
-  const totalFail = scopedGroups.reduce((sum, g) => sum + g.failCount, 0)
-  const totalPending = scopedGroups.reduce((sum, g) => sum + g.pendingCount, 0)
-  const passPct = totalStudents > 0 ? Math.round((totalPass / totalStudents) * 1000) / 10 : 0
-
   const activityCards = scopedGroups.flatMap((g) =>
     g.activityBreakdown.map((a) => ({
       year: g.year,
@@ -178,6 +169,15 @@ export default async function SummaryPage({ searchParams }: PageProps) {
       activityNames: [a.activityName],
     }))
   )
+
+  // KPI totals reflect the scoped (period + club) data — not the search/status
+  // filters below, so the top numbers stay a stable overview while the card
+  // list is narrowed. Counted per activity card (not per distinct student),
+  // so these add up to what's shown across the cards below.
+  const totalStudents = scopedGroups.reduce((sum, g) => sum + g.total, 0)
+  const totalPass = activityCards.reduce((sum, c) => sum + c.passCount, 0)
+  const totalFail = activityCards.reduce((sum, c) => sum + c.failCount, 0)
+  const totalPending = activityCards.reduce((sum, c) => sum + c.pendingCount, 0)
 
   const filteredGroups = activityCards.filter((g) => {
     if (search) {
@@ -206,7 +206,7 @@ export default async function SummaryPage({ searchParams }: PageProps) {
     {
       icon: "check" as const,
       label: "ผ่านการประเมินแล้ว",
-      value: `${passPct}%`,
+      value: `${totalPass.toLocaleString("th-TH")} คน`,
       valueClass: "text-success",
     },
     {

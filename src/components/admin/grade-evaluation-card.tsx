@@ -87,6 +87,7 @@ export default function GradeEvaluationCard({
   const [values, setValues] = useState<Record<string, Record<string, string>>>({})
   const [saving, setSaving] = useState(false)
   const [confirmEntries, setConfirmEntries] = useState<Entry[] | null>(null)
+  const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null)
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -128,20 +129,22 @@ export default function GradeEvaluationCard({
     setValues((prev) => ({ ...prev, [studentId]: { ...prev[studentId], [activityId]: value } }))
   }
 
+  const selectedActivity = data
+    ? (data.activities.find((a) => a.id === selectedActivityId) ?? data.activities[0] ?? null)
+    : null
+
   const collectEntries = (): Entry[] | null => {
-    if (!data) return null
+    if (!data || !selectedActivity) return null
     const entries: Entry[] = []
     for (const row of data.rows) {
-      for (const a of data.activities) {
-        const raw = values[row.id]?.[a.id]
-        if (raw === undefined || raw === "") continue
-        const num = Number(raw)
-        if (Number.isNaN(num) || num < 0 || num > 100) {
-          toast.error(`คะแนน "${a.name}" ของ ${row.prefix}${row.firstName} ${row.lastName} ต้องอยู่ระหว่าง 0-100`)
-          return null
-        }
-        entries.push({ studentId: row.id, activityId: a.id, score: num })
+      const raw = values[row.id]?.[selectedActivity.id]
+      if (raw === undefined || raw === "") continue
+      const num = Number(raw)
+      if (Number.isNaN(num) || num < 0 || num > 100) {
+        toast.error(`คะแนน "${selectedActivity.name}" ของ ${row.prefix}${row.firstName} ${row.lastName} ต้องอยู่ระหว่าง 0-100`)
+        return null
       }
+      entries.push({ studentId: row.id, activityId: selectedActivity.id, score: num })
     }
     if (entries.length === 0) {
       toast.error("กรุณากรอกคะแนนอย่างน้อย 1 ช่อง")
@@ -192,12 +195,12 @@ export default function GradeEvaluationCard({
 
   const filledLabel = filled === total && total > 0 ? "กรอกแล้ว" : "รอดำเนินการ"
 
-  const isRowComplete = (row: StudentRow) =>
-    data?.activities.every((a) => {
-      const typed = values[row.id]?.[a.id]
-      if (typed !== undefined && typed !== "") return true
-      return row.scores[a.id]?.score != null
-    }) ?? false
+  const isRowComplete = (row: StudentRow) => {
+    if (!selectedActivity) return false
+    const typed = values[row.id]?.[selectedActivity.id]
+    if (typed !== undefined && typed !== "") return true
+    return row.scores[selectedActivity.id]?.score != null
+  }
 
   const allFilledOnPage = data ? data.rows.length > 0 && data.rows.every(isRowComplete) : false
 
@@ -209,9 +212,10 @@ export default function GradeEvaluationCard({
         className="w-full flex items-center justify-between gap-3 px-4 py-4 text-left"
       >
         <div className="flex flex-col gap-1.5 min-w-0">
-          <span className="font-thai font-semibold text-base">{activityNames.join(", ")}</span>
+          <span className="font-thai font-semibold text-base">กิจกรรมองค์การวิชาชีพ</span>
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline" className="font-thai text-xs">{year}</Badge>
+            <Badge variant="outline" className="font-thai text-xs">{activityNames.length} กิจกรรม</Badge>
             <Badge variant="outline" className="font-thai text-xs">{total} คน</Badge>
             <Badge variant="outline" className="font-thai text-xs">{groupCount} กลุ่ม</Badge>
             <Badge
@@ -284,18 +288,37 @@ export default function GradeEvaluationCard({
             <div className="py-12 text-center text-gray-500 font-thai">ไม่พบนักศึกษา</div>
           ) : (
             <>
+              {data.activities.length > 1 && (
+                <div className="flex flex-wrap gap-2 px-3 py-3 border-b">
+                  {data.activities.map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => setSelectedActivityId(a.id)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-thai border transition-colors ${
+                        selectedActivity?.id === a.id
+                          ? "bg-primary-500 text-white border-primary-500"
+                          : "bg-white text-gray-600 border-gray-300 hover:border-primary-300"
+                      }`}
+                    >
+                      {a.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="font-thai whitespace-nowrap">รหัสนักศึกษา</TableHead>
                       <TableHead className="font-thai whitespace-nowrap">ชื่อ-นามสกุล</TableHead>
-                      {data.activities.map((a) => (
-                        <TableHead key={a.id} className="font-thai whitespace-nowrap">
-                          {a.name}
-                          <span className="text-gray-400 font-normal"> (≥{a.passThreshold}%)</span>
+                      {selectedActivity && (
+                        <TableHead className="font-thai whitespace-nowrap">
+                          {selectedActivity.name}
+                          <span className="text-gray-400 font-normal"> (≥{selectedActivity.passThreshold}%)</span>
                         </TableHead>
-                      ))}
+                      )}
                       <TableHead className="font-thai whitespace-nowrap">สถานะ</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -309,17 +332,17 @@ export default function GradeEvaluationCard({
                           </p>
                           {student.group && <p className="text-xs text-gray-400 font-thai">กลุ่ม {student.group}</p>}
                         </TableCell>
-                        {data.activities.map((a) => {
-                          const cell = student.scores[a.id]
+                        {selectedActivity && (() => {
+                          const cell = student.scores[selectedActivity.id]
                           return (
-                            <TableCell key={a.id}>
+                            <TableCell>
                               <div className="flex flex-col gap-0.5">
                                 <Input
                                   type="number"
                                   min={0}
                                   max={100}
-                                  value={values[student.id]?.[a.id] ?? ""}
-                                  onChange={(e) => setValue(student.id, a.id, e.target.value)}
+                                  value={values[student.id]?.[selectedActivity.id] ?? ""}
+                                  onChange={(e) => setValue(student.id, selectedActivity.id, e.target.value)}
                                   className="w-20 font-mono"
                                 />
                                 {cell?.score != null && cell.isDraft && (
@@ -328,7 +351,7 @@ export default function GradeEvaluationCard({
                               </div>
                             </TableCell>
                           )
-                        })}
+                        })()}
                         <TableCell>
                           <Badge
                             className={`font-thai text-xs border-0 whitespace-nowrap ${

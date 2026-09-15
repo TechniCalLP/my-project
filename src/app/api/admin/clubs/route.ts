@@ -4,9 +4,13 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { clubSchema } from "@/lib/validations"
 
+function isManagementRole(role?: string) {
+  return role === "SUPER_ADMIN" || role === "ADMIN"
+}
+
 export async function GET() {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== "admin" || session.user.adminRole !== "SUPER_ADMIN") {
+  if (!session || session.user.role !== "admin" || !isManagementRole(session.user.adminRole)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -20,7 +24,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session || session.user.role !== "admin" || session.user.adminRole !== "SUPER_ADMIN") {
+    if (!session || session.user.role !== "admin" || !isManagementRole(session.user.adminRole)) {
       return Response.json({ error: "Unauthorized" }, { status: 401 })
     }
 

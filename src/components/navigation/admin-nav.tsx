@@ -22,12 +22,12 @@ const ADMIN_NAV_ITEMS = [
   { href: "/admin/students", label: "นักศึกษา", icon: Users },
   { href: "/admin/vocational-activities", label: "กิจกรรมองค์การวิชาชีพ", icon: ClipboardCheck },
   { href: "/admin/summary", label: "สรุปผลการประเมิน", icon: ListChecks },
+  { href: "/admin/clubs", label: "ชมรมวิชาชีพ", icon: Users2 },
 ]
 
 const SUPER_ADMIN_NAV_ITEMS = [
   ...ADMIN_NAV_ITEMS,
   { href: "/admin/accounts", label: "บัญชีผู้ใช้", icon: UserCog },
-  { href: "/admin/clubs", label: "ชมรมวิชาชีพ", icon: Users2 },
   { href: "/admin/departments", label: "แผนก", icon: Building2 },
   { href: "/admin/correction-requests", label: "คำขอแก้ไขคะแนน", icon: FileEdit },
   { href: "/admin/settings", label: "ตั้งค่าระบบ", icon: Settings },

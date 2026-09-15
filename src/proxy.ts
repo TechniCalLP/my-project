@@ -9,12 +9,10 @@ const TEACHER_ALLOWED_PREFIXES = ["/admin/my-students", "/admin/evaluation", "/a
 const SUPER_ADMIN_ONLY_PREFIXES = [
   "/admin/accounts",
   "/admin/departments",
-  "/admin/clubs",
   "/admin/correction-requests",
   "/admin/settings",
   "/api/admin/accounts",
   "/api/admin/departments",
-  "/api/admin/clubs",
   "/api/admin/correction-requests",
   "/api/admin/settings",
 ]

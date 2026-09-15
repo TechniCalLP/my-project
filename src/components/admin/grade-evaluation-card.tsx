@@ -16,7 +16,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { ChevronDown, ChevronUp, Save, FileText, Loader2, Search, ChevronLeft, ChevronRight } from "lucide-react"
+import { PaginationControls } from "@/components/ui/pagination-controls"
+import { ChevronDown, ChevronUp, Save, FileText, Loader2, Search } from "lucide-react"
 import { toast } from "sonner"
 
 interface ActivityColumn {
@@ -62,6 +63,7 @@ interface GradeEvaluationCardProps {
 type StatusFilter = "all" | "filled" | "unfilled"
 type Entry = { studentId: string; activityId: string; score: number }
 const ALL_GROUPS = "__all__"
+const PAGE_SIZE = 15 // must match PAGE_SIZE in /api/teacher/evaluation/route.ts
 
 export default function GradeEvaluationCard({
   year,
@@ -358,11 +360,11 @@ export default function GradeEvaluationCard({
                 </Table>
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t">
-                <div className="flex gap-2">
+              <div className="border-t">
+                <div className="flex flex-wrap justify-end gap-2 px-4 py-3">
                   <Button
                     onClick={handleSaveFinal}
-                    disabled={saving}
+                    disabled={saving || !allFilledOnPage}
                     variant={allFilledOnPage ? "default" : "outline"}
                     className="font-thai gap-1.5"
                   >
@@ -380,35 +382,14 @@ export default function GradeEvaluationCard({
                   </Button>
                 </div>
 
-                {data.totalPages > 1 && (
-                  <div className="flex items-center gap-3">
-                    <p className="text-xs text-gray-500 font-thai whitespace-nowrap">
-                      หน้า {data.page}/{data.totalPages}
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={page <= 1 || loading}
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                        className="gap-1 font-thai"
-                      >
-                        <ChevronLeft className="w-3.5 h-3.5" />
-                        ก่อนหน้า
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={page >= data.totalPages || loading}
-                        onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
-                        className="gap-1 font-thai"
-                      >
-                        ถัดไป
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
+                <PaginationControls
+                  currentPage={page}
+                  totalPages={data.totalPages}
+                  totalItems={data.total}
+                  itemsPerPage={PAGE_SIZE}
+                  onPageChange={setPage}
+                  disabled={loading}
+                />
               </div>
             </>
           )}

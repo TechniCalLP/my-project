@@ -6,11 +6,11 @@ import Image from "next/image"
 import AutoPrint from "@/components/admin/auto-print"
 import { getStudentEvaluations, type PartStatus } from "@/lib/evaluation"
 import { resolveDepartmentVariants } from "@/lib/department"
-import { clubDepartmentVariants, resolveClubNamesForDepartments } from "@/lib/club"
+import { clubDepartmentVariants, resolveClubNamesForDepartments, resolveClubById } from "@/lib/club"
 import { getDeputyDirectorSignature } from "@/lib/settings"
 
 interface PageProps {
-  searchParams: Promise<{ year?: string; academicYear?: string; semester?: string; department?: string; formType?: string }>
+  searchParams: Promise<{ year?: string; academicYear?: string; semester?: string; department?: string; club?: string; formType?: string }>
 }
 
 const COLLEGE_NAME = "วิทยาลัยเทคนิคลำปาง"
@@ -31,6 +31,9 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
       include: { club: { include: { departments: true } } },
     })
     deptVariants = teacher?.club ? clubDepartmentVariants(teacher.club) : undefined
+  } else if (params.club) {
+    const club = await resolveClubById(params.club)
+    deptVariants = club ? clubDepartmentVariants(club) : undefined
   } else {
     const department = params.department ?? undefined
     deptVariants = department ? await resolveDepartmentVariants(department) : undefined

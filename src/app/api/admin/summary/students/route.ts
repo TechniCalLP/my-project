@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getStudentEvaluations } from "@/lib/evaluation"
 import { resolveDepartmentVariants } from "@/lib/department"
-import { clubDepartmentVariants } from "@/lib/club"
+import { clubDepartmentVariants, resolveClubById } from "@/lib/club"
 
 const PAGE_SIZE = 30
 
@@ -38,8 +38,14 @@ export async function GET(req: NextRequest) {
       }
       deptVariants = clubDepartmentVariants(teacher.club)
     } else {
+      const clubId = searchParams.get("club") ?? undefined
       const department = searchParams.get("department") ?? undefined
-      deptVariants = department ? await resolveDepartmentVariants(department) : undefined
+      if (clubId) {
+        const club = await resolveClubById(clubId)
+        deptVariants = club ? clubDepartmentVariants(club) : undefined
+      } else {
+        deptVariants = department ? await resolveDepartmentVariants(department) : undefined
+      }
     }
 
     const where = {

@@ -9,6 +9,7 @@ interface SummaryGradeCardProps {
   year: string
   academicYear: string
   semester: string
+  clubId?: string
   total: number
   passCount: number
   failCount: number
@@ -20,6 +21,7 @@ export default function SummaryGradeCard({
   year,
   academicYear,
   semester,
+  clubId,
   total,
   passCount,
   failCount,
@@ -30,7 +32,7 @@ export default function SummaryGradeCard({
   const failPct = total > 0 ? Math.round((failCount / total) * 100) : 0
   const pendingPct = total > 0 ? Math.max(0, 100 - passPct - failPct) : 0
 
-  const detailParams = new URLSearchParams({ academicYear, semester })
+  const detailParams = new URLSearchParams({ academicYear, semester, ...(clubId ? { club: clubId } : {}) })
 
   return (
     <Card>
@@ -43,7 +45,7 @@ export default function SummaryGradeCard({
               <Badge variant="outline" className="font-thai text-xs">{total} คน</Badge>
             </div>
           </div>
-          <SummaryExportButtons year={year} academicYear={academicYear} semester={semester} />
+          <SummaryExportButtons year={year} academicYear={academicYear} semester={semester} clubId={clubId} />
         </div>
 
         <p className="text-xs text-gray-400 font-thai">

@@ -16,11 +16,12 @@ interface SummaryExportButtonsProps {
   year: string
   academicYear: string
   semester: string
+  clubId?: string
   className?: string
 }
 
-export default function SummaryExportButtons({ year, academicYear, semester, className }: SummaryExportButtonsProps) {
-  const exportParams = new URLSearchParams({ year, academicYear, semester })
+export default function SummaryExportButtons({ year, academicYear, semester, clubId, className }: SummaryExportButtonsProps) {
+  const exportParams = new URLSearchParams({ year, academicYear, semester, ...(clubId ? { club: clubId } : {}) })
 
   const handleExcel = async (formType: "15" | "17") => {
     try {

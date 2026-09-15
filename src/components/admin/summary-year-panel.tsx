@@ -10,9 +10,10 @@ interface SummaryYearPanelProps {
   academicYear: string
   semester: string
   isAdminView: boolean
+  clubId?: string
 }
 
-export default function SummaryYearPanel({ year, academicYear, semester, isAdminView }: SummaryYearPanelProps) {
+export default function SummaryYearPanel({ year, academicYear, semester, isAdminView, clubId }: SummaryYearPanelProps) {
   const [selected, setSelected] = useState<Map<string, StudentRow>>(new Map())
 
   const toggleRow = (row: StudentRow) => {
@@ -39,7 +40,7 @@ export default function SummaryYearPanel({ year, academicYear, semester, isAdmin
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-end gap-2">
-        <SummaryExportButtons year={year} academicYear={academicYear} semester={semester} />
+        <SummaryExportButtons year={year} academicYear={academicYear} semester={semester} clubId={clubId} />
         {!isAdminView && (
           <SummaryCorrectionRequest
             year={year}
@@ -55,6 +56,7 @@ export default function SummaryYearPanel({ year, academicYear, semester, isAdmin
         academicYear={academicYear}
         semester={semester}
         isAdminView={isAdminView}
+        clubId={clubId}
         selectedIds={isAdminView ? undefined : new Set(selected.keys())}
         onToggleRow={isAdminView ? undefined : toggleRow}
         onToggleAllVisible={isAdminView ? undefined : toggleAllVisible}

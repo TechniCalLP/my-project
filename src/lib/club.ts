@@ -6,6 +6,16 @@ export function clubDepartmentVariants(club: { departments: { name: string; alia
   return club.departments.flatMap((d) => departmentVariants(d))
 }
 
+/** Fetch a Club by id with its member departments, for admin-side scoping by a chosen club. */
+export async function resolveClubById(
+  clubId: string
+): Promise<{ id: string; name: string; departments: { name: string; aliases: string[] }[] } | null> {
+  return prisma.club.findUnique({
+    where: { id: clubId },
+    select: { id: true, name: true, departments: { select: { name: true, aliases: true } } },
+  })
+}
+
 /**
  * Resolve a raw Student.department string to the Club it belongs to (via the
  * Department row it matches, by name or alias), including every member

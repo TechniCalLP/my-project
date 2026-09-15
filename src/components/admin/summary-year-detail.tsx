@@ -24,6 +24,7 @@ interface SummaryYearDetailProps {
   academicYear: string
   semester: string
   isAdminView: boolean
+  clubId?: string
   selectedIds?: Set<string>
   onToggleRow?: (row: StudentRow) => void
   onToggleAllVisible?: (rows: StudentRow[]) => void
@@ -71,6 +72,7 @@ export default function SummaryYearDetail({
   academicYear,
   semester,
   isAdminView,
+  clubId,
   selectedIds,
   onToggleRow,
   onToggleAllVisible,
@@ -95,6 +97,7 @@ export default function SummaryYearDetail({
     setLoading(true)
     try {
       const params = new URLSearchParams({ year, academicYear, semester, search, status, page: String(page) })
+      if (clubId) params.set("club", clubId)
       const res = await fetch(`/api/admin/summary/students?${params.toString()}`)
       if (!res.ok) throw new Error("โหลดข้อมูลไม่สำเร็จ")
       const json: RowsData = await res.json()
@@ -104,7 +107,7 @@ export default function SummaryYearDetail({
     } finally {
       setLoading(false)
     }
-  }, [year, academicYear, semester, search, status, page])
+  }, [year, academicYear, semester, clubId, search, status, page])
 
   useEffect(() => {
     fetchData()

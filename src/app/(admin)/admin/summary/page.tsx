@@ -7,12 +7,13 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Suspense } from "react"
 import EvaluationPeriodSelect from "@/components/admin/evaluation-period-select"
 import SummaryGradeCard from "@/components/admin/summary-grade-card"
+import SummaryClubFilter from "@/components/admin/summary-club-filter"
 import { getStudentEvaluations } from "@/lib/evaluation"
 import { ACADEMIC_YEARS, SEMESTERS, YEARS } from "@/lib/constants"
-import { clubDepartmentVariants } from "@/lib/club"
+import { clubDepartmentVariants, resolveClubById } from "@/lib/club"
 
 interface PageProps {
-  searchParams: Promise<{ academicYear?: string; semester?: string }>
+  searchParams: Promise<{ academicYear?: string; semester?: string; club?: string }>
 }
 
 export default async function SummaryPage({ searchParams }: PageProps) {
@@ -20,9 +21,12 @@ export default async function SummaryPage({ searchParams }: PageProps) {
   if (!session || session.user.role !== "admin") redirect("/admin/login")
 
   const isTeacher = session.user.adminRole === "TEACHER"
-  let teacherClubId: string | null = null
-  let teacherClubName: string | null = null
-  let teacherDepartmentVariants: string[] | null = null
+  let scopedClubId: string | null = null
+  let scopedClubName: string | null = null
+  let scopedDepartmentVariants: string[] | null = null
+  let allClubs: { id: string; name: string }[] = []
+
+  const params = await searchParams
 
   if (isTeacher) {
     const teacher = await prisma.admin.findUnique({
@@ -40,12 +44,21 @@ export default async function SummaryPage({ searchParams }: PageProps) {
         </div>
       )
     }
-    teacherClubId = teacher.club.id
-    teacherClubName = teacher.club.name
-    teacherDepartmentVariants = clubDepartmentVariants(teacher.club)
+    scopedClubId = teacher.club.id
+    scopedClubName = teacher.club.name
+    scopedDepartmentVariants = clubDepartmentVariants(teacher.club)
+  } else {
+    allClubs = await prisma.club.findMany({ where: { isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true } })
+    if (params.club) {
+      const club = await resolveClubById(params.club)
+      if (club) {
+        scopedClubId = club.id
+        scopedClubName = club.name
+        scopedDepartmentVariants = clubDepartmentVariants(club)
+      }
+    }
   }
 
-  const params = await searchParams
   const academicYear = params.academicYear ?? ACADEMIC_YEARS[0]
   const semester = params.semester ?? SEMESTERS[0]
 
@@ -53,7 +66,7 @@ export default async function SummaryPage({ searchParams }: PageProps) {
     where: {
       academicYear,
       semester,
-      ...(teacherClubId ? { clubs: { some: { id: teacherClubId } } } : {}),
+      ...(scopedClubId ? { clubs: { some: { id: scopedClubId } } } : {}),
     },
     select: { name: true, targetYears: true },
   })
@@ -68,7 +81,7 @@ export default async function SummaryPage({ searchParams }: PageProps) {
       const where = {
         isActive: true,
         year,
-        ...(teacherDepartmentVariants ? { department: { in: teacherDepartmentVariants } } : {}),
+        ...(scopedDepartmentVariants ? { department: { in: scopedDepartmentVariants } } : {}),
       }
       const students = await prisma.student.findMany({ where, select: { id: true } })
       if (students.length === 0) return null
@@ -101,13 +114,20 @@ export default async function SummaryPage({ searchParams }: PageProps) {
         </div>
         <p className="text-gray-500 font-thai mt-1 text-sm">
           ผลรวมกิจกรรมภาคบังคับและกิจกรรมองค์การวิชาชีพ แยกตามชั้นปี
-          {teacherClubName && ` — ชมรม${teacherClubName}`}
+          {scopedClubName && ` — ชมรม${scopedClubName}`}
         </p>
       </div>
 
-      <Suspense>
-        <EvaluationPeriodSelect academicYear={academicYear} semester={semester} basePath="/admin/summary" />
-      </Suspense>
+      <div className="flex flex-wrap gap-3 items-center">
+        <Suspense>
+          <EvaluationPeriodSelect academicYear={academicYear} semester={semester} basePath="/admin/summary" />
+        </Suspense>
+        {!isTeacher && (
+          <Suspense>
+            <SummaryClubFilter clubs={allClubs} />
+          </Suspense>
+        )}
+      </div>
 
       {visibleGroups.length === 0 ? (
         <Card>
@@ -123,6 +143,7 @@ export default async function SummaryPage({ searchParams }: PageProps) {
               year={g.year}
               academicYear={academicYear}
               semester={semester}
+              clubId={scopedClubId ?? undefined}
               total={g.total}
               passCount={g.passCount}
               failCount={g.failCount}

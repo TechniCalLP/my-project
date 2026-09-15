@@ -9,7 +9,7 @@ import { ACADEMIC_YEARS, SEMESTERS } from "@/lib/constants"
 
 interface PageProps {
   params: Promise<{ year: string }>
-  searchParams: Promise<{ academicYear?: string; semester?: string }>
+  searchParams: Promise<{ academicYear?: string; semester?: string; club?: string }>
 }
 
 export default async function SummaryYearPage({ params, searchParams }: PageProps) {
@@ -23,10 +23,12 @@ export default async function SummaryYearPage({ params, searchParams }: PageProp
   const semester = sp.semester ?? SEMESTERS[0]
   const isAdminView = session.user.adminRole !== "TEACHER"
 
+  const backParams = new URLSearchParams({ academicYear, semester, ...(sp.club ? { club: sp.club } : {}) })
+
   return (
     <div className="p-4 md:p-8 space-y-6">
       <div>
-        <Link href={`/admin/summary?academicYear=${academicYear}&semester=${encodeURIComponent(semester)}`}>
+        <Link href={`/admin/summary?${backParams.toString()}`}>
           <Button variant="ghost" size="sm" className="font-thai gap-1 text-gray-500 mb-2 -ml-2">
             <ArrowLeft className="w-4 h-4" />
             กลับ
@@ -38,7 +40,13 @@ export default async function SummaryYearPage({ params, searchParams }: PageProp
         </p>
       </div>
 
-      <SummaryYearPanel year={year} academicYear={academicYear} semester={semester} isAdminView={isAdminView} />
+      <SummaryYearPanel
+        year={year}
+        academicYear={academicYear}
+        semester={semester}
+        isAdminView={isAdminView}
+        clubId={sp.club}
+      />
     </div>
   )
 }

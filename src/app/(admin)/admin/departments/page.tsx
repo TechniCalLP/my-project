@@ -15,7 +15,6 @@ import { DeleteDepartmentButton } from "@/components/admin/delete-department-but
 
 export default async function DepartmentsPage() {
   const departments = await prisma.department.findMany({
-    include: { _count: { select: { clubs: true } } },
     orderBy: { name: "asc" },
   })
 
@@ -43,8 +42,6 @@ export default async function DepartmentsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="font-thai">ชื่อแผนก</TableHead>
-                <TableHead className="font-thai">ชื่อเรียกอื่น</TableHead>
-                <TableHead className="font-thai">จำนวนชมรมที่ผูกไว้</TableHead>
                 <TableHead className="font-thai text-right">จัดการ</TableHead>
               </TableRow>
             </TableHeader>
@@ -52,10 +49,6 @@ export default async function DepartmentsPage() {
               {departments.map((dept) => (
                 <TableRow key={dept.id}>
                   <TableCell className="font-thai font-medium">{dept.name}</TableCell>
-                  <TableCell className="font-thai text-sm text-gray-500">
-                    {dept.aliases.length > 0 ? dept.aliases.join(", ") : "—"}
-                  </TableCell>
-                  <TableCell>{dept._count.clubs}</TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-2">
                       <Link href={`/admin/departments/${dept.id}/edit`}>

@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get("search")?.trim() ?? ""
     const status = searchParams.get("status") ?? "all"
     const group = searchParams.get("group")
+    const activityId = searchParams.get("activityId")
     const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"))
 
     if (!year || !academicYear || !semester) {
@@ -40,6 +41,7 @@ export async function GET(req: NextRequest) {
         semester,
         clubs: { some: { id: teacher.clubId! } },
         OR: [{ targetYears: { isEmpty: true } }, { targetYears: { has: year } }],
+        ...(activityId ? { id: activityId } : {}),
       },
       orderBy: { name: "asc" },
     })

@@ -2,11 +2,21 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
-import { ClipboardCheck } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
+import Link from "next/link"
+import { ClipboardCheck, PenLine } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { Suspense } from "react"
 import EvaluationPeriodSelect from "@/components/admin/evaluation-period-select"
-import GradeEvaluationCard from "@/components/admin/grade-evaluation-card"
 import { ACADEMIC_YEARS, SEMESTERS, YEARS } from "@/lib/constants"
 import { clubDepartmentVariants } from "@/lib/club"
 
@@ -47,7 +57,7 @@ export default async function EvaluationPage({ searchParams }: PageProps) {
       semester,
       clubs: { some: { id: teacher.clubId! } },
     },
-    select: { id: true, name: true, targetYears: true },
+    select: { id: true, name: true, passThreshold: true, targetYears: true },
   })
 
   const gradeGroups = await Promise.all(
@@ -55,35 +65,25 @@ export default async function EvaluationPage({ searchParams }: PageProps) {
       const applicableActivities = activities.filter(
         (a) => a.targetYears.length === 0 || a.targetYears.includes(year)
       )
-      const applicableActivityIds = applicableActivities.map((a) => a.id)
-
-      if (applicableActivityIds.length === 0) return null
+      if (applicableActivities.length === 0) return null
 
       const yearWhere = { department: { in: clubDepartmentVariants(teacher.club!) }, isActive: true, year }
-
-      const [total, scoreCounts, groupRows] = await Promise.all([
-        prisma.student.count({ where: yearWhere }),
-        prisma.vocationalActivityScore.groupBy({
-          by: ["studentId"],
-          where: { vocationalActivityId: { in: applicableActivityIds }, student: yearWhere, isDraft: false },
-          _count: { vocationalActivityId: true },
-        }),
-        prisma.student.findMany({ where: yearWhere, select: { group: true }, distinct: ["group"] }),
-      ])
-
+      const total = await prisma.student.count({ where: yearWhere })
       if (total === 0) return null
 
-      const filled = scoreCounts.filter((c) => c._count.vocationalActivityId === applicableActivityIds.length).length
+      const groupRows = await prisma.student.findMany({ where: yearWhere, select: { group: true }, distinct: ["group"] })
       const groups = [...new Set(groupRows.map((g) => g.group).filter((g): g is string => g != null))].sort()
 
-      return {
-        year,
-        total,
-        filled,
-        groupCount: groups.length,
-        groups,
-        activityNames: applicableActivities.map((a) => a.name),
-      }
+      const activityStats = await Promise.all(
+        applicableActivities.map(async (a) => {
+          const filled = await prisma.vocationalActivityScore.count({
+            where: { vocationalActivityId: a.id, isDraft: false, student: yearWhere },
+          })
+          return { id: a.id, name: a.name, passThreshold: a.passThreshold, filled }
+        })
+      )
+
+      return { year, total, groupCount: groups.length, activities: activityStats }
     })
   )
 
@@ -112,19 +112,60 @@ export default async function EvaluationPage({ searchParams }: PageProps) {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {visibleGroups.map((g) => (
-            <GradeEvaluationCard
-              key={g.year}
-              year={g.year}
-              academicYear={academicYear}
-              semester={semester}
-              total={g.total}
-              filled={g.filled}
-              groupCount={g.groupCount}
-              groups={g.groups}
-              activityNames={g.activityNames}
-            />
+            <Card key={g.year}>
+              <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
+                <CardTitle className="font-thai text-base flex items-center gap-2">
+                  {g.year}
+                  <Badge variant="outline" className="font-thai text-xs">{g.total} คน</Badge>
+                  <Badge variant="outline" className="font-thai text-xs">{g.groupCount} กลุ่ม</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="font-thai whitespace-nowrap">ชื่อกิจกรรม</TableHead>
+                        <TableHead className="font-thai whitespace-nowrap">เกณฑ์ผ่าน</TableHead>
+                        <TableHead className="font-thai whitespace-nowrap">ความคืบหน้า</TableHead>
+                        <TableHead className="font-thai text-right whitespace-nowrap">จัดการ</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {g.activities.map((a) => (
+                        <TableRow key={a.id}>
+                          <TableCell className="font-thai font-medium">{a.name}</TableCell>
+                          <TableCell className="font-thai text-sm text-gray-500 whitespace-nowrap">
+                            ≥{a.passThreshold}%
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              className={`font-thai text-xs border-0 whitespace-nowrap ${
+                                a.filled === g.total && g.total > 0 ? "bg-success/10 text-success" : "bg-gray-100 text-gray-500"
+                              }`}
+                            >
+                              {a.filled === g.total && g.total > 0 ? "กรอกแล้ว" : "รอดำเนินการ"} ({a.filled}/{g.total})
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Link
+                              href={`/admin/evaluation/${a.id}?year=${encodeURIComponent(g.year)}&academicYear=${encodeURIComponent(academicYear)}&semester=${encodeURIComponent(semester)}`}
+                            >
+                              <Button size="sm" variant="outline" className="font-thai gap-1.5">
+                                <PenLine className="w-3.5 h-3.5" />
+                                กรอกคะแนน
+                              </Button>
+                            </Link>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}

@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
-const MAX_SIZE_BYTES = 2 * 1024 * 1024
+const MAX_SIZE_BYTES = 500 * 1024
 const ALLOWED_TYPES = ["image/png", "image/svg+xml"]
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -38,7 +38,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         return Response.json({ error: "รองรับเฉพาะไฟล์ PNG หรือ SVG" }, { status: 400 })
       }
       if (file.size > MAX_SIZE_BYTES) {
-        return Response.json({ error: "ไฟล์ต้องมีขนาดไม่เกิน 2MB" }, { status: 400 })
+        return Response.json({ error: "ไฟล์ต้องมีขนาดไม่เกิน 500KB" }, { status: 400 })
       }
       const buffer = Buffer.from(await file.arrayBuffer())
       imageData = `data:${file.type};base64,${buffer.toString("base64")}`

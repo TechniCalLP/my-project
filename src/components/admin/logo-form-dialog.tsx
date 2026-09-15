@@ -92,7 +92,7 @@ export default function LogoFormDialog({ currentLogo, trigger }: LogoFormDialogP
               file={file}
               onFileChange={handleFileChange}
               title="คลิกเพื่อเลือกไฟล์ หรือ ลากและวางไฟล์ลงที่นี่"
-              subtitle="รองรับเฉพาะไฟล์ PNG, JPG หรือ SVG ไม่เกิน 2MB"
+              subtitle="รองรับเฉพาะไฟล์ PNG, JPG หรือ SVG ไม่เกิน 500KB (แนะนำให้บีบอัดไฟล์ก่อนอัปโหลด)"
             />
           </div>
 

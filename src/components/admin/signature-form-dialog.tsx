@@ -138,7 +138,7 @@ export default function SignatureFormDialog({ mode, signature, trigger }: Signat
               file={file}
               onFileChange={handleFileChange}
               title="คลิกเพื่อเลือกไฟล์ หรือ ลากและวางไฟล์ลงที่นี่"
-              subtitle="รองรับเฉพาะไฟล์ PNG หรือ SVG ขนาดไม่เกิน 2MB (แนะนำพื้นหลังโปร่งใส)"
+              subtitle="รองรับเฉพาะไฟล์ PNG หรือ SVG ขนาดไม่เกิน 500KB (แนะนำพื้นหลังโปร่งใส)"
             />
           </div>
 

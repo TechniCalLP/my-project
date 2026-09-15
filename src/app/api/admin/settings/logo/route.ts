@@ -4,14 +4,17 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { COLLEGE_LOGO_KEY, getCollegeLogo } from "@/lib/settings"
 
-const MAX_SIZE_BYTES = 2 * 1024 * 1024
+const MAX_SIZE_BYTES = 500 * 1024
 const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/svg+xml"]
 
 export async function GET() {
   // Public read: the logo is already visible unauthenticated on the login
   // pages, and the student layout needs it too, so no session is required.
   const logo = await getCollegeLogo()
-  return Response.json({ logo })
+  return Response.json(
+    { logo },
+    { headers: { "Cache-Control": "public, max-age=300, stale-while-revalidate=3600" } }
+  )
 }
 
 export async function POST(req: NextRequest) {
@@ -30,7 +33,7 @@ export async function POST(req: NextRequest) {
       return Response.json({ error: "รองรับเฉพาะไฟล์ PNG, JPG หรือ SVG" }, { status: 400 })
     }
     if (file.size > MAX_SIZE_BYTES) {
-      return Response.json({ error: "ไฟล์ต้องมีขนาดไม่เกิน 2MB" }, { status: 400 })
+      return Response.json({ error: "ไฟล์ต้องมีขนาดไม่เกิน 500KB" }, { status: 400 })
     }
 
     const buffer = Buffer.from(await file.arrayBuffer())

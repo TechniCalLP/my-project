@@ -23,7 +23,6 @@ export default async function SummaryPage({ searchParams }: PageProps) {
   const isTeacher = session.user.adminRole === "TEACHER"
   let scopedClubId: string | null = null
   let scopedClubName: string | null = null
-  let scopedDepartmentVariants: string[] | null = null
   let allClubs: { id: string; name: string }[] = []
 
   const params = await searchParams
@@ -46,7 +45,6 @@ export default async function SummaryPage({ searchParams }: PageProps) {
     }
     scopedClubId = teacher.club.id
     scopedClubName = teacher.club.name
-    scopedDepartmentVariants = clubDepartmentVariants(teacher.club)
   } else {
     allClubs = await prisma.club.findMany({ where: { isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true } })
     if (params.club) {
@@ -54,7 +52,6 @@ export default async function SummaryPage({ searchParams }: PageProps) {
       if (club) {
         scopedClubId = club.id
         scopedClubName = club.name
-        scopedDepartmentVariants = clubDepartmentVariants(club)
       }
     }
   }
@@ -68,21 +65,47 @@ export default async function SummaryPage({ searchParams }: PageProps) {
       semester,
       ...(scopedClubId ? { clubs: { some: { id: scopedClubId } } } : {}),
     },
-    select: { name: true, targetYears: true },
+    select: {
+      name: true,
+      targetYears: true,
+      clubs: { select: { id: true, name: true, departments: { select: { name: true, aliases: true } } } },
+    },
   })
 
-  const gradeGroups = await Promise.all(
-    YEARS.map(async (year) => {
-      const applicableActivities = activities.filter(
-        (a) => a.targetYears.length === 0 || a.targetYears.includes(year)
-      )
-      if (applicableActivities.length === 0) return null
-
-      const where = {
-        isActive: true,
-        year,
-        ...(scopedDepartmentVariants ? { department: { in: scopedDepartmentVariants } } : {}),
+  // One card per (club, year) combination that has a configured vocational
+  // activity — mirrors how activities are actually set up on the
+  // กิจกรรมองค์การวิชาชีพ page, instead of lumping every club's students
+  // together under a single per-year total.
+  interface ClubYearGroup {
+    clubId: string
+    clubName: string
+    year: string
+    deptVariants: string[]
+    activityNames: Set<string>
+  }
+  const groupsByKey = new Map<string, ClubYearGroup>()
+  for (const activity of activities) {
+    const years = activity.targetYears.length === 0 ? YEARS : activity.targetYears
+    for (const club of activity.clubs) {
+      for (const year of years) {
+        const key = `${club.id}::${year}`
+        if (!groupsByKey.has(key)) {
+          groupsByKey.set(key, {
+            clubId: club.id,
+            clubName: club.name,
+            year,
+            deptVariants: clubDepartmentVariants(club),
+            activityNames: new Set(),
+          })
+        }
+        groupsByKey.get(key)!.activityNames.add(activity.name)
       }
+    }
+  }
+
+  const gradeGroups = await Promise.all(
+    [...groupsByKey.values()].map(async (group) => {
+      const where = { isActive: true, year: group.year, department: { in: group.deptVariants } }
       const students = await prisma.student.findMany({ where, select: { id: true } })
       if (students.length === 0) return null
 
@@ -97,13 +120,22 @@ export default async function SummaryPage({ searchParams }: PageProps) {
         else pendingCount++
       }
 
-      const activityNames = [...new Set(applicableActivities.map((a) => a.name))]
-
-      return { year, total: students.length, passCount, failCount, pendingCount, activityNames }
+      return {
+        year: group.year,
+        clubId: group.clubId,
+        clubName: group.clubName,
+        total: students.length,
+        passCount,
+        failCount,
+        pendingCount,
+        activityNames: [...group.activityNames],
+      }
     })
   )
 
-  const visibleGroups = gradeGroups.filter((g): g is NonNullable<typeof g> => g !== null)
+  const visibleGroups = gradeGroups
+    .filter((g): g is NonNullable<typeof g> => g !== null)
+    .sort((a, b) => YEARS.indexOf(a.year as (typeof YEARS)[number]) - YEARS.indexOf(b.year as (typeof YEARS)[number]) || a.clubName.localeCompare(b.clubName, "th"))
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -139,11 +171,12 @@ export default async function SummaryPage({ searchParams }: PageProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {visibleGroups.map((g) => (
             <SummaryGradeCard
-              key={g.year}
+              key={`${g.clubId}::${g.year}`}
               year={g.year}
               academicYear={academicYear}
               semester={semester}
-              clubId={scopedClubId ?? undefined}
+              clubId={g.clubId}
+              clubName={g.clubName}
               total={g.total}
               passCount={g.passCount}
               failCount={g.failCount}

@@ -10,6 +10,7 @@ interface SummaryGradeCardProps {
   academicYear: string
   semester: string
   clubId?: string
+  clubName?: string
   total: number
   passCount: number
   failCount: number
@@ -22,6 +23,7 @@ export default function SummaryGradeCard({
   academicYear,
   semester,
   clubId,
+  clubName,
   total,
   passCount,
   failCount,
@@ -41,6 +43,7 @@ export default function SummaryGradeCard({
           <div className="flex flex-col gap-1.5 min-w-0">
             <span className="font-thai font-semibold text-base">{activityNames.join(", ")}</span>
             <div className="flex flex-wrap items-center gap-2">
+              {clubName && <Badge className="font-thai text-xs">ชมรม{clubName}</Badge>}
               <Badge variant="outline" className="font-thai text-xs">{year}</Badge>
               <Badge variant="outline" className="font-thai text-xs">{total} คน</Badge>
             </div>

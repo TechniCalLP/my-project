@@ -68,22 +68,22 @@ export default async function SummaryPage({ searchParams }: PageProps) {
       ...(scopedClubId ? { clubs: { some: { id: scopedClubId } } } : {}),
     },
     select: {
+      id: true,
       name: true,
       targetYears: true,
       clubs: { select: { id: true, name: true, departments: { select: { name: true, aliases: true } } } },
     },
   })
 
-  // One card per (club, year) combination that has a configured vocational
-  // activity — mirrors how activities are actually set up on the
-  // กิจกรรมองค์การวิชาชีพ page, instead of lumping every club's students
-  // together under a single per-year total.
+  // One card per (club, year, activity) combination — mirrors how activities
+  // are actually set up on the กิจกรรมองค์การวิชาชีพ page, instead of
+  // lumping every activity for the same club+year into one crowded card.
   interface ClubYearGroup {
     clubId: string
     clubName: string
     year: string
     deptVariants: string[]
-    activityNames: Set<string>
+    activities: { id: string; name: string }[]
   }
   const groupsByKey = new Map<string, ClubYearGroup>()
   for (const activity of activities) {
@@ -97,10 +97,10 @@ export default async function SummaryPage({ searchParams }: PageProps) {
             clubName: club.name,
             year,
             deptVariants: clubDepartmentVariants(club),
-            activityNames: new Set(),
+            activities: [],
           })
         }
-        groupsByKey.get(key)!.activityNames.add(activity.name)
+        groupsByKey.get(key)!.activities.push({ id: activity.id, name: activity.name })
       }
     }
   }
@@ -122,6 +122,23 @@ export default async function SummaryPage({ searchParams }: PageProps) {
         else pendingCount++
       }
 
+      // Per-activity breakdown, reusing the evaluations already fetched above
+      // — this is what actually renders as individual cards below, while the
+      // aggregate numbers here still feed the KPI totals.
+      const activityBreakdown = group.activities.map((activity) => {
+        let aPass = 0
+        let aFail = 0
+        let aPending = 0
+        for (const evaluation of evaluations.values()) {
+          const result = evaluation.vocationalActivities.find((v) => v.id === activity.id)
+          const activityStatus = result?.status ?? "PENDING"
+          if (activityStatus === "PASS") aPass++
+          else if (activityStatus === "FAIL") aFail++
+          else aPending++
+        }
+        return { activityId: activity.id, activityName: activity.name, passCount: aPass, failCount: aFail, pendingCount: aPending }
+      })
+
       return {
         year: group.year,
         clubId: group.clubId,
@@ -130,7 +147,7 @@ export default async function SummaryPage({ searchParams }: PageProps) {
         passCount,
         failCount,
         pendingCount,
-        activityNames: [...group.activityNames],
+        activityBreakdown,
       }
     })
   )
@@ -148,7 +165,21 @@ export default async function SummaryPage({ searchParams }: PageProps) {
   const totalPending = scopedGroups.reduce((sum, g) => sum + g.pendingCount, 0)
   const passPct = totalStudents > 0 ? Math.round((totalPass / totalStudents) * 1000) / 10 : 0
 
-  const filteredGroups = scopedGroups.filter((g) => {
+  const activityCards = scopedGroups.flatMap((g) =>
+    g.activityBreakdown.map((a) => ({
+      year: g.year,
+      clubId: g.clubId,
+      clubName: g.clubName,
+      activityId: a.activityId,
+      total: g.total,
+      passCount: a.passCount,
+      failCount: a.failCount,
+      pendingCount: a.pendingCount,
+      activityNames: [a.activityName],
+    }))
+  )
+
+  const filteredGroups = activityCards.filter((g) => {
     if (search) {
       const haystack = `${g.clubName} ${g.activityNames.join(" ")}`.toLowerCase()
       if (!haystack.includes(search)) return false

@@ -304,13 +304,13 @@ export default function GradeEvaluationCard({
                     <TableRow>
                       <TableHead className="font-thai whitespace-nowrap">รหัสนักศึกษา</TableHead>
                       <TableHead className="font-thai whitespace-nowrap">ชื่อ-นามสกุล</TableHead>
-                      <TableHead className="font-thai whitespace-nowrap">สถานะ</TableHead>
                       {data.activities.map((a) => (
                         <TableHead key={a.id} className="font-thai whitespace-nowrap">
                           {a.name}
                           <span className="text-gray-400 font-normal"> (≥{a.passThreshold}%)</span>
                         </TableHead>
                       ))}
+                      <TableHead className="font-thai whitespace-nowrap">สถานะ</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -322,15 +322,6 @@ export default function GradeEvaluationCard({
                             {student.prefix}{student.firstName} {student.lastName}
                           </p>
                           {student.group && <p className="text-xs text-gray-400 font-thai">กลุ่ม {student.group}</p>}
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            className={`font-thai text-xs border-0 whitespace-nowrap ${
-                              isRowComplete(student) ? "bg-success/10 text-success" : "bg-gray-100 text-gray-500"
-                            }`}
-                          >
-                            {isRowComplete(student) ? "กรอกครบแล้ว" : "รอดำเนินการ"}
-                          </Badge>
                         </TableCell>
                         {data.activities.map((a) => {
                           const cell = student.scores[a.id]
@@ -352,6 +343,15 @@ export default function GradeEvaluationCard({
                             </TableCell>
                           )
                         })}
+                        <TableCell>
+                          <Badge
+                            className={`font-thai text-xs border-0 whitespace-nowrap ${
+                              isRowComplete(student) ? "bg-success/10 text-success" : "bg-gray-100 text-gray-500"
+                            }`}
+                          >
+                            {isRowComplete(student) ? "กรอกครบแล้ว" : "รอดำเนินการ"}
+                          </Badge>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

@@ -39,13 +39,15 @@ export default function SummaryYearPanel({ year, academicYear, semester, isAdmin
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-end gap-2">
+        <SummaryExportButtons year={year} academicYear={academicYear} semester={semester} />
         {!isAdminView && (
           <SummaryCorrectionRequest
+            year={year}
+            academicYear={academicYear}
             selectedRows={[...selected.values()]}
             onSubmitted={() => setSelected(new Map())}
           />
         )}
-        <SummaryExportButtons year={year} academicYear={academicYear} semester={semester} />
       </div>
 
       <SummaryYearDetail

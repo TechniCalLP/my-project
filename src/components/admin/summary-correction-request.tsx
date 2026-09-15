@@ -6,106 +6,109 @@ import { Loader2, FileEdit } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import type { StudentRow } from "@/components/admin/summary-year-detail"
 
 interface SummaryCorrectionRequestProps {
+  year: string
+  academicYear: string
   selectedRows: StudentRow[]
   onSubmitted?: () => void
 }
 
-interface CorrectableOption {
+interface CorrectionCard {
+  key: string
   studentId: string
   activityId: string
-  studentName: string
+  studentLabel: string
   activityName: string
   currentScore: number
 }
 
-export default function SummaryCorrectionRequest({ selectedRows, onSubmitted }: SummaryCorrectionRequestProps) {
+export default function SummaryCorrectionRequest({ year, academicYear, selectedRows, onSubmitted }: SummaryCorrectionRequestProps) {
   const [open, setOpen] = useState(false)
-  const [correctionStudentId, setCorrectionStudentId] = useState("")
-  const [correctionActivityId, setCorrectionActivityId] = useState("")
-  const [correctionScore, setCorrectionScore] = useState("")
-  const [correctionReason, setCorrectionReason] = useState("")
+  const [reason, setReason] = useState("")
+  const [newScores, setNewScores] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
 
-  const correctableOptions: CorrectableOption[] = selectedRows.flatMap((row) =>
+  const cards: CorrectionCard[] = selectedRows.flatMap((row) =>
     row.vocationalActivities
       .filter((a) => a.score != null)
       .map((a) => ({
+        key: `${row.id}::${a.id}`,
         studentId: row.id,
         activityId: a.id,
-        studentName: `${row.prefix}${row.firstName} ${row.lastName}`,
+        studentLabel: `${row.studentId} ${row.prefix}${row.firstName} ${row.lastName} ${row.year} กลุ่ม ${row.group ?? "-"}`,
         activityName: a.name,
         currentScore: a.score!,
       }))
   )
-  const correctableStudents = [...new Map(correctableOptions.map((o) => [o.studentId, o])).values()]
-  const activitiesForStudent = correctableOptions.filter((o) => o.studentId === correctionStudentId)
-  const correctionTarget = activitiesForStudent.find((o) => o.activityId === correctionActivityId) ?? null
 
   const openDialog = () => {
     setOpen(true)
-    const first = correctableOptions[0]
-    setCorrectionStudentId(first?.studentId ?? "")
-    setCorrectionActivityId(first?.activityId ?? "")
-    setCorrectionScore("")
-    setCorrectionReason("")
-  }
-
-  const selectStudent = (studentId: string) => {
-    setCorrectionStudentId(studentId)
-    const firstActivity = correctableOptions.find((o) => o.studentId === studentId)
-    setCorrectionActivityId(firstActivity?.activityId ?? "")
-    setCorrectionScore("")
-  }
-
-  const selectActivity = (activityId: string) => {
-    setCorrectionActivityId(activityId)
-    setCorrectionScore("")
+    setReason("")
+    setNewScores({})
   }
 
   const closeDialog = () => {
     setOpen(false)
-    setCorrectionStudentId("")
-    setCorrectionActivityId("")
+    setReason("")
+    setNewScores({})
+  }
+
+  const setNewScore = (key: string, value: string) => {
+    setNewScores((prev) => ({ ...prev, [key]: value }))
   }
 
   const submit = async () => {
-    if (!correctionTarget) return
-    const num = Number(correctionScore)
-    if (Number.isNaN(num) || num < 0 || num > 100) {
-      toast.error("คะแนนที่ขอแก้ไขต้องอยู่ระหว่าง 0-100")
+    if (!reason.trim()) {
+      toast.error("กรุณาระบุเหตุผลรวม")
       return
     }
-    if (!correctionReason.trim()) {
-      toast.error("กรุณาระบุเหตุผลที่ขอแก้ไข")
+
+    const entries = cards
+      .map((c) => ({ card: c, raw: newScores[c.key] }))
+      .filter((e) => e.raw !== undefined && e.raw !== "")
+
+    if (entries.length === 0) {
+      toast.error("กรุณากรอกคะแนนใหม่อย่างน้อย 1 คน")
       return
     }
+
+    for (const { card, raw } of entries) {
+      const num = Number(raw)
+      if (Number.isNaN(num) || num < 0 || num > 100) {
+        toast.error(`คะแนนใหม่ของ ${card.studentLabel} ต้องอยู่ระหว่าง 0-100`)
+        return
+      }
+    }
+
     setSubmitting(true)
     try {
-      const res = await fetch("/api/teacher/vocational-activities/correction-requests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          activityId: correctionTarget.activityId,
-          studentId: correctionTarget.studentId,
-          proposedScore: num,
-          reason: correctionReason.trim(),
-        }),
-      })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || "เกิดข้อผิดพลาด")
+      let failed = 0
+      for (const { card, raw } of entries) {
+        const res = await fetch("/api/teacher/vocational-activities/correction-requests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            activityId: card.activityId,
+            studentId: card.studentId,
+            proposedScore: Number(raw),
+            reason: reason.trim(),
+          }),
+        })
+        if (!res.ok) failed++
       }
-      toast.success("ส่งคำขอแก้ไขคะแนนแล้ว รอผู้ดูแลระบบอนุมัติ")
+
+      if (failed === 0) {
+        toast.success(`ส่งคำขอแก้ไขคะแนนแล้ว ${entries.length} รายการ รอผู้ดูแลระบบอนุมัติ`)
+      } else {
+        toast.warning(`ส่งสำเร็จ ${entries.length - failed} รายการ, ล้มเหลว ${failed} รายการ`)
+      }
       closeDialog()
       onSubmitted?.()
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "กรุณาลองใหม่อีกครั้ง"
-      toast.error(message)
+    } catch {
+      toast.error("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง")
     } finally {
       setSubmitting(false)
     }
@@ -114,8 +117,6 @@ export default function SummaryCorrectionRequest({ selectedRows, onSubmitted }: 
   return (
     <>
       <Button
-        variant="outline"
-        size="sm"
         disabled={selectedRows.length === 0}
         onClick={openDialog}
         className="font-thai gap-1.5 shrink-0"
@@ -125,83 +126,62 @@ export default function SummaryCorrectionRequest({ selectedRows, onSubmitted }: 
       </Button>
 
       <Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : closeDialog())}>
-        <DialogContent>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-thai">ขอแก้ไขคะแนน</DialogTitle>
+            <DialogTitle className="font-thai">ส่งคำขออนุมัติแก้ไขคะแนนรายบุคคล</DialogTitle>
           </DialogHeader>
+          <p className="text-xs text-gray-500 font-thai -mt-2">
+            ผลรวมการประเมินกิจกรรมองค์การวิชาชีพ | ระดับ: {year} ปีการศึกษา {academicYear}
+          </p>
 
-          {correctableOptions.length === 0 ? (
+          {cards.length === 0 ? (
             <p className="text-sm text-gray-500 font-thai">
               นักศึกษาที่เลือกยังไม่มีคะแนนกิจกรรมองค์การวิชาชีพที่บันทึกแล้ว
             </p>
           ) : (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="font-thai">นักศึกษา *</Label>
-                  <Select value={correctionStudentId} onValueChange={selectStudent}>
-                    <SelectTrigger className="w-full font-thai">
-                      <SelectValue placeholder="เลือกนักศึกษา" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {correctableStudents.map((o) => (
-                        <SelectItem key={o.studentId} value={o.studentId} className="font-thai">
-                          {o.studentName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="font-thai">กิจกรรม *</Label>
-                  <Select value={correctionActivityId} onValueChange={selectActivity}>
-                    <SelectTrigger className="w-full font-thai">
-                      <SelectValue placeholder="เลือกกิจกรรม" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {activitiesForStudent.map((o) => (
-                        <SelectItem key={o.activityId} value={o.activityId} className="font-thai">
-                          {o.activityName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label className="font-thai">เหตุผลรวม *</Label>
+                <textarea
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="เช่น กรอกคะแนนสลับคอลัมน์ผิดพลาดระหว่างบันทึกผลกิจกรรม"
+                  className="w-full min-h-[70px] rounded-md border border-input bg-background px-3 py-2 text-sm font-thai"
+                />
               </div>
 
-              {correctionTarget && (
-                <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="font-thai text-gray-500">คะแนนเดิม</Label>
-                      <Input type="number" value={correctionTarget.currentScore} disabled className="font-mono bg-gray-50" />
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium font-thai">
+                  รายการนักศึกษาที่เลือกเพื่อส่งคำขอแก้ไข ({cards.length} คน)
+                </p>
+                <div className="space-y-2">
+                  {cards.map((card) => (
+                    <div key={card.key} className="rounded-md border p-3 space-y-2">
+                      <p className="text-sm font-thai font-medium">
+                        {card.studentLabel}
+                        {cards.length > 1 && <span className="text-gray-400 font-normal"> · {card.activityName}</span>}
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="font-thai text-xs text-gray-500">คะแนนเดิม</Label>
+                          <Input type="number" value={card.currentScore} disabled className="font-mono bg-gray-50" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="font-thai text-xs">คะแนนใหม่</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={newScores[card.key] ?? ""}
+                            onChange={(e) => setNewScore(card.key, e.target.value)}
+                            className="font-mono"
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="font-thai">คะแนนใหม่ *</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={correctionScore}
-                        onChange={(e) => setCorrectionScore(e.target.value)}
-                        placeholder="กรอกคะแนนใหม่"
-                        autoFocus
-                        className="font-mono"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="font-thai">เหตุผลที่ขอแก้ไข *</Label>
-                    <textarea
-                      value={correctionReason}
-                      onChange={(e) => setCorrectionReason(e.target.value)}
-                      placeholder="เช่น กรอกคะแนนผิดพลาด"
-                      className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm font-thai"
-                    />
-                  </div>
-                  <p className="text-xs text-gray-400 font-thai">คำขอนี้จะถูกส่งให้ผู้ดูแลระบบอนุมัติก่อนคะแนนจะถูกแก้ไขจริง</p>
-                </>
-              )}
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -209,9 +189,9 @@ export default function SummaryCorrectionRequest({ selectedRows, onSubmitted }: 
             <Button variant="outline" onClick={closeDialog} disabled={submitting} className="font-thai">
               ยกเลิก
             </Button>
-            <Button onClick={submit} disabled={submitting || !correctionTarget} className="font-thai gap-2">
+            <Button onClick={submit} disabled={submitting || cards.length === 0} className="font-thai gap-2">
               {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              ส่งคำขอ
+              ส่งคำขอแก้ไขคะแนน
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -81,7 +81,7 @@ function NavContent({
             <Icon size={18} />
             <span className="flex-1">{label}</span>
             {href === "/admin/correction-requests" && pendingCorrectionCount > 0 && (
-              <span className="flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-secondary-500 text-white text-[11px] font-medium">
+              <span className="flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-orange-500 text-white text-[11px] font-medium">
                 {pendingCorrectionCount > 99 ? "99+" : pendingCorrectionCount}
               </span>
             )}

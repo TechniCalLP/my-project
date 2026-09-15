@@ -58,6 +58,10 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
 
   const overallForStudent = (studentId: string): PartStatus => evaluations.get(studentId)?.overall ?? "PENDING"
 
+  const statusLabel = (s: PartStatus) => (s === "PASS" ? "ผ่าน" : s === "FAIL" ? "ไม่ผ่าน" : "รอดำเนินการ")
+  const statusColorClass = (s: PartStatus) =>
+    s === "PASS" ? "text-success" : s === "FAIL" ? "text-destructive" : "text-gray-500"
+
   return (
     <div className="min-h-screen bg-white font-thai">
       <AutoPrint />
@@ -92,38 +96,87 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
               </p>
             </div>
 
-            <table className="w-full text-sm border-collapse border border-gray-800">
-              <thead>
-                <tr>
-                  <th rowSpan={2} className="border border-gray-800 px-2 py-1.5 w-10">ที่</th>
-                  <th rowSpan={2} className="border border-gray-800 px-2 py-1.5 w-32">รหัสนักศึกษา</th>
-                  <th rowSpan={2} className="border border-gray-800 px-2 py-1.5">ชื่อ - สกุล</th>
-                  <th colSpan={2} className="border border-gray-800 px-2 py-1.5">ผลการประเมินกิจกรรม</th>
-                  <th rowSpan={2} className="border border-gray-800 px-2 py-1.5 w-24">หมายเหตุ</th>
-                </tr>
-                <tr>
-                  <th className="border border-gray-800 px-2 py-1 w-16">ผ่าน</th>
-                  <th className="border border-gray-800 px-2 py-1 w-16">ไม่ผ่าน</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pageGroup.students.map((s, i) => {
-                  const overall = overallForStudent(s.id)
-                  return (
-                    <tr key={s.id}>
-                      <td className="border border-gray-800 px-2 py-1 text-center">{i + 1}</td>
-                      <td className="border border-gray-800 px-2 py-1 font-mono text-xs">{s.studentId}</td>
-                      <td className="border border-gray-800 px-2 py-1">{s.prefix}{s.firstName} {s.lastName}</td>
-                      <td className="border border-gray-800 px-2 py-1 text-center">{overall === "PASS" ? "✓" : ""}</td>
-                      <td className="border border-gray-800 px-2 py-1 text-center">{overall === "FAIL" ? "✓" : ""}</td>
-                      <td className="border border-gray-800 px-2 py-1 text-center text-xs text-gray-500">
-                        {overall === "PENDING" ? "รอดำเนินการ" : ""}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+            {formType === "15" ? (
+              <table className="w-full text-sm border-collapse border border-gray-800">
+                <thead>
+                  <tr>
+                    <th className="border border-gray-800 px-2 py-1.5 w-10">ที่</th>
+                    <th className="border border-gray-800 px-2 py-1.5 w-32">รหัสนักศึกษา</th>
+                    <th className="border border-gray-800 px-2 py-1.5">ชื่อ - สกุล</th>
+                    <th className="border border-gray-800 px-2 py-1.5 w-28">กิจกรรมภาคบังคับ</th>
+                    <th className="border border-gray-800 px-2 py-1.5">กิจกรรมองค์การวิชาชีพ</th>
+                    <th className="border border-gray-800 px-2 py-1.5 w-20">ผลรวม</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageGroup.students.map((s, i) => {
+                    const evaluation = evaluations.get(s.id)
+                    const participation = evaluation?.participation ?? { progress: 0, status: "PENDING" as PartStatus }
+                    const vocationalActivities = evaluation?.vocationalActivities ?? []
+                    const overall = overallForStudent(s.id)
+                    return (
+                      <tr key={s.id}>
+                        <td className="border border-gray-800 px-2 py-1 text-center">{i + 1}</td>
+                        <td className="border border-gray-800 px-2 py-1 font-mono text-xs">{s.studentId}</td>
+                        <td className="border border-gray-800 px-2 py-1">{s.prefix}{s.firstName} {s.lastName}</td>
+                        <td className={`border border-gray-800 px-2 py-1 text-center ${statusColorClass(participation.status)}`}>
+                          {statusLabel(participation.status)} {participation.progress}%
+                        </td>
+                        <td className="border border-gray-800 px-2 py-1">
+                          {vocationalActivities.length === 0 ? (
+                            <span className="text-xs text-gray-400">ไม่มีกิจกรรม</span>
+                          ) : (
+                            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs">
+                              {vocationalActivities.map((a) => (
+                                <span key={a.id} className={statusColorClass(a.status)}>
+                                  {a.name}: {a.score != null ? `${a.score}%` : "รอกรอก"}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                        <td className={`border border-gray-800 px-2 py-1 text-center ${statusColorClass(overall)}`}>
+                          {statusLabel(overall)}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <table className="w-full text-sm border-collapse border border-gray-800">
+                <thead>
+                  <tr>
+                    <th rowSpan={2} className="border border-gray-800 px-2 py-1.5 w-10">ที่</th>
+                    <th rowSpan={2} className="border border-gray-800 px-2 py-1.5 w-32">รหัสนักศึกษา</th>
+                    <th rowSpan={2} className="border border-gray-800 px-2 py-1.5">ชื่อ - สกุล</th>
+                    <th colSpan={2} className="border border-gray-800 px-2 py-1.5">ผลการประเมินกิจกรรม</th>
+                    <th rowSpan={2} className="border border-gray-800 px-2 py-1.5 w-24">หมายเหตุ</th>
+                  </tr>
+                  <tr>
+                    <th className="border border-gray-800 px-2 py-1 w-16">ผ่าน</th>
+                    <th className="border border-gray-800 px-2 py-1 w-16">ไม่ผ่าน</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageGroup.students.map((s, i) => {
+                    const overall = overallForStudent(s.id)
+                    return (
+                      <tr key={s.id}>
+                        <td className="border border-gray-800 px-2 py-1 text-center">{i + 1}</td>
+                        <td className="border border-gray-800 px-2 py-1 font-mono text-xs">{s.studentId}</td>
+                        <td className="border border-gray-800 px-2 py-1">{s.prefix}{s.firstName} {s.lastName}</td>
+                        <td className="border border-gray-800 px-2 py-1 text-center">{overall === "PASS" ? "✓" : ""}</td>
+                        <td className="border border-gray-800 px-2 py-1 text-center">{overall === "FAIL" ? "✓" : ""}</td>
+                        <td className="border border-gray-800 px-2 py-1 text-center text-xs text-gray-500">
+                          {overall === "PENDING" ? "รอดำเนินการ" : ""}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
 
             <div className="mt-5 text-sm space-y-1">
               <p>สรุปผลการประเมินกิจกรรมองค์การวิชาชีพ สมาชิกจำนวน {total} คน</p>

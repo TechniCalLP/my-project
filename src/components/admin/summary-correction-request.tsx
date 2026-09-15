@@ -25,6 +25,12 @@ interface CorrectionCard {
   currentScore: number
 }
 
+interface StudentGroup {
+  studentId: string
+  studentLabel: string
+  activities: CorrectionCard[]
+}
+
 export default function SummaryCorrectionRequest({ year, academicYear, selectedRows, onSubmitted }: SummaryCorrectionRequestProps) {
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState("")
@@ -43,6 +49,16 @@ export default function SummaryCorrectionRequest({ year, academicYear, selectedR
         currentScore: a.score!,
       }))
   )
+
+  const studentGroups: StudentGroup[] = []
+  for (const card of cards) {
+    let group = studentGroups.find((g) => g.studentId === card.studentId)
+    if (!group) {
+      group = { studentId: card.studentId, studentLabel: card.studentLabel, activities: [] }
+      studentGroups.push(group)
+    }
+    group.activities.push(card)
+  }
 
   const openDialog = () => {
     setOpen(true)
@@ -152,31 +168,41 @@ export default function SummaryCorrectionRequest({ year, academicYear, selectedR
 
               <div className="space-y-1.5">
                 <p className="text-sm font-medium font-thai">
-                  รายการนักศึกษาที่เลือกเพื่อส่งคำขอแก้ไข ({cards.length} คน)
+                  รายการนักศึกษาที่เลือกเพื่อส่งคำขอแก้ไข ({studentGroups.length} คน)
                 </p>
-                <div className="space-y-2">
-                  {cards.map((card) => (
-                    <div key={card.key} className="rounded-md border p-3 space-y-2">
-                      <p className="text-sm font-thai font-medium">
-                        {card.studentLabel}
-                        {cards.length > 1 && <span className="text-gray-400 font-normal"> · {card.activityName}</span>}
+                <div className="space-y-3">
+                  {studentGroups.map((group) => (
+                    <div key={group.studentId} className="rounded-md border overflow-hidden">
+                      <p className="text-sm font-thai font-medium bg-gray-50 px-3 py-2 border-b">
+                        {group.studentLabel}
                       </p>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <Label className="font-thai text-xs text-gray-500">คะแนนเดิม</Label>
-                          <Input type="number" value={card.currentScore} disabled className="font-mono bg-gray-50" />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="font-thai text-xs">คะแนนใหม่</Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            max={100}
-                            value={newScores[card.key] ?? ""}
-                            onChange={(e) => setNewScore(card.key, e.target.value)}
-                            className="font-mono"
-                          />
-                        </div>
+                      <div className="p-3 space-y-3">
+                        {group.activities.map((card) => (
+                          <div key={card.key} className={group.activities.length > 1 ? "space-y-1.5 rounded-md border border-dashed p-2.5" : "space-y-1.5"}>
+                            {group.activities.length > 1 && (
+                              <p className="text-xs font-thai font-medium text-primary-600">{card.activityName}</p>
+                            )}
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <Label className="font-thai text-xs text-gray-500">คะแนนเดิม</Label>
+                                <Input type="number" value={card.currentScore} disabled className="font-mono bg-gray-50" />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="font-thai text-xs">
+                                  คะแนนใหม่{group.activities.length === 1 && ` (${card.activityName})`}
+                                </Label>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  value={newScores[card.key] ?? ""}
+                                  onChange={(e) => setNewScore(card.key, e.target.value)}
+                                  className="font-mono"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   ))}

@@ -171,26 +171,22 @@ export default async function SummaryPage({ searchParams }: PageProps) {
       icon: "users" as const,
       label: `จำนวนผู้เรียนรวม${scopedClubName ? "" : "ทุกชมรม"}`,
       value: `${totalStudents.toLocaleString("th-TH")} คน`,
-      subtitle: scopedClubName ? `ชมรม${scopedClubName}` : "ทุกชมรมวิชาชีพที่มีกิจกรรมในภาคเรียนนี้",
     },
     {
       icon: "check" as const,
       label: "ผ่านการประเมินแล้ว",
       value: `${passPct}%`,
-      subtitle: `ผ่านเกณฑ์ ${totalPass.toLocaleString("th-TH")} คน จาก ${totalStudents.toLocaleString("th-TH")} คน`,
       valueClass: "text-success",
     },
     {
       icon: "clock" as const,
       label: "รอดำเนินการตรวจสอบ",
       value: `${totalPending.toLocaleString("th-TH")} คน`,
-      subtitle: "รอครูกรอกคะแนนหรือยืนยันผล",
     },
     {
       icon: "alert" as const,
       label: "ยังไม่ผ่านเกณฑ์ขั้นต่ำ",
       value: `${totalFail.toLocaleString("th-TH")} คน`,
-      subtitle: "ควรติดตามช่วยเหลือเพิ่มเติม",
       valueClass: "text-destructive",
     },
   ]

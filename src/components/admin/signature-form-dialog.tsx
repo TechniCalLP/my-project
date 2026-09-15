@@ -3,10 +3,11 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { Loader2, ImageIcon } from "lucide-react"
+import { Loader2, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { FileDropzone } from "@/components/ui/file-dropzone"
 
@@ -15,6 +16,7 @@ interface SignatureData {
   name: string
   position: string
   imageData: string
+  isActive: boolean
 }
 
 interface SignatureFormDialogProps {
@@ -29,6 +31,8 @@ export default function SignatureFormDialog({ mode, signature, trigger }: Signat
   const [name, setName] = useState(signature?.name ?? "")
   const [position, setPosition] = useState(signature?.position ?? "")
   const [file, setFile] = useState<File | null>(null)
+  const [filePreview, setFilePreview] = useState<string | null>(null)
+  const [isActive, setIsActive] = useState(signature?.isActive ?? true)
   const [submitting, setSubmitting] = useState(false)
 
   const handleOpenChange = (next: boolean) => {
@@ -37,21 +41,28 @@ export default function SignatureFormDialog({ mode, signature, trigger }: Signat
       setName(signature?.name ?? "")
       setPosition(signature?.position ?? "")
       setFile(null)
+      setFilePreview(null)
+      setIsActive(signature?.isActive ?? true)
     }
+  }
+
+  const handleFileChange = (f: File | null) => {
+    setFile(f)
+    setFilePreview(f ? URL.createObjectURL(f) : null)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) {
-      toast.error("กรุณาระบุชื่อผู้ลงนาม")
+      toast.error("กรุณาระบุชื่อเอกสาร")
       return
     }
     if (!position.trim()) {
-      toast.error("กรุณาระบุตำแหน่ง")
+      toast.error("กรุณาระบุรายละเอียด")
       return
     }
     if (mode === "create" && !file) {
-      toast.error("กรุณาแนบไฟล์รูปลายเซ็น")
+      toast.error("กรุณาแนบไฟล์ลายเซ็น")
       return
     }
 
@@ -60,6 +71,7 @@ export default function SignatureFormDialog({ mode, signature, trigger }: Signat
       const formData = new FormData()
       formData.append("name", name.trim())
       formData.append("position", position.trim())
+      formData.append("isActive", String(isActive))
       if (file) formData.append("file", file)
 
       const url = mode === "create" ? "/api/admin/settings/signatures" : `/api/admin/settings/signatures/${signature!.id}`
@@ -80,49 +92,71 @@ export default function SignatureFormDialog({ mode, signature, trigger }: Signat
     }
   }
 
+  const previewSrc = filePreview ?? (mode === "edit" ? signature?.imageData : undefined) ?? null
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="font-thai">
+      <DialogContent className="font-thai sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="font-thai">{mode === "create" ? "เพิ่มลายเซ็นใหม่" : "แก้ไขข้อมูลลายเซ็น"}</DialogTitle>
+          <DialogTitle className="font-thai">{mode === "create" ? "เพิ่มข้อมูล" : "แก้ไขข้อมูล"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label className="font-thai">ชื่อผู้ลงนาม</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="เช่น นายณัฐวุฒิ ตั้งมั่น" className="font-thai" />
+            <Label className="font-thai text-xs text-gray-500">ภาพพรีวิวลายเซ็นปัจจุบัน (Current Preview)</Label>
+            <div className="border rounded-lg bg-gray-50 h-28 flex items-center justify-center overflow-hidden">
+              {previewSrc ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={previewSrc} alt="ตัวอย่างลายเซ็น" className="max-h-full max-w-full object-contain p-3" />
+              ) : (
+                <p className="text-xs text-gray-400 font-thai">ยังไม่มีตัวอย่างลายเซ็น</p>
+              )}
+            </div>
           </div>
+
           <div className="space-y-1.5">
-            <Label className="font-thai">ตำแหน่ง</Label>
-            <Input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="เช่น รองผู้อำนวยการฝ่ายวิชาการ" className="font-thai" />
+            <Label className="font-thai">ชื่อเอกสาร</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="ลายเซ็นรองผู้อำนวยการ" className="font-thai" />
           </div>
+
           <div className="space-y-1.5">
-            <Label className="font-thai">
-              รูปลายเซ็น{mode === "edit" && <span className="text-gray-400 font-normal"> (เว้นว่างไว้หากไม่ต้องการเปลี่ยน)</span>}
-            </Label>
-            {mode === "edit" && signature && !file && (
-              <div className="border rounded-md p-3 bg-gray-50 w-fit">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={signature.imageData} alt="ลายเซ็นปัจจุบัน" className="h-12 object-contain" />
-              </div>
-            )}
-            <FileDropzone
-              id={`signature-file-${mode}-${signature?.id ?? "new"}`}
-              accept="image/*"
-              icon={ImageIcon}
-              file={file}
-              onFileChange={setFile}
-              title="ลากไฟล์รูปลายเซ็นมาวางที่นี่"
-              subtitle="หรือคลิกเพื่อเลือกไฟล์ (JPG, PNG ไม่เกิน 2MB)"
+            <Label className="font-thai">รายละเอียด</Label>
+            <Input
+              value={position}
+              onChange={(e) => setPosition(e.target.value)}
+              placeholder="ตำแหน่งผู้อำนวยการวิทยาลัยเทคโนโลยีภาคกลาง"
+              className="font-thai"
             />
           </div>
+
+          <div className="space-y-1.5">
+            <Label className="font-thai">อัปโหลด</Label>
+            <FileDropzone
+              id={`signature-file-${mode}-${signature?.id ?? "new"}`}
+              accept="image/png,image/svg+xml"
+              icon={Upload}
+              file={file}
+              onFileChange={handleFileChange}
+              title="คลิกเพื่อเลือกไฟล์ หรือ ลากและวางไฟล์ลงที่นี่"
+              subtitle="รองรับเฉพาะไฟล์ PNG หรือ SVG ขนาดไม่เกิน 2MB (แนะนำพื้นหลังโปร่งใส)"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-3 border rounded-lg p-3">
+            <div>
+              <p className="font-thai text-sm font-medium">สถานะการใช้งาน</p>
+              <p className="font-thai text-xs text-gray-500">หากเปิดใช้งาน ระบบจะใช้ลายเซ็นนี้ประทับบนเอกสารหลักโดยอัตโนมัติ</p>
+            </div>
+            <Switch checked={isActive} onCheckedChange={setIsActive} />
+          </div>
+
           <DialogFooter>
             <Button type="button" variant="outline" className="font-thai" onClick={() => setOpen(false)}>
               ยกเลิก
             </Button>
             <Button type="submit" disabled={submitting} className="font-thai gap-1.5">
               {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              บันทึก
+              {mode === "create" ? "เพิ่มข้อมูล" : "บันทึกการเปลี่ยนแปลง"}
             </Button>
           </DialogFooter>
         </form>

@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 
 const MAX_SIZE_BYTES = 2 * 1024 * 1024
+const ALLOWED_TYPES = ["image/png", "image/svg+xml"]
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -22,18 +23,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const name = formData.get("name")
     const position = formData.get("position")
     const file = formData.get("file")
+    const isActive = formData.get("isActive") === "true"
 
     if (typeof name !== "string" || !name.trim()) {
-      return Response.json({ error: "กรุณาระบุชื่อผู้ลงนาม" }, { status: 400 })
+      return Response.json({ error: "กรุณาระบุชื่อเอกสาร" }, { status: 400 })
     }
     if (typeof position !== "string" || !position.trim()) {
-      return Response.json({ error: "กรุณาระบุตำแหน่ง" }, { status: 400 })
+      return Response.json({ error: "กรุณาระบุรายละเอียด" }, { status: 400 })
     }
 
     let imageData = existing.imageData
     if (file instanceof File) {
-      if (!file.type.startsWith("image/")) {
-        return Response.json({ error: "รองรับเฉพาะไฟล์รูปภาพ" }, { status: 400 })
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        return Response.json({ error: "รองรับเฉพาะไฟล์ PNG หรือ SVG" }, { status: 400 })
       }
       if (file.size > MAX_SIZE_BYTES) {
         return Response.json({ error: "ไฟล์ต้องมีขนาดไม่เกิน 2MB" }, { status: 400 })
@@ -42,9 +44,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       imageData = `data:${file.type};base64,${buffer.toString("base64")}`
     }
 
-    const signature = await prisma.documentSignature.update({
-      where: { id },
-      data: { name: name.trim(), position: position.trim(), imageData },
+    const signature = await prisma.$transaction(async (tx) => {
+      if (isActive) {
+        await tx.documentSignature.updateMany({ where: { isActive: true, id: { not: id } }, data: { isActive: false } })
+      }
+      return tx.documentSignature.update({
+        where: { id },
+        data: { name: name.trim(), position: position.trim(), imageData, isActive },
+      })
     })
 
     return Response.json({ signature })

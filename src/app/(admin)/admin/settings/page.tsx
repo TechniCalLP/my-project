@@ -60,8 +60,7 @@ export default async function AdminSettingsPage({ searchParams }: PageProps) {
           <div>
             <CardTitle className="font-thai text-base">รายการลายเซ็นสำหรับเอกสาร</CardTitle>
             <p className="text-sm text-gray-500 font-thai mt-1">
-              ลายเซ็นดิจิทัลสำหรับประทับบนเอกสารสำคัญ ใบรับรอง และรายงานผลการเรียนหลักสูตรวิชาชีพ
-              รายการที่ &ldquo;กำลังใช้งานหลัก&rdquo; จะถูกใส่อัตโนมัติในใบ Export PDF อวท.15 / อวท.17 ทุกใบ
+              ลายเซ็นดิจิทัลสำหรับประทับเอกสารสำคัญ ใบรับรอง และรายงานการประเมินองค์การวิชาชีพ
             </p>
           </div>
           <SignatureFormDialog

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { CATEGORY_NAMES } from "@/lib/constants"
 import CertificatePrint from "@/components/student/certificate-print"
+import { getCollegeLogo } from "@/lib/settings"
 
 export default async function CertificatePage() {
   const session = await getServerSession(authOptions)
@@ -38,6 +39,8 @@ export default async function CertificatePage() {
 
   if (!student) redirect("/login")
 
+  const logoUrl = await getCollegeLogo()
+
   const activities = student.participations
     .filter((p) => p.activity !== null)
     .map((p) => ({
@@ -68,6 +71,7 @@ export default async function CertificatePage() {
       printedAt={new Date().toLocaleDateString("th-TH", {
         year: "numeric", month: "long", day: "numeric",
       })}
+      logoUrl={logoUrl}
     />
   )
 }

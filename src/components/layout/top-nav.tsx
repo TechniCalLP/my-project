@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { signOut } from "next-auth/react"
 import { Home, Calendar, History, Settings, LogOut, ChevronDown } from "lucide-react"
@@ -13,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { CollegeLogoImage } from "@/components/layout/college-logo-image"
 import { cn } from "@/lib/utils"
 import type { Session } from "next-auth"
 
@@ -26,9 +26,10 @@ const navItems = [
 interface TopNavProps {
   user: Session["user"]
   className?: string
+  logoUrl: string | null
 }
 
-export function TopNav({ user, className }: TopNavProps) {
+export function TopNav({ user, className, logoUrl }: TopNavProps) {
   const pathname = usePathname()
 
   return (
@@ -38,13 +39,7 @@ export function TopNav({ user, className }: TopNavProps) {
           <div className="flex items-center gap-8">
             <Link href="/dashboard" className="flex items-center gap-2 shrink-0">
               <div className="relative w-10 h-10">
-                <Image
-                  src="/logo-college.png"
-                  alt="วิทยาลัยเทคนิคลำปาง"
-                  width={40}
-                  height={40}
-                  className="rounded-lg object-cover"
-                />
+                <CollegeLogoImage logoUrl={logoUrl} width={40} height={40} className="rounded-lg object-cover" />
               </div>
               <span className="font-semibold text-gray-900 hidden lg:block font-thai">
                 วิทยาลัยเทคนิคลำปาง

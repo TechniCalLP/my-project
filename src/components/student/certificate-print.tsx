@@ -1,8 +1,8 @@
 "use client"
 
-import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Printer } from "lucide-react"
+import { CollegeLogoImage } from "@/components/layout/college-logo-image"
 
 interface Activity {
   name: string
@@ -27,9 +27,10 @@ interface CertificatePrintProps {
   student: Student
   activities: Activity[]
   printedAt: string
+  logoUrl: string | null
 }
 
-export default function CertificatePrint({ student, activities, printedAt }: CertificatePrintProps) {
+export default function CertificatePrint({ student, activities, printedAt, logoUrl }: CertificatePrintProps) {
   const fullName = `${student.prefix}${student.firstName} ${student.lastName}`
   const yearLabel = student.year
 
@@ -48,13 +49,7 @@ export default function CertificatePrint({ student, activities, printedAt }: Cer
         {/* Header */}
         <div className="text-center mb-8 border-b-2 border-blue-800 pb-6">
           <div className="flex justify-center mb-3">
-            <Image
-              src="/logo-college.png"
-              alt="Logo วิทยาลัย"
-              width={80}
-              height={80}
-              className="object-contain"
-            />
+            <CollegeLogoImage logoUrl={logoUrl} alt="Logo วิทยาลัย" width={80} height={80} className="object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-blue-900 font-thai mb-1">
             ใบรับรองการเข้าร่วมกิจกรรม

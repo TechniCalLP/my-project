@@ -7,7 +7,9 @@ import { Suspense } from "react"
 import SignatureFilters from "@/components/admin/signature-filters"
 import SignatureFormDialog from "@/components/admin/signature-form-dialog"
 import SignatureRowActions from "@/components/admin/signature-row-actions"
+import CollegeLogoUpload from "@/components/admin/college-logo-upload"
 import { PaginationNav } from "@/components/ui/pagination-nav"
+import { getCollegeLogo } from "@/lib/settings"
 
 const ITEMS_PER_PAGE = 10
 
@@ -44,6 +46,7 @@ export default async function AdminSettingsPage({ searchParams }: PageProps) {
   ])
 
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE)
+  const logo = await getCollegeLogo()
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -54,6 +57,15 @@ export default async function AdminSettingsPage({ searchParams }: PageProps) {
         </div>
         <p className="text-gray-500 font-thai mt-1 text-sm">ตั้งค่าที่ใช้ร่วมกันทั้งระบบ</p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="font-thai text-base">โลโก้วิทยาลัย</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CollegeLogoUpload initialLogo={logo} />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">

@@ -2,12 +2,12 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
-import Image from "next/image"
 import AutoPrint from "@/components/admin/auto-print"
+import { CollegeLogoImage } from "@/components/layout/college-logo-image"
 import { getStudentEvaluations, type PartStatus } from "@/lib/evaluation"
 import { resolveDepartmentVariants } from "@/lib/department"
 import { clubDepartmentVariants, resolveClubNamesForDepartments, resolveClubById } from "@/lib/club"
-import { getActiveDocumentSignature } from "@/lib/settings"
+import { getActiveDocumentSignature, getCollegeLogo } from "@/lib/settings"
 
 interface PageProps {
   searchParams: Promise<{ year?: string; academicYear?: string; semester?: string; department?: string; club?: string; formType?: string }>
@@ -56,6 +56,7 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
   }
 
   const signature = await getActiveDocumentSignature()
+  const logoUrl = await getCollegeLogo()
 
   const now = new Date()
   const printedAt = now.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" })
@@ -94,7 +95,7 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
 
             <div className="text-center mb-6">
               <div className="flex justify-center mb-2">
-                <Image src="/logo-college.png" alt="Logo วิทยาลัย" width={64} height={64} className="object-contain" />
+                <CollegeLogoImage logoUrl={logoUrl} alt="Logo วิทยาลัย" width={64} height={64} className="object-contain" />
               </div>
               <h1 className="text-lg font-bold">ประกาศผลการประเมินกิจกรรมองค์การวิชาชีพ</h1>
               <p className="text-sm">

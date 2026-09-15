@@ -126,11 +126,11 @@ export default function SummaryCorrectionRequest({ year, academicYear, selectedR
       </Button>
 
       <Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : closeDialog())}>
-        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader className="shrink-0">
             <DialogTitle className="font-thai">ส่งคำขออนุมัติแก้ไขคะแนนรายบุคคล</DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-gray-500 font-thai -mt-2">
+          <p className="text-xs text-gray-500 font-thai -mt-2 shrink-0">
             ผลรวมการประเมินกิจกรรมองค์การวิชาชีพ | ระดับ: {year} ปีการศึกษา {academicYear}
           </p>
 
@@ -139,7 +139,7 @@ export default function SummaryCorrectionRequest({ year, academicYear, selectedR
               นักศึกษาที่เลือกยังไม่มีคะแนนกิจกรรมองค์การวิชาชีพที่บันทึกแล้ว
             </p>
           ) : (
-            <div className="space-y-4">
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
               <div className="space-y-1.5">
                 <Label className="font-thai">เหตุผลรวม *</Label>
                 <textarea
@@ -185,7 +185,7 @@ export default function SummaryCorrectionRequest({ year, academicYear, selectedR
             </div>
           )}
 
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button variant="outline" onClick={closeDialog} disabled={submitting} className="font-thai">
               ยกเลิก
             </Button>

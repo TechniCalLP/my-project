@@ -150,16 +150,20 @@ export default async function SummaryPage({ searchParams }: PageProps) {
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-3 items-center">
-        <Suspense>
-          <EvaluationPeriodSelect academicYear={academicYear} semester={semester} basePath="/admin/summary" />
-        </Suspense>
-        {!isTeacher && (
-          <Suspense>
-            <SummaryClubFilter clubs={allClubs} />
-          </Suspense>
-        )}
-      </div>
+      <Card>
+        <CardContent className="pt-4">
+          <div className="flex flex-wrap gap-3 items-center">
+            <Suspense>
+              <EvaluationPeriodSelect academicYear={academicYear} semester={semester} basePath="/admin/summary" wrapInCard={false} />
+            </Suspense>
+            {!isTeacher && (
+              <Suspense>
+                <SummaryClubFilter clubs={allClubs} />
+              </Suspense>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {visibleGroups.length === 0 ? (
         <Card>

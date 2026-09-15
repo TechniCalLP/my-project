@@ -133,7 +133,7 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
                       <tr key={s.id}>
                         <td className="border border-gray-800 px-2 py-1 text-center">{i + 1}</td>
                         <td className="border border-gray-800 px-2 py-1 font-mono text-xs">{s.studentId}</td>
-                        <td className="border border-gray-800 px-2 py-1">{s.prefix}{s.firstName} {s.lastName}</td>
+                        <td className="border border-gray-800 px-2 py-1 whitespace-nowrap">{s.prefix}{s.firstName} {s.lastName}</td>
                         <td className="border border-gray-800 px-2 py-1 text-center">
                           {participation.progress}%
                         </td>
@@ -181,7 +181,7 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
                       <tr key={s.id}>
                         <td className="border border-gray-800 px-2 py-1 text-center">{i + 1}</td>
                         <td className="border border-gray-800 px-2 py-1 font-mono text-xs">{s.studentId}</td>
-                        <td className="border border-gray-800 px-2 py-1">{s.prefix}{s.firstName} {s.lastName}</td>
+                        <td className="border border-gray-800 px-2 py-1 whitespace-nowrap">{s.prefix}{s.firstName} {s.lastName}</td>
                         <td className="border border-gray-800 px-2 py-1 text-center">{overall === "PASS" ? "✓" : ""}</td>
                         <td className="border border-gray-800 px-2 py-1 text-center">{overall === "FAIL" ? "✓" : ""}</td>
                         <td className="border border-gray-800 px-2 py-1 text-center text-xs text-gray-500">

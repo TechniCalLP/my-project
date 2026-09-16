@@ -28,9 +28,14 @@ export default function SummaryGradeCard({
   pendingCount,
   activityNames,
 }: SummaryGradeCardProps) {
-  const passPct = total > 0 ? Math.round((passCount / total) * 100) : 0
-  const failPct = total > 0 ? Math.round((failCount / total) * 100) : 0
-  const pendingPct = total > 0 ? Math.max(0, 100 - passPct - failPct) : 0
+  // passCount/failCount/pendingCount are summed per activity, not per
+  // distinct student, so with more than one activity they can add up to
+  // more than `total` (a headcount) — use their own sum as the percentage
+  // base instead, so it never exceeds 100%.
+  const totalInstances = passCount + failCount + pendingCount
+  const passPct = totalInstances > 0 ? Math.round((passCount / totalInstances) * 100) : 0
+  const failPct = totalInstances > 0 ? Math.round((failCount / totalInstances) * 100) : 0
+  const pendingPct = totalInstances > 0 ? Math.max(0, 100 - passPct - failPct) : 0
   const activityLabel = activityNames.join(", ")
 
   const detailParams = new URLSearchParams({ academicYear, semester, ...(clubId ? { club: clubId } : {}) })

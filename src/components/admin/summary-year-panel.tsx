@@ -11,9 +11,11 @@ interface SummaryYearPanelProps {
   semester: string
   isAdminView: boolean
   clubId?: string
+  activityId?: string
+  activityName?: string
 }
 
-export default function SummaryYearPanel({ year, academicYear, semester, isAdminView, clubId }: SummaryYearPanelProps) {
+export default function SummaryYearPanel({ year, academicYear, semester, isAdminView, clubId, activityId, activityName }: SummaryYearPanelProps) {
   const [selected, setSelected] = useState<Map<string, StudentRow>>(new Map())
 
   const toggleRow = (row: StudentRow) => {
@@ -57,6 +59,8 @@ export default function SummaryYearPanel({ year, academicYear, semester, isAdmin
         semester={semester}
         isAdminView={isAdminView}
         clubId={clubId}
+        activityId={activityId}
+        activityName={activityName}
         selectedIds={isAdminView ? undefined : new Set(selected.keys())}
         onToggleRow={isAdminView ? undefined : toggleRow}
         onToggleAllVisible={isAdminView ? undefined : toggleAllVisible}

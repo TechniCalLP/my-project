@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -15,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Loader2, Search, ChevronLeft, ChevronRight } from "lucide-react"
+import { Loader2, Search, ChevronLeft, ChevronRight, X } from "lucide-react"
 import { toast } from "sonner"
 import type { PartStatus } from "@/lib/evaluation"
 
@@ -25,6 +26,8 @@ interface SummaryYearDetailProps {
   semester: string
   isAdminView: boolean
   clubId?: string
+  activityId?: string
+  activityName?: string
   selectedIds?: Set<string>
   onToggleRow?: (row: StudentRow) => void
   onToggleAllVisible?: (rows: StudentRow[]) => void
@@ -73,10 +76,14 @@ export default function SummaryYearDetail({
   semester,
   isAdminView,
   clubId,
+  activityId,
+  activityName,
   selectedIds,
   onToggleRow,
   onToggleAllVisible,
 }: SummaryYearDetailProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const selectable = selectedIds !== undefined
   const [searchInput, setSearchInput] = useState("")
   const [search, setSearch] = useState("")
@@ -84,6 +91,12 @@ export default function SummaryYearDetail({
   const [page, setPage] = useState(1)
   const [data, setData] = useState<RowsData | null>(null)
   const [loading, setLoading] = useState(false)
+
+  const clearActivityFilter = () => {
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete("activity")
+    router.push(`?${params.toString()}`)
+  }
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -98,6 +111,7 @@ export default function SummaryYearDetail({
     try {
       const params = new URLSearchParams({ year, academicYear, semester, search, status, page: String(page) })
       if (clubId) params.set("club", clubId)
+      if (activityId) params.set("activity", activityId)
       const res = await fetch(`/api/admin/summary/students?${params.toString()}`)
       if (!res.ok) throw new Error("โหลดข้อมูลไม่สำเร็จ")
       const json: RowsData = await res.json()
@@ -107,7 +121,7 @@ export default function SummaryYearDetail({
     } finally {
       setLoading(false)
     }
-  }, [year, academicYear, semester, clubId, search, status, page])
+  }, [year, academicYear, semester, clubId, activityId, search, status, page])
 
   useEffect(() => {
     fetchData()
@@ -115,6 +129,18 @@ export default function SummaryYearDetail({
 
   return (
     <div className="space-y-4">
+      {activityId && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary-200 bg-primary-50 px-4 py-2.5">
+          <p className="text-sm font-thai text-primary-700">
+            กำลังกรองสถานะตามกิจกรรม: <span className="font-semibold">{activityName ?? "-"}</span>
+          </p>
+          <Button variant="ghost" size="sm" onClick={clearActivityFilter} className="gap-1 font-thai text-primary-700 hover:bg-primary-100">
+            <X className="w-3.5 h-3.5" />
+            ล้างตัวกรอง
+          </Button>
+        </div>
+      )}
+
       <Card>
         <CardContent className="pt-4">
           <div className="flex flex-wrap gap-3 items-center">

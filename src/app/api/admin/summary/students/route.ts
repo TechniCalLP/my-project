@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
     const semester = searchParams.get("semester")
     const search = searchParams.get("search")?.trim() ?? ""
     const status = searchParams.get("status") ?? "all"
+    const activityId = searchParams.get("activity") ?? undefined
     const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"))
 
     if (!year || !academicYear || !semester) {
@@ -69,7 +70,15 @@ export async function GET(req: NextRequest) {
     let filteredIds = candidates.map((c) => c.id)
     if (status === "pass" || status === "fail" || status === "pending") {
       const target = status === "pass" ? "PASS" : status === "fail" ? "FAIL" : "PENDING"
-      filteredIds = filteredIds.filter((id) => evaluations.get(id)?.overall === target)
+      filteredIds = filteredIds.filter((id) => {
+        const evaluation = evaluations.get(id)
+        if (!evaluation) return false
+        if (activityId) {
+          const result = evaluation.vocationalActivities.find((v) => v.id === activityId)
+          return (result?.status ?? "PENDING") === target
+        }
+        return evaluation.overall === target
+      })
     }
 
     const total = filteredIds.length

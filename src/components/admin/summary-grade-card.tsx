@@ -1,9 +1,14 @@
+"use client"
+
 import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Eye } from "lucide-react"
 import SummaryExportButtons from "@/components/admin/summary-export-buttons"
+
+const VISIBLE_ACTIVITY_CHIPS = 2
 
 interface SummaryGradeCardProps {
   year: string
@@ -28,15 +33,13 @@ export default function SummaryGradeCard({
   pendingCount,
   activityNames,
 }: SummaryGradeCardProps) {
-  // passCount/failCount/pendingCount are summed per activity, not per
-  // distinct student, so with more than one activity they can add up to
-  // more than `total` (a headcount) — use their own sum as the percentage
-  // base instead, so it never exceeds 100%.
-  const totalInstances = passCount + failCount + pendingCount
-  const passPct = totalInstances > 0 ? Math.round((passCount / totalInstances) * 100) : 0
-  const failPct = totalInstances > 0 ? Math.round((failCount / totalInstances) * 100) : 0
-  const pendingPct = totalInstances > 0 ? Math.max(0, 100 - passPct - failPct) : 0
-  const activityLabel = activityNames.join(", ")
+  const passPct = total > 0 ? Math.round((passCount / total) * 100) : 0
+  const failPct = total > 0 ? Math.round((failCount / total) * 100) : 0
+  const pendingPct = total > 0 ? Math.max(0, 100 - passPct - failPct) : 0
+
+  const titleText = activityNames.length > 0 ? `กิจกรรม ${activityNames.length} รายการ` : "ยังไม่มีกิจกรรม"
+  const visibleChips = activityNames.slice(0, VISIBLE_ACTIVITY_CHIPS)
+  const remainingChips = activityNames.slice(VISIBLE_ACTIVITY_CHIPS)
 
   const detailParams = new URLSearchParams({ academicYear, semester, ...(clubId ? { club: clubId } : {}) })
 
@@ -44,16 +47,46 @@ export default function SummaryGradeCard({
     <Card>
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex flex-col gap-1.5 min-w-0">
-            <span className="font-thai font-semibold text-base truncate" title={activityLabel}>
-              {activityLabel}
-            </span>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="font-thai text-xs">{year}</Badge>
-              <Badge variant="outline" className="font-thai text-xs">ทั้งหมด {total} คน</Badge>
-            </div>
-          </div>
+          <span className="font-thai font-semibold text-base truncate">{titleText}</span>
           <SummaryExportButtons year={year} academicYear={academicYear} semester={semester} clubId={clubId} />
+        </div>
+
+        {activityNames.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {visibleChips.map((name) => (
+              <Badge key={name} variant="outline" className="font-thai text-xs font-normal">
+                {name}
+              </Badge>
+            ))}
+            {remainingChips.length > 0 && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button type="button">
+                    <Badge
+                      variant="outline"
+                      className="font-thai text-xs font-normal text-primary-600 border-primary-200 hover:bg-primary-50 cursor-pointer"
+                    >
+                      +{remainingChips.length} เพิ่มเติม
+                    </Badge>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-56">
+                  <div className="flex flex-col gap-1.5">
+                    {remainingChips.map((name) => (
+                      <span key={name} className="text-xs font-thai text-gray-700">
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="font-thai text-xs">{year}</Badge>
+          <Badge variant="outline" className="font-thai text-xs">ทั้งหมด {total} คน</Badge>
         </div>
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 font-thai">

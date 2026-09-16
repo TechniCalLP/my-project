@@ -2,9 +2,9 @@ import { NextRequest } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { departmentVariants } from "@/lib/department"
+import { clubDepartmentVariants } from "@/lib/club"
 
-const PAGE_SIZE = 30
+const PAGE_SIZE = 15
 
 export async function GET(req: NextRequest) {
   try {
@@ -19,6 +19,8 @@ export async function GET(req: NextRequest) {
     const semester = searchParams.get("semester")
     const search = searchParams.get("search")?.trim() ?? ""
     const status = searchParams.get("status") ?? "all"
+    const group = searchParams.get("group")
+    const activityId = searchParams.get("activityId")
     const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"))
 
     if (!year || !academicYear || !semester) {
@@ -27,18 +29,19 @@ export async function GET(req: NextRequest) {
 
     const teacher = await prisma.admin.findUnique({
       where: { id: session.user.id },
-      include: { department: true },
+      include: { club: { include: { departments: true } } },
     })
-    if (!teacher?.department) {
-      return Response.json({ error: "บัญชีของท่านยังไม่ได้ผูกกับแผนก" }, { status: 403 })
+    if (!teacher?.club) {
+      return Response.json({ error: "บัญชีของท่านยังไม่ได้ผูกกับชมรม" }, { status: 403 })
     }
 
     const activities = await prisma.vocationalActivity.findMany({
       where: {
         academicYear,
         semester,
-        departments: { some: { id: teacher.departmentId! } },
+        clubs: { some: { id: teacher.clubId! } },
         OR: [{ targetYears: { isEmpty: true } }, { targetYears: { has: year } }],
+        ...(activityId ? { id: activityId } : {}),
       },
       orderBy: { name: "asc" },
     })
@@ -50,9 +53,10 @@ export async function GET(req: NextRequest) {
     const activityIds = activities.map((a) => a.id)
 
     const baseWhere = {
-      department: { in: departmentVariants(teacher.department) },
+      department: { in: clubDepartmentVariants(teacher.club) },
       isActive: true,
       year,
+      ...(group ? { group } : {}),
       ...(search
         ? {
             OR: [

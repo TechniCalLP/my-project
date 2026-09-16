@@ -13,9 +13,9 @@ interface PageProps {
 export default async function EditVocationalActivityPage({ params }: PageProps) {
   const { id } = await params
 
-  const [activity, departments] = await Promise.all([
-    prisma.vocationalActivity.findUnique({ where: { id }, include: { departments: true } }),
-    prisma.department.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
+  const [activity, clubs] = await Promise.all([
+    prisma.vocationalActivity.findUnique({ where: { id }, include: { clubs: true } }),
+    prisma.club.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
   ])
 
   if (!activity) notFound()
@@ -38,7 +38,7 @@ export default async function EditVocationalActivityPage({ params }: PageProps) 
           <CardTitle className="font-thai">ข้อมูลกิจกรรม</CardTitle>
         </CardHeader>
         <CardContent>
-          <VocationalActivityForm departments={departments} initialData={activity} isEdit />
+          <VocationalActivityForm clubs={clubs} initialData={activity} isEdit />
         </CardContent>
       </Card>
     </div>

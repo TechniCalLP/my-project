@@ -10,28 +10,28 @@ import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
 import { ADMIN_ROLE_NAMES } from "@/lib/constants"
 
-interface Department {
+interface Club {
   id: string
   name: string
 }
 
 interface AccountFormProps {
-  departments: Department[]
+  clubs: Club[]
   initialData?: {
     id: string
     username: string
     name: string
     role: "SUPER_ADMIN" | "ADMIN" | "TEACHER"
-    departmentId: string | null
+    clubId: string | null
   }
   isEdit?: boolean
 }
 
-export default function AccountForm({ departments, initialData, isEdit = false }: AccountFormProps) {
+export default function AccountForm({ clubs, initialData, isEdit = false }: AccountFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [role, setRole] = useState<string>(initialData?.role || "ADMIN")
-  const [departmentId, setDepartmentId] = useState(initialData?.departmentId || "")
+  const [clubId, setClubId] = useState(initialData?.clubId || "")
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -45,7 +45,7 @@ export default function AccountForm({ departments, initialData, isEdit = false }
       ...(password ? { password } : {}),
       name: formData.get("name") as string,
       role,
-      departmentId: role === "TEACHER" ? departmentId : null,
+      clubId: role === "TEACHER" ? clubId : null,
     }
 
     try {
@@ -119,14 +119,14 @@ export default function AccountForm({ departments, initialData, isEdit = false }
 
       {role === "TEACHER" && (
         <div className="space-y-1.5">
-          <Label className="font-thai">แผนก *</Label>
-          <Select value={departmentId} onValueChange={setDepartmentId} required>
+          <Label className="font-thai">ชมรมวิชาชีพ *</Label>
+          <Select value={clubId} onValueChange={setClubId} required>
             <SelectTrigger className="font-thai">
-              <SelectValue placeholder="เลือกแผนก" />
+              <SelectValue placeholder="เลือกชมรม" />
             </SelectTrigger>
             <SelectContent>
-              {departments.map((d) => (
-                <SelectItem key={d.id} value={d.id} className="font-thai">{d.name}</SelectItem>
+              {clubs.map((c) => (
+                <SelectItem key={c.id} value={c.id} className="font-thai">{c.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>

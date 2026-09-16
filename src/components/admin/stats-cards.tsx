@@ -1,4 +1,4 @@
-import { Users, Calendar, ClipboardList, TrendingUp } from "lucide-react"
+import { Users, Calendar, ClipboardList, TrendingUp, CheckCircle2, Clock, AlertTriangle } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 const iconMap = {
@@ -6,6 +6,9 @@ const iconMap = {
   calendar: Calendar,
   clipboard: ClipboardList,
   trending: TrendingUp,
+  check: CheckCircle2,
+  clock: Clock,
+  alert: AlertTriangle,
 }
 
 interface Stat {
@@ -13,6 +16,7 @@ interface Stat {
   value: number | string
   icon: keyof typeof iconMap
   valueClass?: string
+  subtitle?: string
 }
 
 interface StatsCardsProps {
@@ -34,6 +38,7 @@ export default function StatsCards({ stats }: StatsCardsProps) {
             </CardHeader>
             <CardContent>
               <p className={`text-3xl font-bold ${stat.valueClass ?? ""}`}>{stat.value}</p>
+              {stat.subtitle && <p className="text-xs text-gray-400 font-thai mt-1">{stat.subtitle}</p>}
             </CardContent>
           </Card>
         )

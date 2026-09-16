@@ -8,8 +8,8 @@ datasource db {
 }
 
 model Student {
-  id                       String                     @id @default(cuid())
-  studentId                String                     @unique
+  id                       String                             @id @default(cuid())
+  studentId                String                             @unique
   prefix                   String
   firstName                String
   lastName                 String
@@ -19,12 +19,13 @@ model Student {
   email                    String?
   phone                    String?
   password                 String
-  isActive                 Boolean                    @default(true)
-  isFirstLogin             Boolean                    @default(true)
+  isActive                 Boolean                            @default(true)
+  isFirstLogin             Boolean                            @default(true)
   participations           Participation[]
   vocationalActivityScores VocationalActivityScore[]
-  createdAt                DateTime                   @default(now())
-  updatedAt                DateTime                   @updatedAt
+  scoreCorrectionRequests  VocationalScoreCorrectionRequest[]
+  createdAt                DateTime                           @default(now())
+  updatedAt                DateTime                           @updatedAt
 
   @@index([studentId])
   @@index([year])
@@ -32,26 +33,27 @@ model Student {
 }
 
 model Activity {
-  id                String          @id @default(cuid())
+  id                String           @id @default(cuid())
   name              String
   description       String?
   category          ActivityCategory
+  type              ActivityType     @default(MANDATORY)
   targetYear        String
   targetSemester    String
-  targetDepartments String[]        @default([])
+  targetDepartments String[]         @default([])
   startDate         DateTime
   endDate           DateTime
   location          String?
   maxSlots          Int?
-  status            ActivityStatus  @default(DRAFT)
-  isDeleted         Boolean         @default(false)
+  status            ActivityStatus   @default(DRAFT)
+  isDeleted         Boolean          @default(false)
   deletedAt         DateTime?
   adminId           String
-  admin             Admin           @relation(fields: [adminId], references: [id])
+  admin             Admin            @relation(fields: [adminId], references: [id])
   activityCodes     ActivityCode[]
   participations    Participation[]
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
   @@index([targetYear])
   @@index([targetSemester])
@@ -63,6 +65,11 @@ enum ActivityCategory {
   COMMUNITY_SERVICE
   HEALTH
   SCOUT
+}
+
+enum ActivityType {
+  MANDATORY
+  OPTIONAL
 }
 
 enum ActivityStatus {
@@ -101,20 +108,22 @@ model Participation {
 }
 
 model Admin {
-  id                     String                     @id @default(cuid())
-  username               String                     @unique
-  password               String
-  name                   String
-  role                   AdminRole                  @default(ADMIN)
-  departmentId           String?
-  department             Department?                @relation(fields: [departmentId], references: [id])
-  activities             Activity[]
+  id                      String                             @id @default(cuid())
+  username                String                             @unique
+  password                String
+  name                    String
+  role                    AdminRole                          @default(ADMIN)
+  clubId                  String?
+  club                    Club?                              @relation(fields: [clubId], references: [id])
+  activities              Activity[]
   vocationalScoresEntered VocationalActivityScore[]
-  createdAt              DateTime                   @default(now())
-  updatedAt              DateTime                   @updatedAt
+  requestedCorrections    VocationalScoreCorrectionRequest[] @relation("RequestedCorrections")
+  reviewedCorrections     VocationalScoreCorrectionRequest[] @relation("ReviewedCorrections")
+  createdAt               DateTime                           @default(now())
+  updatedAt               DateTime                           @updatedAt
 
   @@index([role])
-  @@index([departmentId])
+  @@index([clubId])
 }
 
 enum AdminRole {
@@ -124,27 +133,38 @@ enum AdminRole {
 }
 
 model Department {
-  id                  String               @id @default(cuid())
-  name                String               @unique
-  aliases             String[]             @default([])
-  isActive            Boolean              @default(true)
-  admins              Admin[]
-  vocationalActivities VocationalActivity[] @relation("VocationalActivityDepartments")
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  id        String   @id @default(cuid())
+  name      String   @unique
+  aliases   String[] @default([])
+  isActive  Boolean  @default(true)
+  clubs     Club[]   @relation("ClubDepartments")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Club {
+  id          String               @id @default(cuid())
+  name        String               @unique
+  isActive    Boolean              @default(true)
+  departments Department[]         @relation("ClubDepartments")
+  admins      Admin[]
+  activities  VocationalActivity[] @relation("VocationalActivityClubs")
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
 }
 
 model VocationalActivity {
-  id            String                    @id @default(cuid())
-  name          String
-  academicYear  String
-  semester      String
-  targetYears   String[]                  @default([])
-  passThreshold Float                     @default(60)
-  departments   Department[]              @relation("VocationalActivityDepartments")
-  scores        VocationalActivityScore[]
-  createdAt     DateTime                  @default(now())
-  updatedAt     DateTime                  @updatedAt
+  id                 String                             @id @default(cuid())
+  name               String
+  academicYear       String
+  semester           String
+  targetYears        String[]                           @default([])
+  passThreshold      Float                              @default(60)
+  clubs              Club[]                             @relation("VocationalActivityClubs")
+  scores             VocationalActivityScore[]
+  correctionRequests VocationalScoreCorrectionRequest[]
+  createdAt          DateTime                           @default(now())
+  updatedAt          DateTime                           @updatedAt
 
   @@index([academicYear, semester])
 }
@@ -165,4 +185,50 @@ model VocationalActivityScore {
   @@unique([vocationalActivityId, studentId])
   @@index([studentId])
   @@index([vocationalActivityId])
+}
+
+model VocationalScoreCorrectionRequest {
+  id                   String             @id @default(cuid())
+  vocationalActivityId String
+  vocationalActivity   VocationalActivity @relation(fields: [vocationalActivityId], references: [id], onDelete: Cascade)
+  studentId            String
+  student              Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  currentScore         Float
+  proposedScore        Float
+  reason               String
+  status               CorrectionStatus   @default(PENDING)
+  requestedById        String
+  requestedBy          Admin              @relation("RequestedCorrections", fields: [requestedById], references: [id])
+  reviewedById         String?
+  reviewedBy           Admin?             @relation("ReviewedCorrections", fields: [reviewedById], references: [id])
+  reviewNote           String?
+  reviewedAt           DateTime?
+  createdAt            DateTime           @default(now())
+
+  @@index([status])
+  @@index([vocationalActivityId])
+  @@index([studentId])
+}
+
+enum CorrectionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+model DocumentSignature {
+  id        String   @id @default(cuid())
+  name      String
+  position  String
+  imageData String   @db.Text
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

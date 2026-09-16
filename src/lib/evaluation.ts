@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma"
-import { ActivityStatus, Prisma } from "@/generated/prisma"
-import { departmentMatchesName, resolveDepartmentVariants } from "@/lib/department"
+import { ActivityStatus, ActivityType, Prisma } from "@/generated/prisma"
+import { resolveDepartmentVariants } from "@/lib/department"
+import { resolveClubForDepartment } from "@/lib/club"
 
 export type PartStatus = "PASS" | "FAIL" | "PENDING"
 
@@ -23,6 +24,7 @@ export function requiredActivityFilter(studentYear: string, departmentVariants: 
     isDeleted: false,
     targetYear: studentYear,
     status: ActivityStatus.ACTIVE,
+    type: ActivityType.MANDATORY,
     OR: [
       { targetDepartments: { isEmpty: true } },
       { targetDepartments: { hasSome: departmentVariants } },
@@ -42,19 +44,22 @@ export async function getStudentEvaluation(
 
   const departmentVariants = await resolveDepartmentVariants(student.department)
   const activityFilter = requiredActivityFilter(student.year, departmentVariants)
+  const club = await resolveClubForDepartment(student.department)
 
   const [joined, total, vocationalActivities] = await Promise.all([
     prisma.participation.count({ where: { studentId, activity: activityFilter } }),
     prisma.activity.count({ where: activityFilter }),
-    prisma.vocationalActivity.findMany({
-      where: {
-        academicYear,
-        semester,
-        departments: { some: departmentMatchesName(student.department) },
-        OR: [{ targetYears: { isEmpty: true } }, { targetYears: { has: student.year } }],
-      },
-      include: { scores: { where: { studentId, isDraft: false } } },
-    }),
+    club
+      ? prisma.vocationalActivity.findMany({
+          where: {
+            academicYear,
+            semester,
+            clubs: { some: { id: club.id } },
+            OR: [{ targetYears: { isEmpty: true } }, { targetYears: { has: student.year } }],
+          },
+          include: { scores: { where: { studentId, isDraft: false } } },
+        })
+      : Promise.resolve([]),
   ])
 
   const progress = total > 0 ? Math.round((joined / total) * 100) : 100
@@ -111,6 +116,7 @@ export async function getStudentEvaluations(
     [...groups.values()].map(async ({ year, department, ids }) => {
       const departmentVariants = await resolveDepartmentVariants(department)
       const activityFilter = requiredActivityFilter(year, departmentVariants)
+      const club = await resolveClubForDepartment(department)
 
       const [total, participationCounts, vocationalActivities] = await Promise.all([
         prisma.activity.count({ where: activityFilter }),
@@ -119,15 +125,17 @@ export async function getStudentEvaluations(
           where: { studentId: { in: ids }, activity: activityFilter },
           _count: { activityId: true },
         }),
-        prisma.vocationalActivity.findMany({
-          where: {
-            academicYear,
-            semester,
-            departments: { some: departmentMatchesName(department) },
-            OR: [{ targetYears: { isEmpty: true } }, { targetYears: { has: year } }],
-          },
-          include: { scores: { where: { studentId: { in: ids }, isDraft: false } } },
-        }),
+        club
+          ? prisma.vocationalActivity.findMany({
+              where: {
+                academicYear,
+                semester,
+                clubs: { some: { id: club.id } },
+                OR: [{ targetYears: { isEmpty: true } }, { targetYears: { has: year } }],
+              },
+              include: { scores: { where: { studentId: { in: ids }, isDraft: false } } },
+            })
+          : Promise.resolve([]),
       ])
 
       const joinedByStudent = new Map(participationCounts.map((p) => [p.studentId, p._count.activityId]))

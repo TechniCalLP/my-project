@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
 
   const activities = await prisma.vocationalActivity.findMany({
     where,
-    include: { departments: true, _count: { select: { scores: true } } },
+    include: { clubs: true, _count: { select: { scores: true } } },
     orderBy: { createdAt: "desc" },
   })
 
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
         semester: data.semester,
         targetYears: data.targetYears,
         passThreshold: data.passThreshold,
-        departments: { connect: data.departmentIds.map((id) => ({ id })) },
+        clubs: { connect: data.clubIds.map((id) => ({ id })) },
       },
     })
 

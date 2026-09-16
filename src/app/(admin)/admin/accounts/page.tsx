@@ -18,7 +18,6 @@ import { DeleteAccountButton } from "@/components/admin/delete-account-button"
 
 export default async function AccountsPage() {
   const accounts = await prisma.admin.findMany({
-    include: { department: true },
     orderBy: { createdAt: "desc" },
   })
 
@@ -48,7 +47,6 @@ export default async function AccountsPage() {
                 <TableHead className="font-thai">ชื่อผู้ใช้</TableHead>
                 <TableHead className="font-thai">ชื่อ-นามสกุล</TableHead>
                 <TableHead className="font-thai">บทบาท</TableHead>
-                <TableHead className="font-thai">แผนก</TableHead>
                 <TableHead className="font-thai text-right">จัดการ</TableHead>
               </TableRow>
             </TableHeader>
@@ -61,9 +59,6 @@ export default async function AccountsPage() {
                     <Badge variant={account.role === "SUPER_ADMIN" ? "default" : "outline"} className="font-thai">
                       {ADMIN_ROLE_NAMES[account.role]}
                     </Badge>
-                  </TableCell>
-                  <TableCell className="font-thai text-sm text-gray-500">
-                    {account.department?.name ?? "—"}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-2">

@@ -12,7 +12,7 @@ export async function GET() {
   }
 
   const accounts = await prisma.admin.findMany({
-    include: { department: true },
+    include: { club: true },
     orderBy: { createdAt: "desc" },
   })
 
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
         password: hashedPassword,
         name: data.name,
         role: data.role,
-        departmentId: data.role === "TEACHER" ? data.departmentId : null,
+        clubId: data.role === "TEACHER" ? data.clubId : null,
       },
     })
 

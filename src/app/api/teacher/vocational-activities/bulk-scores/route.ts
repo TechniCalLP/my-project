@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { gradeBulkScoreSchema } from "@/lib/validations"
-import { departmentVariants } from "@/lib/department"
+import { clubDepartmentVariants } from "@/lib/club"
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,10 +21,10 @@ export async function POST(req: NextRequest) {
 
     const teacher = await prisma.admin.findUnique({
       where: { id: session.user.id },
-      include: { department: true },
+      include: { club: { include: { departments: true } } },
     })
-    if (!teacher?.department) {
-      return Response.json({ error: "บัญชีของท่านยังไม่ได้ผูกกับแผนก" }, { status: 403 })
+    if (!teacher?.club) {
+      return Response.json({ error: "บัญชีของท่านยังไม่ได้ผูกกับชมรม" }, { status: 403 })
     }
 
     const activityIds = [...new Set(entries.map((e) => e.activityId))]
@@ -33,10 +33,10 @@ export async function POST(req: NextRequest) {
     const [activities, students] = await Promise.all([
       prisma.vocationalActivity.findMany({
         where: { id: { in: activityIds } },
-        include: { departments: true },
+        include: { clubs: true },
       }),
       prisma.student.findMany({
-        where: { id: { in: studentIds }, department: { in: departmentVariants(teacher.department) } },
+        where: { id: { in: studentIds }, department: { in: clubDepartmentVariants(teacher.club) } },
         select: { id: true },
       }),
     ])
@@ -44,9 +44,9 @@ export async function POST(req: NextRequest) {
     if (activities.length !== activityIds.length) {
       return Response.json({ error: "ไม่พบกิจกรรมบางรายการ" }, { status: 404 })
     }
-    const unauthorizedActivity = activities.some((a) => !a.departments.some((d) => d.id === teacher.departmentId))
+    const unauthorizedActivity = activities.some((a) => !a.clubs.some((c) => c.id === teacher.clubId))
     if (unauthorizedActivity) {
-      return Response.json({ error: "พบกิจกรรมที่ไม่ได้กำหนดให้แผนกของท่าน" }, { status: 403 })
+      return Response.json({ error: "พบกิจกรรมที่ไม่ได้กำหนดให้ชมรมของท่าน" }, { status: 403 })
     }
     if (students.length !== studentIds.length) {
       return Response.json({ error: "พบนักศึกษาที่ไม่อยู่ในแผนกของท่าน" }, { status: 403 })

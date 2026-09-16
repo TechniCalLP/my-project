@@ -9,9 +9,10 @@ interface EvaluationPeriodSelectProps {
   academicYear: string
   semester: string
   basePath?: string
+  wrapInCard?: boolean
 }
 
-export default function EvaluationPeriodSelect({ academicYear, semester, basePath = "/admin/evaluation" }: EvaluationPeriodSelectProps) {
+export default function EvaluationPeriodSelect({ academicYear, semester, basePath = "/admin/evaluation", wrapInCard = true }: EvaluationPeriodSelectProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -21,32 +22,38 @@ export default function EvaluationPeriodSelect({ academicYear, semester, basePat
     router.push(`${basePath}?${params.toString()}`)
   }
 
+  const selects = (
+    <>
+      <Select value={academicYear} onValueChange={(v) => update("academicYear", v)}>
+        <SelectTrigger className="w-40 font-thai">
+          <SelectValue placeholder="ปีการศึกษา" />
+        </SelectTrigger>
+        <SelectContent>
+          {ACADEMIC_YEARS.map((y) => (
+            <SelectItem key={y} value={y} className="font-thai">ปีการศึกษา {y}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select value={semester} onValueChange={(v) => update("semester", v)}>
+        <SelectTrigger className="w-40 font-thai">
+          <SelectValue placeholder="ภาคเรียน" />
+        </SelectTrigger>
+        <SelectContent>
+          {SEMESTERS.map((s) => (
+            <SelectItem key={s} value={s} className="font-thai">{s}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </>
+  )
+
+  if (!wrapInCard) return selects
+
   return (
     <Card>
       <CardContent className="pt-4">
-        <div className="flex flex-wrap gap-3 items-center">
-          <Select value={academicYear} onValueChange={(v) => update("academicYear", v)}>
-            <SelectTrigger className="w-40 font-thai">
-              <SelectValue placeholder="ปีการศึกษา" />
-            </SelectTrigger>
-            <SelectContent>
-              {ACADEMIC_YEARS.map((y) => (
-                <SelectItem key={y} value={y} className="font-thai">ปีการศึกษา {y}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={semester} onValueChange={(v) => update("semester", v)}>
-            <SelectTrigger className="w-40 font-thai">
-              <SelectValue placeholder="ภาคเรียน" />
-            </SelectTrigger>
-            <SelectContent>
-              {SEMESTERS.map((s) => (
-                <SelectItem key={s} value={s} className="font-thai">{s}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <div className="flex flex-wrap gap-3 items-center">{selects}</div>
       </CardContent>
     </Card>
   )

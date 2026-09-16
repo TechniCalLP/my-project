@@ -15,7 +15,6 @@ import { DeleteDepartmentButton } from "@/components/admin/delete-department-but
 
 export default async function DepartmentsPage() {
   const departments = await prisma.department.findMany({
-    include: { _count: { select: { admins: true } } },
     orderBy: { name: "asc" },
   })
 
@@ -27,7 +26,7 @@ export default async function DepartmentsPage() {
             <Building2 className="w-5 h-5 text-primary-600" />
             <h1 className="text-xl md:text-2xl font-bold font-thai">จัดการแผนก</h1>
           </div>
-          <p className="text-gray-500 font-thai mt-1 text-sm">รายชื่อแผนกที่ใช้ผูกกับบัญชีอาจารย์</p>
+          <p className="text-gray-500 font-thai mt-1 text-sm">รายชื่อแผนกจริง ใช้จับคู่เข้ากับชมรมวิชาชีพ</p>
         </div>
         <Link href="/admin/departments/create">
           <Button className="font-thai gap-2">
@@ -43,8 +42,6 @@ export default async function DepartmentsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="font-thai">ชื่อแผนก</TableHead>
-                <TableHead className="font-thai">ชื่อเรียกอื่น</TableHead>
-                <TableHead className="font-thai">จำนวนอาจารย์ที่ผูกไว้</TableHead>
                 <TableHead className="font-thai text-right">จัดการ</TableHead>
               </TableRow>
             </TableHeader>
@@ -52,10 +49,6 @@ export default async function DepartmentsPage() {
               {departments.map((dept) => (
                 <TableRow key={dept.id}>
                   <TableCell className="font-thai font-medium">{dept.name}</TableCell>
-                  <TableCell className="font-thai text-sm text-gray-500">
-                    {dept.aliases.length > 0 ? dept.aliases.join(", ") : "—"}
-                  </TableCell>
-                  <TableCell>{dept._count.admins}</TableCell>
                   <TableCell>
                     <div className="flex items-center justify-end gap-2">
                       <Link href={`/admin/departments/${dept.id}/edit`}>

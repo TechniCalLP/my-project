@@ -3,7 +3,8 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getStudentEvaluations } from "@/lib/evaluation"
-import { departmentVariants, resolveDepartmentVariants } from "@/lib/department"
+import { resolveDepartmentVariants } from "@/lib/department"
+import { clubDepartmentVariants, resolveClubById } from "@/lib/club"
 
 const PAGE_SIZE = 30
 
@@ -20,6 +21,7 @@ export async function GET(req: NextRequest) {
     const semester = searchParams.get("semester")
     const search = searchParams.get("search")?.trim() ?? ""
     const status = searchParams.get("status") ?? "all"
+    const activityId = searchParams.get("activity") ?? undefined
     const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"))
 
     if (!year || !academicYear || !semester) {
@@ -30,15 +32,21 @@ export async function GET(req: NextRequest) {
     if (session.user.adminRole === "TEACHER") {
       const teacher = await prisma.admin.findUnique({
         where: { id: session.user.id },
-        include: { department: true },
+        include: { club: { include: { departments: true } } },
       })
-      if (!teacher?.department) {
-        return Response.json({ error: "บัญชีของท่านยังไม่ได้ผูกกับแผนก" }, { status: 403 })
+      if (!teacher?.club) {
+        return Response.json({ error: "บัญชีของท่านยังไม่ได้ผูกกับชมรม" }, { status: 403 })
       }
-      deptVariants = departmentVariants(teacher.department)
+      deptVariants = clubDepartmentVariants(teacher.club)
     } else {
+      const clubId = searchParams.get("club") ?? undefined
       const department = searchParams.get("department") ?? undefined
-      deptVariants = department ? await resolveDepartmentVariants(department) : undefined
+      if (clubId) {
+        const club = await resolveClubById(clubId)
+        deptVariants = club ? clubDepartmentVariants(club) : undefined
+      } else {
+        deptVariants = department ? await resolveDepartmentVariants(department) : undefined
+      }
     }
 
     const where = {
@@ -62,7 +70,15 @@ export async function GET(req: NextRequest) {
     let filteredIds = candidates.map((c) => c.id)
     if (status === "pass" || status === "fail" || status === "pending") {
       const target = status === "pass" ? "PASS" : status === "fail" ? "FAIL" : "PENDING"
-      filteredIds = filteredIds.filter((id) => evaluations.get(id)?.overall === target)
+      filteredIds = filteredIds.filter((id) => {
+        const evaluation = evaluations.get(id)
+        if (!evaluation) return false
+        if (activityId) {
+          const result = evaluation.vocationalActivities.find((v) => v.id === activityId)
+          return (result?.status ?? "PENDING") === target
+        }
+        return evaluation.overall === target
+      })
     }
 
     const total = filteredIds.length

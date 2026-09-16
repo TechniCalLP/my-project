@@ -34,7 +34,7 @@ export async function PUT(
         semester: data.semester,
         targetYears: data.targetYears,
         passThreshold: data.passThreshold,
-        departments: { set: data.departmentIds.map((depId) => ({ id: depId })) },
+        clubs: { set: data.clubIds.map((clubId) => ({ id: clubId })) },
       },
     })
 

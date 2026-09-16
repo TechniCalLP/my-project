@@ -8,7 +8,7 @@ import { Suspense } from "react"
 import TeacherStudentsTable from "@/components/admin/teacher-students-table"
 import TeacherStudentFilters from "@/components/admin/teacher-student-filters"
 import { PaginationNav } from "@/components/ui/pagination-nav"
-import { departmentVariants } from "@/lib/department"
+import { clubDepartmentVariants } from "@/lib/club"
 
 const ITEMS_PER_PAGE = 10
 
@@ -28,15 +28,15 @@ export default async function MyStudentsPage({ searchParams }: PageProps) {
 
   const teacher = await prisma.admin.findUnique({
     where: { id: session.user.id },
-    include: { department: true },
+    include: { club: { include: { departments: true } } },
   })
 
-  if (!teacher?.department) {
+  if (!teacher?.club) {
     return (
       <div className="p-4 md:p-8">
         <Card>
           <CardContent className="py-12 text-center text-gray-500 font-thai">
-            บัญชีของท่านยังไม่ได้ผูกกับแผนก กรุณาติดต่อผู้ดูแลระบบ
+            บัญชีของท่านยังไม่ได้ผูกกับชมรม กรุณาติดต่อผู้ดูแลระบบ
           </CardContent>
         </Card>
       </div>
@@ -47,7 +47,7 @@ export default async function MyStudentsPage({ searchParams }: PageProps) {
   const currentPage = Math.max(1, parseInt(params.page ?? "1"))
   const skip = (currentPage - 1) * ITEMS_PER_PAGE
 
-  const where: Record<string, unknown> = { department: { in: departmentVariants(teacher.department) } }
+  const where: Record<string, unknown> = { department: { in: clubDepartmentVariants(teacher.club) } }
   if (params.year) where.year = params.year
   if (params.search) {
     where.OR = [
@@ -77,7 +77,7 @@ export default async function MyStudentsPage({ searchParams }: PageProps) {
           <Users className="w-5 h-5 text-primary-600" />
           <h1 className="text-xl md:text-2xl font-bold font-thai">รายชื่อนักศึกษา</h1>
         </div>
-        <p className="text-gray-500 font-thai mt-1 text-sm">นักศึกษาแผนก{teacher.department.name} ทั้งหมด {totalStudents} คน</p>
+        <p className="text-gray-500 font-thai mt-1 text-sm">นักศึกษาชมรม{teacher.club.name} ทั้งหมด {totalStudents} คน</p>
       </div>
 
       <Suspense>

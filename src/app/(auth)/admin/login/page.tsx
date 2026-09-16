@@ -1,13 +1,15 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
-import Image from "next/image"
 import { Shield } from "lucide-react"
 import { AdminLoginForm } from "@/components/forms/admin-login-form"
+import { CollegeLogoImage } from "@/components/layout/college-logo-image"
+import { getCollegeLogo } from "@/lib/settings"
 
 export default async function AdminLoginPage() {
   const session = await getServerSession(authOptions)
   if (session?.user?.role === "admin") redirect("/admin/dashboard")
+  const logoUrl = await getCollegeLogo()
 
   return (
     <div className="min-h-screen flex">
@@ -25,14 +27,12 @@ export default async function AdminLoginPage() {
           {/* Logo */}
           <div className="mb-8">
             <div className="w-40 h-40 bg-white rounded-full flex items-center justify-center border-4 border-white/20 shadow-2xl">
-              <Image
-                src="/logo-college.png"
-                alt="วิทยาลัยเทคนิคลำปาง"
+              <CollegeLogoImage
+                logoUrl={logoUrl}
                 width={120}
                 height={120}
                 className="object-contain rounded-full"
                 priority
-                unoptimized
               />
             </div>
           </div>

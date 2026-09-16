@@ -3,7 +3,8 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getStudentEvaluations } from "@/lib/evaluation"
-import { departmentVariants, resolveDepartmentVariants } from "@/lib/department"
+import { resolveDepartmentVariants } from "@/lib/department"
+import { clubDepartmentVariants, resolveClubById } from "@/lib/club"
 import * as XLSX from "xlsx"
 
 export async function GET(req: NextRequest) {
@@ -16,6 +17,7 @@ export async function GET(req: NextRequest) {
   const year = searchParams.get("year")
   const academicYear = searchParams.get("academicYear")
   const semester = searchParams.get("semester")
+  const formType = searchParams.get("formType") === "17" ? "17" : "15"
 
   if (!year || !academicYear || !semester) {
     return NextResponse.json({ error: "Missing parameters" }, { status: 400 })
@@ -25,15 +27,21 @@ export async function GET(req: NextRequest) {
   if (session.user.adminRole === "TEACHER") {
     const teacher = await prisma.admin.findUnique({
       where: { id: session.user.id },
-      include: { department: true },
+      include: { club: { include: { departments: true } } },
     })
-    if (!teacher?.department) {
-      return NextResponse.json({ error: "บัญชีของท่านยังไม่ได้ผูกกับแผนก" }, { status: 403 })
+    if (!teacher?.club) {
+      return NextResponse.json({ error: "บัญชีของท่านยังไม่ได้ผูกกับชมรม" }, { status: 403 })
     }
-    deptVariants = departmentVariants(teacher.department)
+    deptVariants = clubDepartmentVariants(teacher.club)
   } else {
+    const clubId = searchParams.get("club") ?? undefined
     const department = searchParams.get("department") ?? undefined
-    deptVariants = department ? await resolveDepartmentVariants(department) : undefined
+    if (clubId) {
+      const club = await resolveClubById(clubId)
+      deptVariants = club ? clubDepartmentVariants(club) : undefined
+    } else {
+      deptVariants = department ? await resolveDepartmentVariants(department) : undefined
+    }
   }
 
   const students = await prisma.student.findMany({
@@ -47,6 +55,21 @@ export async function GET(req: NextRequest) {
 
   const rows = students.map((s, i) => {
     const evaluation = evaluations.get(s.id)!
+
+    if (formType === "17") {
+      return {
+        "ลำดับ": i + 1,
+        "รหัสนักศึกษา": s.studentId,
+        "ชื่อ-สกุล": `${s.prefix}${s.firstName} ${s.lastName}`,
+        "แผนก": s.department,
+        "กลุ่ม": s.group ?? "-",
+        "ชั้นปี": s.year,
+        "ผ่าน": evaluation.overall === "PASS" ? "✓" : "",
+        "ไม่ผ่าน": evaluation.overall === "FAIL" ? "✓" : "",
+        "หมายเหตุ": evaluation.overall === "PENDING" ? "รอดำเนินการ" : "",
+      } satisfies Record<string, string | number>
+    }
+
     const row: Record<string, string | number> = {
       "ลำดับ": i + 1,
       "รหัสนักศึกษา": s.studentId,
@@ -68,7 +91,7 @@ export async function GET(req: NextRequest) {
   XLSX.utils.book_append_sheet(wb, ws, "สรุปผลการประเมิน")
 
   const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" })
-  const fileName = `summary_${year}_${academicYear}_${semester}.xlsx`
+  const fileName = `summary_${year}_${academicYear}_${semester}_avt${formType}.xlsx`
 
   return new NextResponse(buf, {
     headers: {

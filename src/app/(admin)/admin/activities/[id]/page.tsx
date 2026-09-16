@@ -22,8 +22,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { ActivityForm } from "@/components/forms/activity-form"
-import { CATEGORY_NAMES } from "@/lib/constants"
-import { ActivityCategory, ActivityStatus } from "@/generated/prisma"
+import { CATEGORY_NAMES, ACTIVITY_TYPE_NAMES } from "@/lib/constants"
+import { ActivityCategory, ActivityStatus, ActivityType } from "@/generated/prisma"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   DropdownMenu,
@@ -61,6 +61,7 @@ interface Activity {
   name: string
   description?: string | null
   category: ActivityCategory
+  type: ActivityType
   targetYear: string
   targetSemester: string
   targetDepartments: string[]
@@ -211,6 +212,9 @@ export default function ActivityDetailPage() {
           <div className="flex gap-2 flex-wrap">
             <Badge className={`${CATEGORY_COLORS[activity.category]} border-0 font-thai`}>
               {CATEGORY_NAMES[activity.category]}
+            </Badge>
+            <Badge variant="outline" className="font-thai">
+              {ACTIVITY_TYPE_NAMES[activity.type]}
             </Badge>
             <Badge className={`${STATUS_COLORS[activity.status]} border-0 font-thai`}>
               {STATUS_LABELS[activity.status]}

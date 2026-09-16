@@ -5,8 +5,8 @@ import { useForm } from "react-hook-form"
 import { standardSchemaResolver } from "@hookform/resolvers/standard-schema"
 import { toast } from "sonner"
 import { activitySchema, type ActivityInput } from "@/lib/validations"
-import { ActivityCategory, ActivityStatus } from "@/generated/prisma"
-import { DEPARTMENTS, YEARS, SEMESTERS, CATEGORY_NAMES } from "@/lib/constants"
+import { ActivityCategory, ActivityStatus, ActivityType } from "@/generated/prisma"
+import { DEPARTMENTS, YEARS, SEMESTERS, CATEGORY_NAMES, ACTIVITY_TYPE_NAMES } from "@/lib/constants"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -25,6 +25,7 @@ interface Activity {
   name: string
   description?: string | null
   category: ActivityCategory
+  type: ActivityType
   targetYear: string
   targetSemester: string
   targetDepartments: string[]
@@ -92,6 +93,7 @@ export function ActivityForm({ activity, onSuccess }: ActivityFormProps) {
       name: activity?.name ?? "",
       description: activity?.description ?? "",
       category: activity?.category ?? ActivityCategory.ACADEMIC,
+      type: activity?.type ?? ActivityType.MANDATORY,
       targetYear: activity?.targetYear ?? "",
       targetSemester: activity?.targetSemester ?? "",
       targetDepartments: activity?.targetDepartments ?? [],
@@ -196,7 +198,7 @@ export function ActivityForm({ activity, onSuccess }: ActivityFormProps) {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <div className="space-y-2">
           <Label className="font-thai">ประเภทกิจกรรม *</Label>
           <Select
@@ -215,6 +217,26 @@ export function ActivityForm({ activity, onSuccess }: ActivityFormProps) {
             </SelectContent>
           </Select>
           {errors.category && <p className="text-sm text-red-500 font-thai">{errors.category.message}</p>}
+        </div>
+
+        <div className="space-y-2">
+          <Label className="font-thai">ประเภทการเข้าร่วม *</Label>
+          <Select
+            defaultValue={activity?.type ?? ActivityType.MANDATORY}
+            onValueChange={(v) => setValue("type", v as ActivityType)}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.values(ActivityType).map((t) => (
+                <SelectItem key={t} value={t} className="font-thai">
+                  {ACTIVITY_TYPE_NAMES[t]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.type && <p className="text-sm text-red-500 font-thai">{errors.type.message}</p>}
         </div>
 
         <div className="space-y-2">

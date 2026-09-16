@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/table"
 import { Eye, Pencil, Ticket } from "lucide-react"
 import { Suspense } from "react"
-import { CATEGORY_NAMES } from "@/lib/constants"
+import { ACTIVITY_TYPE_NAMES } from "@/lib/constants"
 import { ActivityCategory, ActivityStatus } from "@/generated/prisma"
 import { DeleteActivityButton } from "@/components/admin/delete-activity-button"
 import ActivityFilters from "@/components/admin/activity-filters"
@@ -37,6 +37,11 @@ const STATUS_LABELS: Record<ActivityStatus, string> = {
   COMPLETED: "เสร็จสิ้น",
   DRAFT: "ร่าง",
   CANCELLED: "ยกเลิก",
+}
+
+const TYPE_COLORS: Record<"MANDATORY" | "OPTIONAL", string> = {
+  MANDATORY: "bg-primary-100 text-primary-700",
+  OPTIONAL: "bg-gray-100 text-gray-600",
 }
 
 interface PageProps {
@@ -145,7 +150,7 @@ export default async function AdminActivitiesPage({ searchParams }: PageProps) {
               <TableHeader>
                 <TableRow>
                   <TableHead className="font-thai whitespace-nowrap">ชื่อกิจกรรม</TableHead>
-                  <TableHead className="font-thai whitespace-nowrap hidden md:table-cell">ประเภท</TableHead>
+                  <TableHead className="font-thai whitespace-nowrap hidden md:table-cell">ประเภทการเข้าร่วม</TableHead>
                   <TableHead className="font-thai whitespace-nowrap hidden lg:table-cell">ระดับชั้น</TableHead>
                   <TableHead className="font-thai whitespace-nowrap">สถานะ</TableHead>
                   <TableHead className="font-thai text-right whitespace-nowrap hidden sm:table-cell">รหัส</TableHead>
@@ -168,12 +173,14 @@ export default async function AdminActivitiesPage({ searchParams }: PageProps) {
                           <p className="whitespace-nowrap">{a.name}</p>
                           <p className="text-xs text-gray-400">{a.targetYear} / {a.targetSemester}</p>
                           <p className="text-xs text-gray-400 md:hidden mt-0.5">
-                            {CATEGORY_NAMES[a.category]} · {a._count.participations} คน
+                            {ACTIVITY_TYPE_NAMES[a.type]} · {a._count.participations} คน
                           </p>
                         </div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        <span className="text-xs font-thai text-gray-600">{CATEGORY_NAMES[a.category]}</span>
+                        <Badge className={`${TYPE_COLORS[a.type]} border-0 font-thai text-xs whitespace-nowrap`}>
+                          {ACTIVITY_TYPE_NAMES[a.type]}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-sm font-thai hidden lg:table-cell">{a.targetYear}</TableCell>
                       <TableCell>

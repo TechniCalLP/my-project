@@ -87,7 +87,7 @@ export const authOptions: NextAuthOptions = {
           name: admin.name,
           role: "admin",
           adminRole: admin.role,
-          departmentId: admin.departmentId
+          clubId: admin.clubId
         }
       }
     })
@@ -101,7 +101,7 @@ export const authOptions: NextAuthOptions = {
         token.year = (user as { year?: string }).year
         token.department = (user as { department?: string }).department
         token.adminRole = (user as { adminRole?: string }).adminRole
-        token.departmentId = (user as { departmentId?: string | null }).departmentId
+        token.clubId = (user as { clubId?: string | null }).clubId
       }
       if (trigger === "update" && session?.isFirstLogin !== undefined) {
         token.isFirstLogin = session.isFirstLogin
@@ -117,7 +117,7 @@ export const authOptions: NextAuthOptions = {
         ;(session.user as { year?: string }).year = token.year as string
         ;(session.user as { department?: string }).department = token.department as string
         ;(session.user as { adminRole?: string }).adminRole = token.adminRole as string | undefined
-        ;(session.user as { departmentId?: string | null }).departmentId = token.departmentId as string | null | undefined
+        ;(session.user as { clubId?: string | null }).clubId = token.clubId as string | null | undefined
       }
       return session
     }

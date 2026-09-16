@@ -15,9 +15,14 @@ export const CATEGORY_NAMES = {
   SCOUT: "ลูกเสือ"
 } as const
 
+export const ACTIVITY_TYPE_NAMES = {
+  MANDATORY: "กิจกรรมภาคบังคับ",
+  OPTIONAL: "กิจกรรมเลือกเข้าร่วม",
+} as const
+
 export const ADMIN_ROLE_NAMES = {
   SUPER_ADMIN: "ผู้ดูแลระบบสูงสุด",
-  ADMIN: "ผู้ดูแลระบบ",
+  ADMIN: "เจ้าหน้าที่",
   TEACHER: "อาจารย์",
 } as const
 

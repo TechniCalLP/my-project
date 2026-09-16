@@ -87,7 +87,8 @@ export const authOptions: NextAuthOptions = {
           name: admin.name,
           role: "admin",
           adminRole: admin.role,
-          clubId: admin.clubId
+          clubId: admin.clubId,
+          isFirstLogin: admin.isFirstLogin
         }
       }
     })

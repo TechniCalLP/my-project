@@ -212,12 +212,11 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
 
             {formType === "15" ? (
               <div className="mt-12 grid grid-cols-2 gap-x-12 gap-y-8">
-                {[0, 1, 2, 3].map((i) => (
-                  <div key={i} className="text-center text-sm space-y-1">
+                {["นายทะเบียนชมรมวิชาชีพ", "นายทะเบียนองค์การ", "หัวหน้างานกิจกรรมฯ", "รองฯฝ่ายกิจการฯ"].map((position) => (
+                  <div key={position} className="text-center text-sm space-y-1">
                     <p>ลงชื่อ.................................</p>
                     <p>(.................................)</p>
-                    <p>ตำแหน่ง.................................</p>
-                    <p>วันที่.................................</p>
+                    <p>{position}</p>
                   </div>
                 ))}
               </div>

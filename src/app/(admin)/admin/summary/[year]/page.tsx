@@ -15,13 +15,12 @@ import {
 } from "@/components/ui/table"
 import { ArrowLeft, Filter } from "lucide-react"
 import Link from "next/link"
-import SummaryYearPanel from "@/components/admin/summary-year-panel"
 import { ACADEMIC_YEARS, SEMESTERS } from "@/lib/constants"
 import { clubDepartmentVariants, resolveClubById } from "@/lib/club"
 
 interface PageProps {
   params: Promise<{ year: string }>
-  searchParams: Promise<{ academicYear?: string; semester?: string; club?: string; activity?: string }>
+  searchParams: Promise<{ academicYear?: string; semester?: string; club?: string }>
 }
 
 export default async function SummaryYearPage({ params, searchParams }: PageProps) {
@@ -33,15 +32,14 @@ export default async function SummaryYearPage({ params, searchParams }: PageProp
   const sp = await searchParams
   const academicYear = sp.academicYear ?? ACADEMIC_YEARS[0]
   const semester = sp.semester ?? SEMESTERS[0]
-  const isAdminView = session.user.adminRole !== "TEACHER"
 
   const backParams = new URLSearchParams({ academicYear, semester, ...(sp.club ? { club: sp.club } : {}) })
 
   // Activities table for this year — same shape/logic as the teacher's
   // ประเมินกิจกรรมองค์การวิชาชีพ list (ชื่อกิจกรรม / เกณฑ์ผ่าน / ความคืบหน้า),
-  // just scoped by the club this year-detail page was opened for instead of
-  // a teacher's own club, and "จัดการ" filters the roster below instead of
-  // opening score entry (this page can be reached by non-teacher viewers).
+  // just scoped by the club this page was opened for instead of a teacher's
+  // own club. "ดูรายชื่อ" opens a dedicated page per activity instead of
+  // score entry (this page can be reached by non-teacher viewers).
   let deptVariants: string[] | undefined
   if (sp.club) {
     const club = await resolveClubById(sp.club)
@@ -71,13 +69,7 @@ export default async function SummaryYearPage({ params, searchParams }: PageProp
     })
   )
 
-  const selectedActivity = activitiesForYear.find((a) => a.id === sp.activity)
-
-  const activityLinkParams = (activityId: string) => {
-    const p = new URLSearchParams({ academicYear, semester, ...(sp.club ? { club: sp.club } : {}) })
-    p.set("activity", activityId)
-    return p.toString()
-  }
+  const activityLinkParams = new URLSearchParams({ academicYear, semester, ...(sp.club ? { club: sp.club } : {}) }).toString()
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -132,12 +124,8 @@ export default async function SummaryYearPage({ params, searchParams }: PageProp
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Link href={`?${activityLinkParams(a.id)}`}>
-                          <Button
-                            size="sm"
-                            variant={sp.activity === a.id ? "default" : "outline"}
-                            className="font-thai gap-1.5"
-                          >
+                        <Link href={`/admin/summary/${encodeURIComponent(year)}/${a.id}?${activityLinkParams}`}>
+                          <Button size="sm" variant="outline" className="font-thai gap-1.5">
                             <Filter className="w-3.5 h-3.5" />
                             ดูรายชื่อ
                           </Button>
@@ -150,26 +138,6 @@ export default async function SummaryYearPage({ params, searchParams }: PageProp
             </div>
           </CardContent>
         </Card>
-      )}
-
-      {activityRows.length > 0 && (
-        selectedActivity ? (
-          <SummaryYearPanel
-            year={year}
-            academicYear={academicYear}
-            semester={semester}
-            isAdminView={isAdminView}
-            clubId={sp.club}
-            activityId={selectedActivity.id}
-            activityName={selectedActivity.name}
-          />
-        ) : (
-          <Card>
-            <CardContent className="py-10 text-center text-gray-500 font-thai text-sm">
-              เลือกกิจกรรมจากตารางด้านบน แล้วกด &ldquo;ดูรายชื่อ&rdquo; เพื่อดูรายชื่อนักศึกษา
-            </CardContent>
-          </Card>
-        )
       )}
     </div>
   )

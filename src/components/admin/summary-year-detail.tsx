@@ -28,6 +28,7 @@ interface SummaryYearDetailProps {
   clubId?: string
   activityId?: string
   activityName?: string
+  hideActivityBanner?: boolean
   selectedIds?: Set<string>
   onToggleRow?: (row: StudentRow) => void
   onToggleAllVisible?: (rows: StudentRow[]) => void
@@ -78,6 +79,7 @@ export default function SummaryYearDetail({
   clubId,
   activityId,
   activityName,
+  hideActivityBanner,
   selectedIds,
   onToggleRow,
   onToggleAllVisible,
@@ -129,7 +131,7 @@ export default function SummaryYearDetail({
 
   return (
     <div className="space-y-4">
-      {activityId && (
+      {activityId && !hideActivityBanner && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary-200 bg-primary-50 px-4 py-2.5">
           <p className="text-sm font-thai text-primary-700">
             กำลังกรองสถานะตามกิจกรรม: <span className="font-semibold">{activityName ?? "-"}</span>

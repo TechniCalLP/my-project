@@ -233,27 +233,32 @@ export default function SummaryYearDetail({
                           </div>
                         </TableCell>
                         <TableCell>
-                          {student.vocationalActivities.length === 0 ? (
-                            <span className="text-xs text-gray-400 font-thai">ไม่มีกิจกรรม</span>
-                          ) : (
-                            <div className="flex flex-wrap gap-1">
-                              {student.vocationalActivities.map((a) => (
-                                <Badge
-                                  key={a.id}
-                                  variant="outline"
-                                  className={`font-thai text-[11px] ${
-                                    a.status === "PASS"
-                                      ? "border-success/30 text-success"
-                                      : a.status === "FAIL"
-                                        ? "border-destructive/30 text-destructive"
-                                        : "border-gray-300 text-gray-500"
-                                  }`}
-                                >
-                                  {a.name}: {a.score != null ? `${a.score}%` : "รอกรอก"}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
+                          {(() => {
+                            const visibleActivities = activityId
+                              ? student.vocationalActivities.filter((a) => a.id === activityId)
+                              : student.vocationalActivities
+                            return visibleActivities.length === 0 ? (
+                              <span className="text-xs text-gray-400 font-thai">ไม่มีกิจกรรม</span>
+                            ) : (
+                              <div className="flex flex-wrap gap-1">
+                                {visibleActivities.map((a) => (
+                                  <Badge
+                                    key={a.id}
+                                    variant="outline"
+                                    className={`font-thai text-[11px] ${
+                                      a.status === "PASS"
+                                        ? "border-success/30 text-success"
+                                        : a.status === "FAIL"
+                                          ? "border-destructive/30 text-destructive"
+                                          : "border-gray-300 text-gray-500"
+                                    }`}
+                                  >
+                                    {a.name}: {a.score != null ? `${a.score}%` : "รอกรอก"}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )
+                          })()}
                         </TableCell>
                         <TableCell>
                           <OverallBadge status={student.overall} />

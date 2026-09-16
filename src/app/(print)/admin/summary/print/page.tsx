@@ -210,27 +210,40 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
               ที่เกี่ยวข้อง ต่อไป
             </p>
 
-            <div className="mt-12 flex justify-end">
-              <div className="text-center text-sm space-y-1">
-                {signature ? (
-                  <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={signature.imageData} alt="ลายเซ็น" className="h-14 mx-auto object-contain" />
-                    <p>({signature.name})</p>
-                    <p>{signature.position}</p>
-                  </>
-                ) : (
-                  <>
+            {formType === "15" ? (
+              <div className="mt-12 grid grid-cols-2 gap-x-12 gap-y-8">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="text-center text-sm space-y-1">
                     <p>ลงชื่อ.................................</p>
                     <p>(.................................)</p>
-                    <p>รองผู้อำนวยการฝ่ายพัฒนากิจการนักเรียน นักศึกษา</p>
-                  </>
-                )}
-                <p>ประธานกรรมการการประเมินผลกิจกรรมองค์การวิชาชีพ</p>
-                <p>{COLLEGE_NAME}</p>
-                <p>{printDay} / {printMonth} / {printYear}</p>
+                    <p>ตำแหน่ง.................................</p>
+                    <p>วันที่.................................</p>
+                  </div>
+                ))}
               </div>
-            </div>
+            ) : (
+              <div className="mt-12 flex justify-end">
+                <div className="text-center text-sm space-y-1">
+                  {signature ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={signature.imageData} alt="ลายเซ็น" className="h-14 mx-auto object-contain" />
+                      <p>({signature.name})</p>
+                      <p>{signature.position}</p>
+                    </>
+                  ) : (
+                    <>
+                      <p>ลงชื่อ.................................</p>
+                      <p>(.................................)</p>
+                      <p>รองผู้อำนวยการฝ่ายพัฒนากิจการนักเรียน นักศึกษา</p>
+                    </>
+                  )}
+                  <p>ประธานกรรมการการประเมินผลกิจกรรมองค์การวิชาชีพ</p>
+                  <p>{COLLEGE_NAME}</p>
+                  <p>{printDay} / {printMonth} / {printYear}</p>
+                </div>
+              </div>
+            )}
 
             <div className="mt-8 text-xs text-gray-400 border-t pt-2">
               <span>พิมพ์เมื่อ: {printedAt}</span>

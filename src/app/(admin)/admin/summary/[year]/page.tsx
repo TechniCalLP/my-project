@@ -94,7 +94,13 @@ export default async function SummaryYearPage({ params, searchParams }: PageProp
         </p>
       </div>
 
-      {activityRows.length > 0 && (
+      {activityRows.length === 0 ? (
+        <Card>
+          <CardContent className="py-10 text-center text-gray-500 font-thai text-sm">
+            ยังไม่มีกิจกรรมองค์การวิชาชีพสำหรับชั้นปีนี้ในช่วงเวลาที่เลือก
+          </CardContent>
+        </Card>
+      ) : (
         <Card>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -146,15 +152,25 @@ export default async function SummaryYearPage({ params, searchParams }: PageProp
         </Card>
       )}
 
-      <SummaryYearPanel
-        year={year}
-        academicYear={academicYear}
-        semester={semester}
-        isAdminView={isAdminView}
-        clubId={sp.club}
-        activityId={selectedActivity?.id}
-        activityName={selectedActivity?.name}
-      />
+      {activityRows.length > 0 && (
+        selectedActivity ? (
+          <SummaryYearPanel
+            year={year}
+            academicYear={academicYear}
+            semester={semester}
+            isAdminView={isAdminView}
+            clubId={sp.club}
+            activityId={selectedActivity.id}
+            activityName={selectedActivity.name}
+          />
+        ) : (
+          <Card>
+            <CardContent className="py-10 text-center text-gray-500 font-thai text-sm">
+              เลือกกิจกรรมจากตารางด้านบน แล้วกด &ldquo;ดูรายชื่อ&rdquo; เพื่อดูรายชื่อนักศึกษา
+            </CardContent>
+          </Card>
+        )
+      )}
     </div>
   )
 }

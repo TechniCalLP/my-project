@@ -13,6 +13,11 @@ import { Plus, Pencil, Building2 } from "lucide-react"
 import Link from "next/link"
 import { DeleteDepartmentButton } from "@/components/admin/delete-department-button"
 
+// This page has no per-request dynamic API (searchParams/cookies), so
+// Next.js would otherwise prerender it once at build time and keep
+// serving that stale department list forever — force it to always refetch.
+export const dynamic = "force-dynamic"
+
 export default async function DepartmentsPage() {
   const departments = await prisma.department.findMany({
     orderBy: { name: "asc" },

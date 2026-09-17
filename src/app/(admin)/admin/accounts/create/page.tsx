@@ -5,6 +5,11 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
+// Fetches the clubs list for the dropdown with no per-request dynamic API,
+// so Next.js would otherwise prerender it once at build time and keep
+// showing stale clubs (missing anything created after the last deploy).
+export const dynamic = "force-dynamic"
+
 export default async function CreateAccountPage() {
   const clubs = await prisma.club.findMany({ where: { isActive: true }, orderBy: { name: "asc" } })
 

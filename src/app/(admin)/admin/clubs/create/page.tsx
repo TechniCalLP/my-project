@@ -6,7 +6,11 @@ import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
 export default async function CreateClubPage() {
-  const departments = await prisma.department.findMany({ where: { isActive: true }, orderBy: { name: "asc" } })
+  const departments = await prisma.department.findMany({
+    where: { isActive: true },
+    include: { clubs: { select: { id: true, name: true } } },
+    orderBy: { name: "asc" },
+  })
 
   return (
     <div className="p-8 max-w-2xl mx-auto space-y-6">

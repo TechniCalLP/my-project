@@ -17,6 +17,7 @@ import { Loader2, ChevronDown } from "lucide-react"
 interface Department {
   id: string
   name: string
+  clubs?: { id: string; name: string }[]
 }
 
 interface ClubFormProps {
@@ -111,17 +112,27 @@ export default function ClubForm({ departments, initialData, isEdit = false }: C
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="min-w-(--radix-dropdown-menu-trigger-width) max-h-80 overflow-y-auto">
-            {departments.map((dept) => (
-              <DropdownMenuCheckboxItem
-                key={dept.id}
-                checked={selectedDeptIds.includes(dept.id)}
-                onCheckedChange={() => toggleDept(dept.id)}
-                onSelect={(e) => e.preventDefault()}
-                className="font-thai"
-              >
-                {dept.name}
-              </DropdownMenuCheckboxItem>
-            ))}
+            {departments.map((dept) => {
+              const boundToOtherClub = dept.clubs?.find((c) => c.id !== initialData?.id)
+              return (
+                <DropdownMenuCheckboxItem
+                  key={dept.id}
+                  checked={selectedDeptIds.includes(dept.id)}
+                  onCheckedChange={() => toggleDept(dept.id)}
+                  onSelect={(e) => e.preventDefault()}
+                  className="font-thai"
+                >
+                  <div className="flex flex-col">
+                    <span>{dept.name}</span>
+                    {boundToOtherClub && (
+                      <span className="text-xs text-amber-600 font-normal">
+                        อยู่ในชมรม &ldquo;{boundToOtherClub.name}&rdquo; แล้ว
+                      </span>
+                    )}
+                  </div>
+                </DropdownMenuCheckboxItem>
+              )
+            })}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

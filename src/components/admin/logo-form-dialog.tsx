@@ -66,37 +66,39 @@ export default function LogoFormDialog({ currentLogo, trigger }: LogoFormDialogP
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="font-thai sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="font-thai sm:max-w-md max-h-[85vh] flex flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="font-thai">แก้ไขโลโก้วิทยาลัย</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <p className="text-xs text-gray-500 font-thai">ภาพพรีวิวปัจจุบัน (Current Preview)</p>
-            <div className="border rounded-lg bg-gray-50 h-28 flex items-center justify-center overflow-hidden">
-              {previewSrc ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={previewSrc} alt="โลโก้วิทยาลัย" className="max-h-full max-w-full object-contain p-3" />
-              ) : (
-                <p className="text-xs text-gray-400 font-thai">ใช้โลโก้เริ่มต้นของระบบ</p>
-              )}
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
+            <div className="space-y-1.5">
+              <p className="text-xs text-gray-500 font-thai">ภาพพรีวิวปัจจุบัน (Current Preview)</p>
+              <div className="border rounded-lg bg-gray-50 h-28 flex items-center justify-center overflow-hidden">
+                {previewSrc ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={previewSrc} alt="โลโก้วิทยาลัย" className="max-h-full max-w-full object-contain p-3" />
+                ) : (
+                  <p className="text-xs text-gray-400 font-thai">ใช้โลโก้เริ่มต้นของระบบ</p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <p className="text-sm font-medium font-thai">อัปโหลด</p>
+              <FileDropzone
+                id="logo-file-edit"
+                accept="image/png,image/jpeg,image/svg+xml"
+                icon={ImageIcon}
+                file={file}
+                onFileChange={handleFileChange}
+                title="คลิกเพื่อเลือกไฟล์ หรือ ลากและวางไฟล์ลงที่นี่"
+                subtitle="รองรับเฉพาะไฟล์ PNG, JPG หรือ SVG ไม่เกิน 500KB (แนะนำให้บีบอัดไฟล์ก่อนอัปโหลด)"
+              />
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <p className="text-sm font-medium font-thai">อัปโหลด</p>
-            <FileDropzone
-              id="logo-file-edit"
-              accept="image/png,image/jpeg,image/svg+xml"
-              icon={ImageIcon}
-              file={file}
-              onFileChange={handleFileChange}
-              title="คลิกเพื่อเลือกไฟล์ หรือ ลากและวางไฟล์ลงที่นี่"
-              subtitle="รองรับเฉพาะไฟล์ PNG, JPG หรือ SVG ไม่เกิน 500KB (แนะนำให้บีบอัดไฟล์ก่อนอัปโหลด)"
-            />
-          </div>
-
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button type="button" variant="outline" className="font-thai" onClick={() => setOpen(false)}>
               ยกเลิก
             </Button>

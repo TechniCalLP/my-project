@@ -97,60 +97,62 @@ export default function SignatureFormDialog({ mode, signature, trigger }: Signat
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="font-thai sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="font-thai sm:max-w-md max-h-[85vh] flex flex-col">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="font-thai">{mode === "create" ? "เพิ่มข้อมูล" : "แก้ไขข้อมูล"}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label className="font-thai text-xs text-gray-500">ภาพพรีวิวลายเซ็นปัจจุบัน (Current Preview)</Label>
-            <div className="border rounded-lg bg-gray-50 h-28 flex items-center justify-center overflow-hidden">
-              {previewSrc ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={previewSrc} alt="ตัวอย่างลายเซ็น" className="max-h-full max-w-full object-contain p-3" />
-              ) : (
-                <p className="text-xs text-gray-400 font-thai">ยังไม่มีตัวอย่างลายเซ็น</p>
-              )}
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
+            <div className="space-y-1.5">
+              <Label className="font-thai text-xs text-gray-500">ภาพพรีวิวลายเซ็นปัจจุบัน (Current Preview)</Label>
+              <div className="border rounded-lg bg-gray-50 h-28 flex items-center justify-center overflow-hidden">
+                {previewSrc ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={previewSrc} alt="ตัวอย่างลายเซ็น" className="max-h-full max-w-full object-contain p-3" />
+                ) : (
+                  <p className="text-xs text-gray-400 font-thai">ยังไม่มีตัวอย่างลายเซ็น</p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="font-thai">ชื่อเอกสาร</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="ลายเซ็นรองผู้อำนวยการ" className="font-thai" />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="font-thai">รายละเอียด</Label>
+              <Input
+                value={position}
+                onChange={(e) => setPosition(e.target.value)}
+                placeholder="ตำแหน่งผู้อำนวยการวิทยาลัยเทคโนโลยีภาคกลาง"
+                className="font-thai"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="font-thai">อัปโหลด</Label>
+              <FileDropzone
+                id={`signature-file-${mode}-${signature?.id ?? "new"}`}
+                accept="image/png,image/svg+xml"
+                icon={Upload}
+                file={file}
+                onFileChange={handleFileChange}
+                title="คลิกเพื่อเลือกไฟล์ หรือ ลากและวางไฟล์ลงที่นี่"
+                subtitle="รองรับเฉพาะไฟล์ PNG หรือ SVG ขนาดไม่เกิน 500KB (แนะนำพื้นหลังโปร่งใส)"
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-3 border rounded-lg p-3">
+              <div>
+                <p className="font-thai text-sm font-medium">สถานะการใช้งาน</p>
+                <p className="font-thai text-xs text-gray-500">หากเปิดใช้งาน ระบบจะใช้ลายเซ็นนี้ประทับบนเอกสารหลักโดยอัตโนมัติ</p>
+              </div>
+              <Switch checked={isActive} onCheckedChange={setIsActive} />
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="font-thai">ชื่อเอกสาร</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="ลายเซ็นรองผู้อำนวยการ" className="font-thai" />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="font-thai">รายละเอียด</Label>
-            <Input
-              value={position}
-              onChange={(e) => setPosition(e.target.value)}
-              placeholder="ตำแหน่งผู้อำนวยการวิทยาลัยเทคโนโลยีภาคกลาง"
-              className="font-thai"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="font-thai">อัปโหลด</Label>
-            <FileDropzone
-              id={`signature-file-${mode}-${signature?.id ?? "new"}`}
-              accept="image/png,image/svg+xml"
-              icon={Upload}
-              file={file}
-              onFileChange={handleFileChange}
-              title="คลิกเพื่อเลือกไฟล์ หรือ ลากและวางไฟล์ลงที่นี่"
-              subtitle="รองรับเฉพาะไฟล์ PNG หรือ SVG ขนาดไม่เกิน 500KB (แนะนำพื้นหลังโปร่งใส)"
-            />
-          </div>
-
-          <div className="flex items-center justify-between gap-3 border rounded-lg p-3">
-            <div>
-              <p className="font-thai text-sm font-medium">สถานะการใช้งาน</p>
-              <p className="font-thai text-xs text-gray-500">หากเปิดใช้งาน ระบบจะใช้ลายเซ็นนี้ประทับบนเอกสารหลักโดยอัตโนมัติ</p>
-            </div>
-            <Switch checked={isActive} onCheckedChange={setIsActive} />
-          </div>
-
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button type="button" variant="outline" className="font-thai" onClick={() => setOpen(false)}>
               ยกเลิก
             </Button>

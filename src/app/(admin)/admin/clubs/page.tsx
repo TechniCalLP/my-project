@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { BadgeOverflowList } from "@/components/admin/badge-overflow-list"
 import {
   Table,
   TableBody,
@@ -69,13 +69,7 @@ export default async function ClubsPage() {
                     <TableRow key={club.id} className="hover:bg-gray-50">
                       <TableCell className="font-thai font-medium whitespace-nowrap">{club.name}</TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap gap-1 max-w-xs">
-                          {club.departments.map((d) => (
-                            <Badge key={d.id} variant="outline" className="font-thai text-xs whitespace-nowrap">
-                              {d.name}
-                            </Badge>
-                          ))}
-                        </div>
+                        <BadgeOverflowList items={club.departments.map((d) => d.name)} />
                       </TableCell>
                       <TableCell className="font-mono text-sm">{club._count.admins}</TableCell>
                       <TableCell>

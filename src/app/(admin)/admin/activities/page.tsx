@@ -170,7 +170,7 @@ export default async function AdminActivitiesPage({ searchParams }: PageProps) {
                     <TableRow key={a.id} className="hover:bg-gray-50">
                       <TableCell className="font-medium font-thai">
                         <div>
-                          <p className="whitespace-nowrap">{a.name}</p>
+                          <p className="truncate max-w-[220px]" title={a.name}>{a.name}</p>
                           <p className="text-xs text-gray-400">{a.targetYear} / {a.targetSemester}</p>
                           <p className="text-xs text-gray-400 md:hidden mt-0.5">
                             {ACTIVITY_TYPE_NAMES[a.type]} · {a._count.participations} คน

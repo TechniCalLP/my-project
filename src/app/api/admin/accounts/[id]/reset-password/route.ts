@@ -29,7 +29,7 @@ export async function POST(
 
     const hashedPassword = await bcrypt.hash(newPassword, 10)
 
-    await prisma.admin.update({ where: { id }, data: { password: hashedPassword } })
+    await prisma.admin.update({ where: { id }, data: { password: hashedPassword, isFirstLogin: true } })
 
     return Response.json({ success: true })
   } catch (error) {

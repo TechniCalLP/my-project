@@ -14,6 +14,11 @@ import { Plus, Pencil, Users2 } from "lucide-react"
 import Link from "next/link"
 import { DeleteClubButton } from "@/components/admin/delete-club-button"
 
+// This page has no per-request dynamic API (searchParams/cookies), so
+// Next.js would otherwise prerender it once at build time and keep
+// serving that stale club list forever — force it to always refetch.
+export const dynamic = "force-dynamic"
+
 export default async function ClubsPage() {
   const clubs = await prisma.club.findMany({
     include: { departments: true, _count: { select: { admins: true, activities: true } } },

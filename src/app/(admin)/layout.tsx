@@ -2,15 +2,16 @@
 
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { AdminNav } from "@/components/navigation/admin-nav"
 import { AdminLoadingSkeleton } from "@/components/layout/loading-skeleton"
+import AdminFirstLoginModal from "@/components/admin/first-login-modal"
 import type { Session } from "next-auth"
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [isAuthorized, setIsAuthorized] = useState(false)
+  const isAuthorized = status === "authenticated" && session?.user?.role === "admin"
 
   useEffect(() => {
     if (status === "loading") return
@@ -23,10 +24,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (session.user?.role !== "admin") {
       console.warn("Unauthorized access attempt to admin panel")
       router.push("/dashboard")
-      return
     }
-
-    setIsAuthorized(true)
   }, [session, status, router])
 
   if (!isAuthorized || !session) {
@@ -35,6 +33,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="lg:flex min-h-screen">
+      <AdminFirstLoginModal />
       <AdminNav session={session as Session} />
       <main className="flex-1 bg-gray-50 overflow-auto pt-14 lg:pt-0">
         {children}

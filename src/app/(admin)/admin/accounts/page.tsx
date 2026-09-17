@@ -16,6 +16,11 @@ import { ADMIN_ROLE_NAMES } from "@/lib/constants"
 import AccountResetPasswordButton from "@/components/admin/account-reset-password-button"
 import { DeleteAccountButton } from "@/components/admin/delete-account-button"
 
+// This page has no per-request dynamic API (searchParams/cookies), so
+// Next.js would otherwise prerender it once at build time and keep
+// serving that stale account list forever — force it to always refetch.
+export const dynamic = "force-dynamic"
+
 export default async function AccountsPage() {
   const accounts = await prisma.admin.findMany({
     orderBy: { createdAt: "desc" },

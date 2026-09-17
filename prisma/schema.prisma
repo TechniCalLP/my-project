@@ -113,6 +113,7 @@ model Admin {
   password                String
   name                    String
   role                    AdminRole                          @default(ADMIN)
+  isFirstLogin            Boolean                            @default(true)
   clubId                  String?
   club                    Club?                              @relation(fields: [clubId], references: [id])
   activities              Activity[]

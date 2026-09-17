@@ -120,6 +120,7 @@ export default function ClubForm({ departments, initialData, isEdit = false }: C
                   checked={selectedDeptIds.includes(dept.id)}
                   onCheckedChange={() => toggleDept(dept.id)}
                   onSelect={(e) => e.preventDefault()}
+                  disabled={!!boundToOtherClub}
                   className="font-thai"
                 >
                   <div className="flex flex-col">

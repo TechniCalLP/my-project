@@ -137,8 +137,8 @@ export default function ActivityDetailPage() {
   if (!activity) return null
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-8 space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <Link href="/admin/activities" className="text-sm text-gray-500 hover:text-gray-700 font-thai">
             ← กลับ
@@ -223,7 +223,7 @@ export default function ActivityDetailPage() {
           {activity.description && (
             <p className="text-gray-600 font-thai">{activity.description}</p>
           )}
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-gray-500 font-thai">ระดับชั้น: </span>
               <span className="font-thai">{activity.targetYear}</span>
@@ -350,7 +350,7 @@ export default function ActivityDetailPage() {
       </Card>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-thai">แก้ไขกิจกรรม</DialogTitle>
           </DialogHeader>

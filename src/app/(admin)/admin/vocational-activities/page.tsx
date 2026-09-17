@@ -80,7 +80,9 @@ export default async function VocationalActivitiesPage({ searchParams }: PagePro
                 ) : (
                   activities.map((a) => (
                     <TableRow key={a.id} className="hover:bg-gray-50">
-                      <TableCell className="font-thai font-medium whitespace-nowrap">{a.name}</TableCell>
+                      <TableCell className="font-thai font-medium">
+                        <p className="truncate max-w-[220px]" title={a.name}>{a.name}</p>
+                      </TableCell>
                       <TableCell className="font-thai text-sm whitespace-nowrap">
                         {a.academicYear} / {a.semester}
                       </TableCell>

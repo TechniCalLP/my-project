@@ -15,7 +15,11 @@ export default async function EditClubPage({ params }: PageProps) {
 
   const [club, departments] = await Promise.all([
     prisma.club.findUnique({ where: { id }, include: { departments: true } }),
-    prisma.department.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),
+    prisma.department.findMany({
+      where: { isActive: true },
+      include: { clubs: { select: { id: true, name: true } } },
+      orderBy: { name: "asc" },
+    }),
   ])
 
   if (!club) notFound()

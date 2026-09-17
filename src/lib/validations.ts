@@ -60,7 +60,7 @@ export const clubSchema = z.object({
 })
 
 export const adminAccountBaseSchema = z.object({
-  username: z.string().min(1, "กรุณากรอกชื่อผู้ใช้"),
+  username: z.string().trim().min(1, "กรุณากรอกชื่อผู้ใช้"),
   password: z.string().min(4, "รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร").optional(),
   name: z.string().min(1, "กรุณากรอกชื่อ-นามสกุล"),
   role: z.nativeEnum(AdminRole),

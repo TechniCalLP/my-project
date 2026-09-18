@@ -89,7 +89,11 @@ export default async function SummaryPage({ searchParams }: PageProps) {
   const groupsByKey = new Map<string, ClubYearGroup>()
   for (const activity of activities) {
     const years = activity.targetYears.length === 0 ? YEARS : activity.targetYears
-    for (const club of activity.clubs) {
+    // An activity can target multiple clubs at once (e.g. a general mandatory
+    // activity applied broadly) — when scoped to one club, only build a card
+    // for that club, not every club the activity happens to also target.
+    const relevantClubs = scopedClubId ? activity.clubs.filter((c) => c.id === scopedClubId) : activity.clubs
+    for (const club of relevantClubs) {
       for (const year of years) {
         const key = `${club.id}::${year}`
         if (!groupsByKey.has(key)) {
@@ -203,7 +207,7 @@ export default async function SummaryPage({ searchParams }: PageProps) {
         </div>
         <p className="text-gray-500 font-thai mt-1 text-sm">
           ผลรวมกิจกรรมภาคบังคับและกิจกรรมองค์การวิชาชีพ แยกตามชมรมและชั้นปี
-          {scopedClubName && ` — ชมรม${scopedClubName}`}
+          {scopedClubName && ` — ${scopedClubName}`}
         </p>
       </div>
 

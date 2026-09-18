@@ -113,14 +113,15 @@ export default function ClubForm({ departments, initialData, isEdit = false }: C
           </DropdownMenuTrigger>
           <DropdownMenuContent className="min-w-(--radix-dropdown-menu-trigger-width) max-h-80 overflow-y-auto">
             {departments.map((dept) => {
+              const isSelected = selectedDeptIds.includes(dept.id)
               const boundToOtherClub = dept.clubs?.find((c) => c.id !== initialData?.id)
               return (
                 <DropdownMenuCheckboxItem
                   key={dept.id}
-                  checked={selectedDeptIds.includes(dept.id)}
+                  checked={isSelected}
                   onCheckedChange={() => toggleDept(dept.id)}
                   onSelect={(e) => e.preventDefault()}
-                  disabled={!!boundToOtherClub}
+                  disabled={!isSelected && !!boundToOtherClub}
                   className="font-thai"
                 >
                   <div className="flex flex-col">

@@ -170,7 +170,7 @@ export default function ActivityDetailPage() {
                     const link = document.createElement("a")
                     link.href = url
                     const disposition = res.headers.get("Content-Disposition") ?? ""
-                    const match = disposition.match(/filename\*?=(?:UTF-8'')?([^;]+)/i)
+                    const match = disposition.match(/filename\*?=(?:UTF-8'')?"?([^;"]+)"?/i)
                     link.download = match ? decodeURIComponent(match[1]) : "export.xlsx"
                     document.body.appendChild(link)
                     link.click()

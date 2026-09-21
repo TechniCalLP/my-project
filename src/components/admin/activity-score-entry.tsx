@@ -31,6 +31,7 @@ interface StudentRow {
   prefix: string
   firstName: string
   lastName: string
+  department: string
   group: string | null
   scores: Record<string, ScoreCell>
 }
@@ -253,7 +254,10 @@ export default function ActivityScoreEntry({ activityId, year, academicYear, sem
                         <p className="font-thai font-medium">
                           {student.prefix}{student.firstName} {student.lastName}
                         </p>
-                        {student.group && <p className="text-xs text-gray-400 font-thai">กลุ่ม {student.group}</p>}
+                        <p className="text-xs text-gray-400 font-thai">
+                          {student.department}
+                          {student.group && ` · กลุ่ม ${student.group}`}
+                        </p>
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col gap-0.5">

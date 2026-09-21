@@ -79,6 +79,8 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
         const passPct = total > 0 ? ((passCount / total) * 100).toFixed(2) : "0.00"
         const failPct = total > 0 ? ((failCount / total) * 100).toFixed(2) : "0.00"
 
+        const clubLabel = clubNameByDepartment.get(pageGroup.department) ?? `ชมรมวิชาชีพ${pageGroup.department}`
+
         const activityColumns: { id: string; name: string }[] = []
         for (const s of pageGroup.students) {
           for (const a of evaluations.get(s.id)?.vocationalActivities ?? []) {
@@ -101,7 +103,7 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
               </div>
               <h1 className="text-lg font-bold">ประกาศผลการประเมินกิจกรรมองค์การวิชาชีพ</h1>
               <p className="text-sm">
-                ชมรมวิชาชีพ{clubNameByDepartment.get(pageGroup.department) ?? pageGroup.department} {COLLEGE_NAME}
+                {clubLabel} {COLLEGE_NAME}
               </p>
               <p className="text-sm mt-1">
                 ภาคเรียนที่ {semester.replace("ภาคเรียนที่ ", "")} ปีการศึกษา {academicYear}

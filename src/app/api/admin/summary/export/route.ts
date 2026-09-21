@@ -77,6 +77,7 @@ export async function GET(req: NextRequest) {
       "แผนก": s.department,
       "กลุ่ม": s.group ?? "-",
       "ชั้นปี": s.year,
+      "ชื่อกิจกรรมภาคบังคับ": evaluation.requiredActivityNames.join(", ") || "-",
       "กิจกรรมภาคบังคับ (%)": evaluation.participation.progress,
     }
     for (const a of evaluation.vocationalActivities) {

@@ -15,6 +15,7 @@ export interface VocationalActivityResult {
 
 export interface StudentEvaluation {
   participation: { joined: number; total: number; progress: number; status: PartStatus }
+  requiredActivityNames: string[]
   vocationalActivities: VocationalActivityResult[]
   overall: PartStatus
 }
@@ -46,9 +47,9 @@ export async function getStudentEvaluation(
   const activityFilter = requiredActivityFilter(student.year, departmentVariants)
   const club = await resolveClubForDepartment(student.department)
 
-  const [joined, total, vocationalActivities] = await Promise.all([
+  const [joined, requiredActivities, vocationalActivities] = await Promise.all([
     prisma.participation.count({ where: { studentId, activity: activityFilter } }),
-    prisma.activity.count({ where: activityFilter }),
+    prisma.activity.findMany({ where: activityFilter, select: { name: true } }),
     club
       ? prisma.vocationalActivity.findMany({
           where: {
@@ -62,6 +63,7 @@ export async function getStudentEvaluation(
       : Promise.resolve([]),
   ])
 
+  const total = requiredActivities.length
   const progress = total > 0 ? Math.round((joined / total) * 100) : 100
   const participationStatus: PartStatus = progress >= 100 ? "PASS" : "FAIL"
 
@@ -81,6 +83,7 @@ export async function getStudentEvaluation(
 
   return {
     participation: { joined, total, progress, status: participationStatus },
+    requiredActivityNames: requiredActivities.map((a) => a.name),
     vocationalActivities: vocationalResults,
     overall,
   }
@@ -118,8 +121,8 @@ export async function getStudentEvaluations(
       const activityFilter = requiredActivityFilter(year, departmentVariants)
       const club = await resolveClubForDepartment(department)
 
-      const [total, participationCounts, vocationalActivities] = await Promise.all([
-        prisma.activity.count({ where: activityFilter }),
+      const [requiredActivities, participationCounts, vocationalActivities] = await Promise.all([
+        prisma.activity.findMany({ where: activityFilter, select: { name: true } }),
         prisma.participation.groupBy({
           by: ["studentId"],
           where: { studentId: { in: ids }, activity: activityFilter },
@@ -139,6 +142,8 @@ export async function getStudentEvaluations(
       ])
 
       const joinedByStudent = new Map(participationCounts.map((p) => [p.studentId, p._count.activityId]))
+      const total = requiredActivities.length
+      const requiredActivityNames = requiredActivities.map((a) => a.name)
 
       for (const studentId of ids) {
         const joined = joinedByStudent.get(studentId) ?? 0
@@ -162,6 +167,7 @@ export async function getStudentEvaluations(
 
         result.set(studentId, {
           participation: { joined, total, progress, status: participationStatus },
+          requiredActivityNames,
           vocationalActivities: vocationalResults,
           overall,
         })

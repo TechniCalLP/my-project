@@ -86,6 +86,8 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
           }
         }
 
+        const requiredActivityNames = evaluations.get(pageGroup.students[0]?.id ?? "")?.requiredActivityNames ?? []
+
         return (
           <div
             key={pageIndex}
@@ -116,7 +118,14 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
                     <th className="border border-gray-800 px-2 py-1.5 w-10">ที่</th>
                     <th className="border border-gray-800 px-2 py-1.5 w-32">รหัสนักศึกษา</th>
                     <th className="border border-gray-800 px-2 py-1.5">ชื่อ - สกุล</th>
-                    <th className="border border-gray-800 px-2 py-1.5 w-28">กิจกรรมภาคบังคับ</th>
+                    <th className="border border-gray-800 px-2 py-1.5 w-28">
+                      กิจกรรมภาคบังคับ
+                      {requiredActivityNames.length > 0 && (
+                        <div className="text-[9px] font-normal text-gray-600 mt-0.5">
+                          ({requiredActivityNames.join(", ")})
+                        </div>
+                      )}
+                    </th>
                     {activityColumns.length === 0 ? (
                       <th className="border border-gray-800 px-2 py-1.5">กิจกรรมองค์การวิชาชีพ</th>
                     ) : (

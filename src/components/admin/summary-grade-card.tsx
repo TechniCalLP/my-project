@@ -54,7 +54,7 @@ export default function SummaryGradeCard({
         {activityNames.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5">
             {visibleChips.map((name) => (
-              <Badge key={name} variant="outline" className="font-thai text-xs font-normal">
+              <Badge key={name} variant="outline" title={name} className="font-thai text-xs font-normal max-w-[160px] truncate">
                 {name}
               </Badge>
             ))}

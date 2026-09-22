@@ -95,11 +95,16 @@ export async function GET(req: NextRequest) {
 
   // Column plan: ที่ | รหัสนักศึกษา | ชื่อ-สกุล สมาชิก | แผนกวิชา ชั้นปี/กลุ่ม | [กิจกรรมภาคบังคับ...] | [กิจกรรมองค์การวิชาชีพ...] | ผลการประเมิน
   // (formType 17 skips the two activity-group sections in favor of ผ่าน/ไม่ผ่าน/หมายเหตุ)
+  const deptGroupColWidth = Math.max(
+    "แผนกวิชา ชั้นปี/กลุ่ม".length,
+    ...students.map((s) => `${s.department} / กลุ่ม ${s.group ?? "-"}`.length)
+  ) + 2
+
   const fixedCols = [
     { header: "ที่", width: 6 },
     { header: "รหัสนักศึกษา", width: 15 },
     { header: "ชื่อ-สกุล สมาชิก", width: 28 },
-    { header: "แผนกวิชา ชั้นปี/กลุ่ม", width: 20 },
+    { header: "แผนกวิชา ชั้นปี/กลุ่ม", width: deptGroupColWidth },
   ]
 
   const requiredCols = formType === "15" ? (requiredActivityNames.length > 0 ? requiredActivityNames : ["กิจกรรมภาคบังคับ"]) : []

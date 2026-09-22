@@ -110,38 +110,58 @@ export default async function SummaryPage({ searchParams }: PageProps) {
     }
   }
 
-  const gradeGroups = await Promise.all(
-    [...groupsByKey.values()].map(async (group) => {
-      const where = { isActive: true, year: group.year, department: { in: group.deptVariants } }
-      const students = await prisma.student.findMany({ where, select: { id: true } })
-      if (students.length === 0) return null
+  // One bulk fetch of every active student in any involved year, then bucket
+  // into (club, year) groups in memory — instead of one findMany per group
+  // (51 separate queries on the all-clubs SUPER_ADMIN view). Combined with
+  // batching getStudentEvaluations itself, this page now issues a fixed
+  // small number of queries regardless of how many club/year cards it shows.
+  const involvedYears = [...new Set([...groupsByKey.values()].map((g) => g.year))]
+  const candidateStudents =
+    involvedYears.length > 0
+      ? await prisma.student.findMany({
+          where: { isActive: true, year: { in: involvedYears } },
+          select: { id: true, year: true, department: true },
+        })
+      : []
 
-      const evaluations = await getStudentEvaluations(students.map((s) => s.id), academicYear, semester)
+  const groupStudentIds = [...groupsByKey.values()].map((group) => ({
+    group,
+    studentIds: candidateStudents
+      .filter((s) => s.year === group.year && group.deptVariants.includes(s.department))
+      .map((s) => s.id),
+  }))
 
-      // Counted per distinct student (evaluation.overall — pass only if every
-      // required part, participation and every vocational activity, passed),
-      // not per activity, so this always sums to exactly `total`.
-      let passCount = 0
-      let failCount = 0
-      let pendingCount = 0
-      for (const evaluation of evaluations.values()) {
-        if (evaluation.overall === "PASS") passCount++
-        else if (evaluation.overall === "FAIL") failCount++
-        else pendingCount++
-      }
+  const allStudentIds = [...new Set(groupStudentIds.flatMap((g) => g.studentIds))]
+  const evaluations = await getStudentEvaluations(allStudentIds, academicYear, semester)
 
-      return {
-        year: group.year,
-        clubId: group.clubId,
-        clubName: group.clubName,
-        total: students.length,
-        passCount,
-        failCount,
-        pendingCount,
-        activityNames: [...group.activityNames],
-      }
-    })
-  )
+  const gradeGroups = groupStudentIds.map(({ group, studentIds }) => {
+    if (studentIds.length === 0) return null
+
+    // Counted per distinct student (evaluation.overall — pass only if every
+    // required part, participation and every vocational activity, passed),
+    // not per activity, so this always sums to exactly `total`.
+    let passCount = 0
+    let failCount = 0
+    let pendingCount = 0
+    for (const id of studentIds) {
+      const evaluation = evaluations.get(id)
+      if (!evaluation) continue
+      if (evaluation.overall === "PASS") passCount++
+      else if (evaluation.overall === "FAIL") failCount++
+      else pendingCount++
+    }
+
+    return {
+      year: group.year,
+      clubId: group.clubId,
+      clubName: group.clubName,
+      total: studentIds.length,
+      passCount,
+      failCount,
+      pendingCount,
+      activityNames: [...group.activityNames],
+    }
+  })
 
   const yearCards = gradeGroups
     .filter((g): g is NonNullable<typeof g> => g !== null)

@@ -112,6 +112,7 @@ export async function GET(req: NextRequest) {
       prefix: s.prefix,
       firstName: s.firstName,
       lastName: s.lastName,
+      department: s.department,
       group: s.group,
       scores: Object.fromEntries(
         activities.map((a) => [

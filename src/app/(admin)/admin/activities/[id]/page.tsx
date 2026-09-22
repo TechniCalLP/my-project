@@ -31,9 +31,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { FileOutput, FileSpreadsheet, FileText, ChevronLeft, ChevronRight } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { FileOutput, FileSpreadsheet, FileText, ChevronLeft, ChevronRight, Search } from "lucide-react"
 
 const PARTICIPANTS_PER_PAGE = 10
+const ALL_DEPARTMENTS = "all"
 
 const CATEGORY_COLORS: Record<ActivityCategory, string> = {
   ACADEMIC: "bg-primary-100 text-primary-700",
@@ -93,6 +96,8 @@ export default function ActivityDetailPage() {
   const [editOpen, setEditOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [participantsPage, setParticipantsPage] = useState(1)
+  const [participantSearch, setParticipantSearch] = useState("")
+  const [participantDept, setParticipantDept] = useState(ALL_DEPARTMENTS)
 
   const fetchActivity = async () => {
     setLoading(true)
@@ -165,7 +170,7 @@ export default function ActivityDetailPage() {
                     const link = document.createElement("a")
                     link.href = url
                     const disposition = res.headers.get("Content-Disposition") ?? ""
-                    const match = disposition.match(/filename\*?=(?:UTF-8'')?([^;]+)/i)
+                    const match = disposition.match(/filename\*?=(?:UTF-8'')?"?([^;"]+)"?/i)
                     link.download = match ? decodeURIComponent(match[1]) : "export.xlsx"
                     document.body.appendChild(link)
                     link.click()
@@ -272,76 +277,124 @@ export default function ActivityDetailPage() {
           {activity.participations.length === 0 ? (
             <p className="text-center text-gray-500 py-8 font-thai">ยังไม่มีผู้เข้าร่วม</p>
           ) : (() => {
-            const totalParticipantPages = Math.ceil(activity.participations.length / PARTICIPANTS_PER_PAGE)
-            const paginated = activity.participations.slice(
-              (participantsPage - 1) * PARTICIPANTS_PER_PAGE,
-              participantsPage * PARTICIPANTS_PER_PAGE
+            const departments = [...new Set(activity.participations.map((p) => p.student.department))].sort()
+            const search = participantSearch.trim().toLowerCase()
+            const filtered = activity.participations.filter((p) => {
+              if (participantDept !== ALL_DEPARTMENTS && p.student.department !== participantDept) return false
+              if (!search) return true
+              const haystack = `${p.student.studentId} ${p.student.firstName} ${p.student.lastName}`.toLowerCase()
+              return haystack.includes(search)
+            })
+            const totalParticipantPages = Math.max(1, Math.ceil(filtered.length / PARTICIPANTS_PER_PAGE))
+            const currentPage = Math.min(participantsPage, totalParticipantPages)
+            const paginated = filtered.slice(
+              (currentPage - 1) * PARTICIPANTS_PER_PAGE,
+              currentPage * PARTICIPANTS_PER_PAGE
             )
             return (
               <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="font-thai">รหัสนักศึกษา</TableHead>
-                      <TableHead className="font-thai">ชื่อ-นามสกุล</TableHead>
-                      <TableHead className="font-thai">ระดับชั้น</TableHead>
-                      <TableHead className="font-thai">แผนก</TableHead>
-                      <TableHead className="font-thai">วันที่เข้าร่วม</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginated.map((p) => (
-                      <TableRow key={p.id}>
-                        <TableCell className="font-mono">{p.student.studentId}</TableCell>
-                        <TableCell className="font-thai">{p.student.firstName} {p.student.lastName}</TableCell>
-                        <TableCell className="font-thai">{p.student.year}</TableCell>
-                        <TableCell className="font-thai">{p.student.department}</TableCell>
-                        <TableCell className="font-thai">
-                          {new Date(p.joinedAt).toLocaleDateString("th-TH")}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                {totalParticipantPages > 1 && (
-                  <div className="flex flex-col items-center gap-2 pt-4">
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setParticipantsPage((p) => p - 1)}
-                        disabled={participantsPage === 1}
-                        className="font-thai gap-1"
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                        ก่อนหน้า
-                      </Button>
-                      {Array.from({ length: totalParticipantPages }, (_, i) => i + 1).map((page) => (
-                        <Button
-                          key={page}
-                          variant={participantsPage === page ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setParticipantsPage(page)}
-                          className="w-9 h-9"
-                        >
-                          {page}
-                        </Button>
-                      ))}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setParticipantsPage((p) => p + 1)}
-                        disabled={participantsPage === totalParticipantPages}
-                        className="font-thai gap-1"
-                      >
-                        ถัดไป
-                        <ChevronRight className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <p className="text-xs text-gray-500 font-thai">
-                      แสดง {(participantsPage - 1) * PARTICIPANTS_PER_PAGE + 1}–{Math.min(participantsPage * PARTICIPANTS_PER_PAGE, activity.participations.length)} จาก {activity.participations.length} คน
-                    </p>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <div className="relative flex-1 min-w-48">
+                    <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <Input
+                      placeholder="ค้นหา รหัส, ชื่อ, นามสกุล"
+                      value={participantSearch}
+                      onChange={(e) => {
+                        setParticipantSearch(e.target.value)
+                        setParticipantsPage(1)
+                      }}
+                      className="pl-8 font-thai h-9"
+                    />
                   </div>
+                  {departments.length > 1 && (
+                    <Select
+                      value={participantDept}
+                      onValueChange={(v) => {
+                        setParticipantDept(v)
+                        setParticipantsPage(1)
+                      }}
+                    >
+                      <SelectTrigger className="w-48 font-thai h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={ALL_DEPARTMENTS} className="font-thai">ทุกแผนก</SelectItem>
+                        {departments.map((d) => (
+                          <SelectItem key={d} value={d} className="font-thai">{d}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+                {filtered.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8 font-thai">ไม่พบผู้เข้าร่วมที่ค้นหา</p>
+                ) : (
+                  <>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="font-thai">รหัสนักศึกษา</TableHead>
+                          <TableHead className="font-thai">ชื่อ-นามสกุล</TableHead>
+                          <TableHead className="font-thai">ระดับชั้น</TableHead>
+                          <TableHead className="font-thai">แผนก</TableHead>
+                          <TableHead className="font-thai">วันที่เข้าร่วม</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {paginated.map((p) => (
+                          <TableRow key={p.id}>
+                            <TableCell className="font-mono">{p.student.studentId}</TableCell>
+                            <TableCell className="font-thai">{p.student.firstName} {p.student.lastName}</TableCell>
+                            <TableCell className="font-thai">{p.student.year}</TableCell>
+                            <TableCell className="font-thai">{p.student.department}</TableCell>
+                            <TableCell className="font-thai">
+                              {new Date(p.joinedAt).toLocaleDateString("th-TH")}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    {totalParticipantPages > 1 && (
+                      <div className="flex flex-col items-center gap-2 pt-4">
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setParticipantsPage((p) => p - 1)}
+                            disabled={currentPage === 1}
+                            className="font-thai gap-1"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                            ก่อนหน้า
+                          </Button>
+                          {Array.from({ length: totalParticipantPages }, (_, i) => i + 1).map((pageNum) => (
+                            <Button
+                              key={pageNum}
+                              variant={currentPage === pageNum ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setParticipantsPage(pageNum)}
+                              className="w-9 h-9"
+                            >
+                              {pageNum}
+                            </Button>
+                          ))}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setParticipantsPage((p) => p + 1)}
+                            disabled={currentPage === totalParticipantPages}
+                            className="font-thai gap-1"
+                          >
+                            ถัดไป
+                            <ChevronRight className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <p className="text-xs text-gray-500 font-thai">
+                          แสดง {(currentPage - 1) * PARTICIPANTS_PER_PAGE + 1}–{Math.min(currentPage * PARTICIPANTS_PER_PAGE, filtered.length)} จาก {filtered.length} คน
+                        </p>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )

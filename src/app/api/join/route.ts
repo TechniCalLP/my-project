@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { joinSchema } from "@/lib/validations"
+import { resolveDepartmentVariants } from "@/lib/department"
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions)
@@ -35,6 +36,23 @@ export async function POST(request: Request) {
   }
 
   const studentDbId = session.user.id as string
+
+  const student = await prisma.student.findUniqueOrThrow({
+    where: { id: studentDbId },
+    select: { year: true, department: true },
+  })
+
+  if (student.year !== activityCode.activity.targetYear) {
+    return Response.json({ error: "รหัสนี้ไม่ได้สำหรับชั้นปีของคุณ" }, { status: 400 })
+  }
+
+  if (activityCode.activity.targetDepartments.length > 0) {
+    const departmentVariants = await resolveDepartmentVariants(student.department)
+    const eligible = activityCode.activity.targetDepartments.some((d) => departmentVariants.includes(d))
+    if (!eligible) {
+      return Response.json({ error: "รหัสนี้ไม่ได้สำหรับแผนกของคุณ" }, { status: 400 })
+    }
+  }
 
   const existing = await prisma.participation.findFirst({
     where: { studentId: studentDbId, activityId: activityCode.activityId },

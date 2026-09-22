@@ -79,12 +79,16 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
         const passPct = total > 0 ? ((passCount / total) * 100).toFixed(2) : "0.00"
         const failPct = total > 0 ? ((failCount / total) * 100).toFixed(2) : "0.00"
 
+        const clubLabel = clubNameByDepartment.get(pageGroup.department) ?? `ชมรมวิชาชีพ${pageGroup.department}`
+
         const activityColumns: { id: string; name: string }[] = []
         for (const s of pageGroup.students) {
           for (const a of evaluations.get(s.id)?.vocationalActivities ?? []) {
             if (!activityColumns.some((c) => c.id === a.id)) activityColumns.push({ id: a.id, name: a.name })
           }
         }
+
+        const requiredActivityNames = evaluations.get(pageGroup.students[0]?.id ?? "")?.requiredActivityNames ?? []
 
         return (
           <div
@@ -99,7 +103,7 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
               </div>
               <h1 className="text-lg font-bold">ประกาศผลการประเมินกิจกรรมองค์การวิชาชีพ</h1>
               <p className="text-sm">
-                ชมรมวิชาชีพ{clubNameByDepartment.get(pageGroup.department) ?? pageGroup.department} {COLLEGE_NAME}
+                {clubLabel} {COLLEGE_NAME}
               </p>
               <p className="text-sm mt-1">
                 ภาคเรียนที่ {semester.replace("ภาคเรียนที่ ", "")} ปีการศึกษา {academicYear}
@@ -116,7 +120,14 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
                     <th className="border border-gray-800 px-2 py-1.5 w-10">ที่</th>
                     <th className="border border-gray-800 px-2 py-1.5 w-32">รหัสนักศึกษา</th>
                     <th className="border border-gray-800 px-2 py-1.5">ชื่อ - สกุล</th>
-                    <th className="border border-gray-800 px-2 py-1.5 w-28">กิจกรรมภาคบังคับ</th>
+                    <th className="border border-gray-800 px-2 py-1.5 w-28">
+                      กิจกรรมภาคบังคับ
+                      {requiredActivityNames.length > 0 && (
+                        <div className="text-[9px] font-normal text-gray-600 mt-0.5">
+                          ({requiredActivityNames.join(", ")})
+                        </div>
+                      )}
+                    </th>
                     {activityColumns.length === 0 ? (
                       <th className="border border-gray-800 px-2 py-1.5">กิจกรรมองค์การวิชาชีพ</th>
                     ) : (

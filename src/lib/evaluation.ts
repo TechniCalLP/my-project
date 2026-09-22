@@ -13,8 +13,16 @@ export interface VocationalActivityResult {
   status: PartStatus
 }
 
+export interface RequiredActivityResult {
+  id: string
+  name: string
+  joined: boolean
+}
+
 export interface StudentEvaluation {
   participation: { joined: number; total: number; progress: number; status: PartStatus }
+  requiredActivityNames: string[]
+  requiredActivities: RequiredActivityResult[]
   vocationalActivities: VocationalActivityResult[]
   overall: PartStatus
 }
@@ -46,9 +54,9 @@ export async function getStudentEvaluation(
   const activityFilter = requiredActivityFilter(student.year, departmentVariants)
   const club = await resolveClubForDepartment(student.department)
 
-  const [joined, total, vocationalActivities] = await Promise.all([
-    prisma.participation.count({ where: { studentId, activity: activityFilter } }),
-    prisma.activity.count({ where: activityFilter }),
+  const [joinedActivities, requiredActivities, vocationalActivities] = await Promise.all([
+    prisma.participation.findMany({ where: { studentId, activity: activityFilter }, select: { activityId: true } }),
+    prisma.activity.findMany({ where: activityFilter, select: { id: true, name: true } }),
     club
       ? prisma.vocationalActivity.findMany({
           where: {
@@ -62,6 +70,9 @@ export async function getStudentEvaluation(
       : Promise.resolve([]),
   ])
 
+  const joinedIdSet = new Set(joinedActivities.map((p) => p.activityId).filter((id): id is string => id != null))
+  const joined = joinedIdSet.size
+  const total = requiredActivities.length
   const progress = total > 0 ? Math.round((joined / total) * 100) : 100
   const participationStatus: PartStatus = progress >= 100 ? "PASS" : "FAIL"
 
@@ -81,6 +92,8 @@ export async function getStudentEvaluation(
 
   return {
     participation: { joined, total, progress, status: participationStatus },
+    requiredActivityNames: requiredActivities.map((a) => a.name),
+    requiredActivities: requiredActivities.map((a) => ({ id: a.id, name: a.name, joined: joinedIdSet.has(a.id) })),
     vocationalActivities: vocationalResults,
     overall,
   }
@@ -118,12 +131,11 @@ export async function getStudentEvaluations(
       const activityFilter = requiredActivityFilter(year, departmentVariants)
       const club = await resolveClubForDepartment(department)
 
-      const [total, participationCounts, vocationalActivities] = await Promise.all([
-        prisma.activity.count({ where: activityFilter }),
-        prisma.participation.groupBy({
-          by: ["studentId"],
+      const [requiredActivities, participations, vocationalActivities] = await Promise.all([
+        prisma.activity.findMany({ where: activityFilter, select: { id: true, name: true } }),
+        prisma.participation.findMany({
           where: { studentId: { in: ids }, activity: activityFilter },
-          _count: { activityId: true },
+          select: { studentId: true, activityId: true },
         }),
         club
           ? prisma.vocationalActivity.findMany({
@@ -138,10 +150,18 @@ export async function getStudentEvaluations(
           : Promise.resolve([]),
       ])
 
-      const joinedByStudent = new Map(participationCounts.map((p) => [p.studentId, p._count.activityId]))
+      const joinedIdsByStudent = new Map<string, Set<string>>()
+      for (const p of participations) {
+        if (!p.activityId) continue
+        if (!joinedIdsByStudent.has(p.studentId)) joinedIdsByStudent.set(p.studentId, new Set())
+        joinedIdsByStudent.get(p.studentId)!.add(p.activityId)
+      }
+      const total = requiredActivities.length
+      const requiredActivityNames = requiredActivities.map((a) => a.name)
 
       for (const studentId of ids) {
-        const joined = joinedByStudent.get(studentId) ?? 0
+        const joinedIdSet = joinedIdsByStudent.get(studentId) ?? new Set<string>()
+        const joined = joinedIdSet.size
         const progress = total > 0 ? Math.round((joined / total) * 100) : 100
         const participationStatus: PartStatus = progress >= 100 ? "PASS" : "FAIL"
 
@@ -162,6 +182,8 @@ export async function getStudentEvaluations(
 
         result.set(studentId, {
           participation: { joined, total, progress, status: participationStatus },
+          requiredActivityNames,
+          requiredActivities: requiredActivities.map((a) => ({ id: a.id, name: a.name, joined: joinedIdSet.has(a.id) })),
           vocationalActivities: vocationalResults,
           overall,
         })

@@ -102,7 +102,7 @@ export default function AddParticipantDialog({
         if (!o) reset()
       }}
     >
-      <Button variant="outline" size="sm" className="font-thai gap-1.5" onClick={() => setOpen(true)}>
+      <Button size="sm" className="font-thai gap-1.5" onClick={() => setOpen(true)}>
         <UserPlus className="w-3.5 h-3.5" />
         เพิ่มผู้เข้าร่วม
       </Button>

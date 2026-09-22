@@ -37,7 +37,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { PaginationControls } from "@/components/ui/pagination-controls"
 import AddParticipantDialog from "@/components/admin/add-participant-dialog"
-import { FileOutput, FileSpreadsheet, FileText, Search, UserPlus } from "lucide-react"
+import { FileOutput, FileSpreadsheet, FileText, Search, UserPlus, AlertTriangle } from "lucide-react"
 
 const PARTICIPANTS_PER_PAGE = 10
 const ALL_DEPARTMENTS = "all"
@@ -78,6 +78,7 @@ interface Activity {
   maxSlots?: number | null
   status: ActivityStatus
   createdAt: string
+  allowedDepartmentVariants: string[] | null
   participations: Array<{
     id: string
     joinedAt: string
@@ -294,6 +295,13 @@ export default function ActivityDetailPage() {
           {activity.participations.length === 0 ? (
             <p className="text-center text-gray-500 py-8 font-thai">ยังไม่มีผู้เข้าร่วม</p>
           ) : (() => {
+            const isMismatched = (p: Activity["participations"][number]) => {
+              if (p.student.year !== activity.targetYear) return true
+              if (activity.allowedDepartmentVariants && !activity.allowedDepartmentVariants.includes(p.student.department)) return true
+              return false
+            }
+            const mismatchCount = activity.participations.filter(isMismatched).length
+
             const departments = [...new Set(activity.participations.map((p) => p.student.department))].sort()
             const search = participantSearch.trim().toLowerCase()
             const filtered = activity.participations.filter((p) => {
@@ -310,6 +318,14 @@ export default function ActivityDetailPage() {
             )
             return (
               <>
+                {mismatchCount > 0 && (
+                  <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-700 font-thai mb-4">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                    พบ {mismatchCount} คนที่ชั้นปี/แผนกไม่ตรงกับที่กิจกรรมนี้กำหนดไว้ ({activity.targetYear}
+                    {activity.targetDepartments.length > 0 && ` · ${activity.targetDepartments.join(", ")}`}) — ดูแถวที่มีเครื่องหมาย{" "}
+                    <AlertTriangle className="w-3 h-3 inline text-amber-600" /> ด้านล่าง
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-2 mb-4">
                   <div className="relative flex-1 min-w-48">
                     <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
@@ -359,11 +375,24 @@ export default function ActivityDetailPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {paginated.map((p) => (
-                          <TableRow key={p.id}>
+                        {paginated.map((p) => {
+                          const mismatched = isMismatched(p)
+                          return (
+                          <TableRow key={p.id} className={mismatched ? "bg-amber-50 hover:bg-amber-100" : undefined}>
                             <TableCell className="font-mono">{p.student.studentId}</TableCell>
                             <TableCell className="font-thai">{p.student.firstName} {p.student.lastName}</TableCell>
-                            <TableCell className="font-thai">{p.student.year}</TableCell>
+                            <TableCell className="font-thai">
+                              <span className="flex items-center gap-1">
+                                {mismatched && (
+                                  <span
+                                    title={`ชั้นปี/แผนกไม่ตรงกับกิจกรรมนี้ (กำหนดไว้: ${activity.targetYear}${activity.targetDepartments.length > 0 ? ` · ${activity.targetDepartments.join(", ")}` : ""})`}
+                                  >
+                                    <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                  </span>
+                                )}
+                                {p.student.year}
+                              </span>
+                            </TableCell>
                             <TableCell className="font-thai">{p.student.department}</TableCell>
                             <TableCell className="font-thai">
                               {new Date(p.joinedAt).toLocaleDateString("th-TH")}
@@ -393,7 +422,8 @@ export default function ActivityDetailPage() {
                               )}
                             </TableCell>
                           </TableRow>
-                        ))}
+                          )
+                        })}
                       </TableBody>
                     </Table>
                     <PaginationControls

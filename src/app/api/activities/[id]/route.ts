@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { activitySchema } from "@/lib/validations"
+import { resolveDepartmentVariants } from "@/lib/department"
 
 export async function GET(
   request: Request,
@@ -37,7 +38,18 @@ export async function GET(
   })
 
   if (!activity) return Response.json({ error: "Not found" }, { status: 404 })
-  return Response.json(activity)
+
+  // Resolve every target department to its full alias set (e.g. "ไฟฟ้า" / "ช่างไฟฟ้า"
+  // are the same real department across cohort years), so the client can flag a
+  // participant whose year/department doesn't actually match this activity without
+  // false-positiving on department name variants.
+  let allowedDepartmentVariants: string[] | null = null
+  if (activity.targetDepartments.length > 0) {
+    const variantSets = await Promise.all(activity.targetDepartments.map((d) => resolveDepartmentVariants(d)))
+    allowedDepartmentVariants = [...new Set(variantSets.flat())]
+  }
+
+  return Response.json({ ...activity, allowedDepartmentVariants })
 }
 
 export async function PATCH(

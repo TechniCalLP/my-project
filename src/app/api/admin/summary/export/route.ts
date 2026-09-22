@@ -112,10 +112,12 @@ export async function GET(req: NextRequest) {
 
   const totalCols = fixedCols.length + requiredCols.length + vocationalCols.length + tailCols.length
 
+  const activityColWidth = (name: string) => Math.min(Math.max(name.length + 2, 15), 40)
+
   sheet.columns = [
     ...fixedCols,
-    ...requiredCols.map((name) => ({ header: name, width: 13 })),
-    ...vocationalCols.map((name) => ({ header: name, width: 14 })),
+    ...requiredCols.map((name) => ({ header: name, width: activityColWidth(name) })),
+    ...vocationalCols.map((name) => ({ header: name, width: activityColWidth(name) })),
     ...tailCols,
   ]
   // Row 1 is reserved for headers written manually below, not exceljs' auto header row.
@@ -147,7 +149,7 @@ export async function GET(req: NextRequest) {
 
   const infoRow = sheet.getRow(rowIdx++)
   const semesterLabel = semester.replace("ภาคเรียนที่ ", "")
-  infoRow.getCell(1).value = `ชมรมวิชาชีพ${clubName ?? "................................."}   ภาคเรียนที่ ${semesterLabel} ปีการศึกษา ${academicYear}`
+  infoRow.getCell(1).value = `${clubName ?? "ชมรมวิชาชีพ................................."}   ภาคเรียนที่ ${semesterLabel} ปีการศึกษา ${academicYear}`
   sheet.mergeCells(infoRow.number, 1, infoRow.number, totalCols)
   infoRow.getCell(1).alignment = { horizontal: "center" }
   rowIdx++ // spacer row
@@ -194,11 +196,14 @@ export async function GET(req: NextRequest) {
     sheet.mergeCells(headerRow1.number, col, headerRow2.number, col)
   }
 
+  const activityColStart = fixedCols.length + 1
+  const activityColEnd = fixedCols.length + requiredCols.length + vocationalCols.length
   for (const r of [headerRow1, headerRow2]) {
     for (let c = 1; c <= totalCols; c++) {
       const cell = r.getCell(c)
       cell.font = { bold: true }
-      cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true }
+      const isActivityNameCell = r === headerRow2 && formType === "15" && c >= activityColStart && c <= activityColEnd
+      cell.alignment = { horizontal: "center", vertical: "middle", wrapText: !isActivityNameCell }
       cell.border = BORDER_ALL
     }
   }

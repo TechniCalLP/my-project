@@ -2,6 +2,10 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { resolveDepartmentVariants } from "@/lib/department"
+import { isRateLimited, recordAttempt } from "@/lib/rate-limit"
+
+const MAX_INVALID_CODE_ATTEMPTS = 10
+const RATE_LIMIT_WINDOW_MS = 60_000
 
 export async function POST(
   request: Request,
@@ -12,11 +16,18 @@ export async function POST(
     return Response.json({ error: "Unauthorized" }, { status: 401 })
   }
 
+  const studentDbId = session.user.id as string
+  const rateLimitKey = `join:${studentDbId}`
+
   const { id } = await params
   const body = await request.json()
   const { code } = body
 
   if (!code) return Response.json({ error: "กรุณากรอกรหัส" }, { status: 400 })
+
+  if (isRateLimited(rateLimitKey, MAX_INVALID_CODE_ATTEMPTS, RATE_LIMIT_WINDOW_MS)) {
+    return Response.json({ error: "ลองรหัสผิดบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่" }, { status: 429 })
+  }
 
   const activityCode = await prisma.activityCode.findFirst({
     where: { code, activityId: id },
@@ -24,14 +35,13 @@ export async function POST(
   })
 
   if (!activityCode) {
+    recordAttempt(rateLimitKey)
     return Response.json({ error: "รหัสไม่ถูกต้อง" }, { status: 400 })
   }
 
   if (activityCode.isUsed) {
     return Response.json({ error: "รหัสนี้ถูกใช้งานแล้ว" }, { status: 400 })
   }
-
-  const studentDbId = session.user.id as string
 
   const student = await prisma.student.findUniqueOrThrow({
     where: { id: studentDbId },

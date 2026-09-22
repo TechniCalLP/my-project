@@ -70,6 +70,9 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
 
   return (
     <div className="min-h-screen bg-white font-thai">
+      {formType === "15" && (
+        <style>{"@media print { @page { size: landscape; } }"}</style>
+      )}
       <AutoPrint />
 
       {[...pages.values()].map((pageGroup, pageIndex) => {
@@ -98,7 +101,7 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
         return (
           <div
             key={pageIndex}
-            className={`max-w-4xl mx-auto p-10 print:p-8 ${pageIndex > 0 ? "print:break-before-page" : ""}`}
+            className={`${formType === "15" ? "max-w-[1400px]" : "max-w-4xl"} mx-auto p-10 print:p-8 ${pageIndex > 0 ? "print:break-before-page" : ""}`}
           >
             <p className="text-right text-xs text-gray-400 mb-2">แบบ อวท.{formType}</p>
 
@@ -122,24 +125,32 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
               <table className="w-full text-sm border-collapse border border-gray-800">
                 <thead>
                   <tr>
-                    <th className="border border-gray-800 px-2 py-1.5 w-10">ที่</th>
-                    <th className="border border-gray-800 px-2 py-1.5 w-32">รหัสนักศึกษา</th>
-                    <th className="border border-gray-800 px-2 py-1.5">ชื่อ - สกุล</th>
+                    <th rowSpan={2} className="border border-gray-800 px-2 py-1.5 w-10">ที่</th>
+                    <th rowSpan={2} className="border border-gray-800 px-2 py-1.5 w-32">รหัสนักศึกษา</th>
+                    <th rowSpan={2} className="border border-gray-800 px-2 py-1.5">ชื่อ - สกุล</th>
+                    <th colSpan={Math.max(requiredActivityColumns.length, 1)} className="border border-gray-800 px-2 py-1.5">
+                      กิจกรรมภาคบังคับ
+                    </th>
+                    <th colSpan={Math.max(activityColumns.length, 1)} className="border border-gray-800 px-2 py-1.5">
+                      กิจกรรมองค์การวิชาชีพ
+                    </th>
+                    <th rowSpan={2} className="border border-gray-800 px-2 py-1.5 w-20">ผลรวม</th>
+                  </tr>
+                  <tr>
                     {requiredActivityColumns.length === 0 ? (
-                      <th className="border border-gray-800 px-2 py-1.5 w-28">กิจกรรมภาคบังคับ</th>
+                      <th className="border border-gray-800 px-2 py-1.5 w-28">-</th>
                     ) : (
                       requiredActivityColumns.map((col) => (
-                        <th key={col.id} className="border border-gray-800 px-2 py-1.5">{col.name}</th>
+                        <th key={col.id} className="border border-gray-800 px-2 py-1.5 min-w-[110px]">{col.name}</th>
                       ))
                     )}
                     {activityColumns.length === 0 ? (
-                      <th className="border border-gray-800 px-2 py-1.5">กิจกรรมองค์การวิชาชีพ</th>
+                      <th className="border border-gray-800 px-2 py-1.5">-</th>
                     ) : (
                       activityColumns.map((col) => (
-                        <th key={col.id} className="border border-gray-800 px-2 py-1.5">{col.name}</th>
+                        <th key={col.id} className="border border-gray-800 px-2 py-1.5 min-w-[110px]">{col.name}</th>
                       ))
                     )}
-                    <th className="border border-gray-800 px-2 py-1.5 w-20">ผลรวม</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -162,7 +173,7 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
                             const a = requiredActivities.find((ra) => ra.id === col.id)
                             return (
                               <td key={col.id} className="border border-gray-800 px-2 py-1 text-center">
-                                {a ? (a.joined ? "ผ่าน" : "ไม่ผ่าน") : "-"}
+                                {a ? (a.joined ? "100%" : "0%") : "-"}
                               </td>
                             )
                           })
@@ -182,7 +193,7 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
                           })
                         )}
                         <td className="border border-gray-800 px-2 py-1 text-center">
-                          {statusLabel(overall)}
+                          {overall === "PASS" ? "100%" : overall === "FAIL" ? "0%" : statusLabel(overall)}
                         </td>
                       </tr>
                     )

@@ -50,19 +50,22 @@ interface ActivityScoreEntryProps {
   academicYear: string
   semester: string
   groups: string[]
+  departments: string[]
 }
 
 type StatusFilter = "all" | "filled" | "unfilled"
 type Entry = { studentId: string; activityId: string; score: number }
 const ALL_GROUPS = "__all__"
+const ALL_DEPARTMENTS = "__all__"
 const PAGE_SIZE = 15 // must match PAGE_SIZE in /api/teacher/evaluation/route.ts
 
-export default function ActivityScoreEntry({ activityId, year, academicYear, semester, groups }: ActivityScoreEntryProps) {
+export default function ActivityScoreEntry({ activityId, year, academicYear, semester, groups, departments }: ActivityScoreEntryProps) {
   const router = useRouter()
   const [searchInput, setSearchInput] = useState("")
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState<StatusFilter>("all")
   const [group, setGroup] = useState(ALL_GROUPS)
+  const [department, setDepartment] = useState(ALL_DEPARTMENTS)
   const [page, setPage] = useState(1)
   const [data, setData] = useState<EvalData | null>(null)
   const [loading, setLoading] = useState(false)
@@ -83,6 +86,7 @@ export default function ActivityScoreEntry({ activityId, year, academicYear, sem
     try {
       const params = new URLSearchParams({ activityId, year, academicYear, semester, search, status, page: String(page) })
       if (group !== ALL_GROUPS) params.set("group", group)
+      if (department !== ALL_DEPARTMENTS) params.set("department", department)
       const res = await fetch(`/api/teacher/evaluation?${params.toString()}`)
       if (!res.ok) throw new Error("โหลดข้อมูลไม่สำเร็จ")
       const json: EvalData = await res.json()
@@ -97,7 +101,7 @@ export default function ActivityScoreEntry({ activityId, year, academicYear, sem
     } finally {
       setLoading(false)
     }
-  }, [activityId, year, academicYear, semester, search, status, group, page])
+  }, [activityId, year, academicYear, semester, search, status, group, department, page])
 
   useEffect(() => {
     fetchData()
@@ -217,6 +221,25 @@ export default function ActivityScoreEntry({ activityId, year, academicYear, sem
               <SelectItem value={ALL_GROUPS} className="font-thai">ทุกกลุ่ม</SelectItem>
               {groups.map((g) => (
                 <SelectItem key={g} value={g} className="font-thai">กลุ่ม {g}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {departments.length > 1 && (
+          <Select
+            value={department}
+            onValueChange={(v) => {
+              setDepartment(v)
+              setPage(1)
+            }}
+          >
+            <SelectTrigger className="w-44 font-thai h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_DEPARTMENTS} className="font-thai">ทุกแผนก</SelectItem>
+              {departments.map((d) => (
+                <SelectItem key={d} value={d} className="font-thai">{d}</SelectItem>
               ))}
             </SelectContent>
           </Select>

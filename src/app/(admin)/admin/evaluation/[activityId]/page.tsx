@@ -43,12 +43,13 @@ export default async function ActivityEvaluationPage({ params, searchParams }: P
   if (!activity) redirect("/admin/evaluation")
 
   const backParams = new URLSearchParams({ academicYear, semester })
-  const groupRows = await prisma.student.findMany({
+  const studentRows = await prisma.student.findMany({
     where: { department: { in: clubDepartmentVariants(teacher.club) }, isActive: true, year },
-    select: { group: true },
-    distinct: ["group"],
+    select: { group: true, department: true },
+    distinct: ["group", "department"],
   })
-  const groups = [...new Set(groupRows.map((g) => g.group).filter((g): g is string => g != null))].sort()
+  const groups = [...new Set(studentRows.map((s) => s.group).filter((g): g is string => g != null))].sort()
+  const departments = [...new Set(studentRows.map((s) => s.department))].sort()
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -79,6 +80,7 @@ export default async function ActivityEvaluationPage({ params, searchParams }: P
         academicYear={academicYear}
         semester={semester}
         groups={groups}
+        departments={departments}
       />
     </div>
   )

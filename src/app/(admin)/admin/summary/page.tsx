@@ -110,20 +110,26 @@ export default async function SummaryPage({ searchParams }: PageProps) {
     }
   }
 
-  // Fetch each group's student ids first (cheap, id-only queries), then run
-  // getStudentEvaluations ONCE across every student combined. Calling it once
-  // per (club, year) group here previously meant SUPER_ADMIN's all-clubs view
-  // repeated the same internal department/activity lookups dozens of times
-  // over — the single biggest cost on this page.
-  const groupStudentIds = await Promise.all(
-    [...groupsByKey.values()].map(async (group) => {
-      const students = await prisma.student.findMany({
-        where: { isActive: true, year: group.year, department: { in: group.deptVariants } },
-        select: { id: true },
-      })
-      return { group, studentIds: students.map((s) => s.id) }
-    })
-  )
+  // One bulk fetch of every active student in any involved year, then bucket
+  // into (club, year) groups in memory — instead of one findMany per group
+  // (51 separate queries on the all-clubs SUPER_ADMIN view). Combined with
+  // batching getStudentEvaluations itself, this page now issues a fixed
+  // small number of queries regardless of how many club/year cards it shows.
+  const involvedYears = [...new Set([...groupsByKey.values()].map((g) => g.year))]
+  const candidateStudents =
+    involvedYears.length > 0
+      ? await prisma.student.findMany({
+          where: { isActive: true, year: { in: involvedYears } },
+          select: { id: true, year: true, department: true },
+        })
+      : []
+
+  const groupStudentIds = [...groupsByKey.values()].map((group) => ({
+    group,
+    studentIds: candidateStudents
+      .filter((s) => s.year === group.year && group.deptVariants.includes(s.department))
+      .map((s) => s.id),
+  }))
 
   const allStudentIds = [...new Set(groupStudentIds.flatMap((g) => g.studentIds))]
   const evaluations = await getStudentEvaluations(allStudentIds, academicYear, semester)

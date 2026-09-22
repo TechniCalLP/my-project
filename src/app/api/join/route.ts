@@ -3,6 +3,15 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { joinSchema } from "@/lib/validations"
 import { resolveDepartmentVariants } from "@/lib/department"
+import { isRateLimited, recordAttempt } from "@/lib/rate-limit"
+
+// Codes are 6 characters (3 letters + 3 digits, ~17.5M combinations) with a
+// unique constraint, so guessing one right is astronomically unlikely by hand
+// — but with no limit at all, a script could brute-force one. This only
+// throttles wrong-code guesses (not legitimate join attempts against a real
+// code), so it doesn't get in the way of normal use.
+const MAX_INVALID_CODE_ATTEMPTS = 10
+const RATE_LIMIT_WINDOW_MS = 60_000
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions)
@@ -10,10 +19,17 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 })
   }
 
+  const studentDbId = session.user.id as string
+  const rateLimitKey = `join:${studentDbId}`
+
   const body = await request.json()
   const parsed = joinSchema.safeParse(body)
   if (!parsed.success) {
     return Response.json({ error: parsed.error.issues[0].message }, { status: 400 })
+  }
+
+  if (isRateLimited(rateLimitKey, MAX_INVALID_CODE_ATTEMPTS, RATE_LIMIT_WINDOW_MS)) {
+    return Response.json({ error: "ลองรหัสผิดบ่อยเกินไป กรุณารอสักครู่แล้วลองใหม่" }, { status: 429 })
   }
 
   const { code } = parsed.data
@@ -24,6 +40,7 @@ export async function POST(request: Request) {
   })
 
   if (!activityCode) {
+    recordAttempt(rateLimitKey)
     return Response.json({ error: "รหัสไม่ถูกต้อง" }, { status: 400 })
   }
 
@@ -34,8 +51,6 @@ export async function POST(request: Request) {
   if (activityCode.activity.status !== "ACTIVE") {
     return Response.json({ error: "กิจกรรมนี้ไม่ได้เปิดรับสมัคร" }, { status: 400 })
   }
-
-  const studentDbId = session.user.id as string
 
   const student = await prisma.student.findUniqueOrThrow({
     where: { id: studentDbId },

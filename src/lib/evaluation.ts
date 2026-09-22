@@ -134,11 +134,33 @@ export async function getStudentEvaluations(
     groups.get(key)!.ids.push(s.id)
   }
 
+  // The same raw department string can recur across multiple (year, department)
+  // groups (e.g. one department spans every year level) — cache its resolved
+  // variants/club per call instead of re-querying them for every group.
+  const departmentVariantsCache = new Map<string, Promise<string[]>>()
+  const getDepartmentVariants = (department: string) => {
+    let cached = departmentVariantsCache.get(department)
+    if (!cached) {
+      cached = resolveDepartmentVariants(department)
+      departmentVariantsCache.set(department, cached)
+    }
+    return cached
+  }
+  const clubCache = new Map<string, ReturnType<typeof resolveClubForDepartment>>()
+  const getClub = (department: string) => {
+    let cached = clubCache.get(department)
+    if (!cached) {
+      cached = resolveClubForDepartment(department)
+      clubCache.set(department, cached)
+    }
+    return cached
+  }
+
   await Promise.all(
     [...groups.values()].map(async ({ year, department, ids }) => {
-      const departmentVariants = await resolveDepartmentVariants(department)
+      const departmentVariants = await getDepartmentVariants(department)
       const activityFilter = requiredActivityFilter(year, semester, departmentVariants)
-      const club = await resolveClubForDepartment(department)
+      const club = await getClub(department)
 
       const [requiredActivities, participations, vocationalActivities] = await Promise.all([
         prisma.activity.findMany({ where: activityFilter, select: { id: true, name: true } }),

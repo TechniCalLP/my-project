@@ -88,7 +88,12 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
           }
         }
 
-        const requiredActivityNames = evaluations.get(pageGroup.students[0]?.id ?? "")?.requiredActivityNames ?? []
+        const requiredActivityColumns: { id: string; name: string }[] = []
+        for (const s of pageGroup.students) {
+          for (const a of evaluations.get(s.id)?.requiredActivities ?? []) {
+            if (!requiredActivityColumns.some((c) => c.id === a.id)) requiredActivityColumns.push({ id: a.id, name: a.name })
+          }
+        }
 
         return (
           <div
@@ -120,14 +125,13 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
                     <th className="border border-gray-800 px-2 py-1.5 w-10">ที่</th>
                     <th className="border border-gray-800 px-2 py-1.5 w-32">รหัสนักศึกษา</th>
                     <th className="border border-gray-800 px-2 py-1.5">ชื่อ - สกุล</th>
-                    <th className="border border-gray-800 px-2 py-1.5 w-28">
-                      กิจกรรมภาคบังคับ
-                      {requiredActivityNames.length > 0 && (
-                        <div className="text-[9px] font-normal text-gray-600 mt-0.5">
-                          ({requiredActivityNames.join(", ")})
-                        </div>
-                      )}
-                    </th>
+                    {requiredActivityColumns.length === 0 ? (
+                      <th className="border border-gray-800 px-2 py-1.5 w-28">กิจกรรมภาคบังคับ</th>
+                    ) : (
+                      requiredActivityColumns.map((col) => (
+                        <th key={col.id} className="border border-gray-800 px-2 py-1.5">{col.name}</th>
+                      ))
+                    )}
                     {activityColumns.length === 0 ? (
                       <th className="border border-gray-800 px-2 py-1.5">กิจกรรมองค์การวิชาชีพ</th>
                     ) : (
@@ -141,7 +145,7 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
                 <tbody>
                   {pageGroup.students.map((s, i) => {
                     const evaluation = evaluations.get(s.id)
-                    const participation = evaluation?.participation ?? { progress: 0, status: "PENDING" as PartStatus }
+                    const requiredActivities = evaluation?.requiredActivities ?? []
                     const vocationalActivities = evaluation?.vocationalActivities ?? []
                     const overall = overallForStudent(s.id)
                     return (
@@ -149,9 +153,20 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
                         <td className="border border-gray-800 px-2 py-1 text-center">{i + 1}</td>
                         <td className="border border-gray-800 px-2 py-1 font-mono text-xs">{s.studentId}</td>
                         <td className="border border-gray-800 px-2 py-1 whitespace-nowrap">{s.prefix}{s.firstName} {s.lastName}</td>
-                        <td className="border border-gray-800 px-2 py-1 text-center">
-                          {participation.progress}%
-                        </td>
+                        {requiredActivityColumns.length === 0 ? (
+                          <td className="border border-gray-800 px-2 py-1 text-center">
+                            <span className="text-xs text-gray-400">ไม่มีกิจกรรม</span>
+                          </td>
+                        ) : (
+                          requiredActivityColumns.map((col) => {
+                            const a = requiredActivities.find((ra) => ra.id === col.id)
+                            return (
+                              <td key={col.id} className="border border-gray-800 px-2 py-1 text-center">
+                                {a ? (a.joined ? "ผ่าน" : "ไม่ผ่าน") : "-"}
+                              </td>
+                            )
+                          })
+                        )}
                         {activityColumns.length === 0 ? (
                           <td className="border border-gray-800 px-2 py-1 text-center">
                             <span className="text-xs text-gray-400">ไม่มีกิจกรรม</span>

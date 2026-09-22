@@ -112,7 +112,7 @@ export async function GET(req: NextRequest) {
 
   const totalCols = fixedCols.length + requiredCols.length + vocationalCols.length + tailCols.length
 
-  const activityColWidth = (name: string) => Math.min(Math.max(name.length + 2, 15), 40)
+  const activityColWidth = (name: string) => Math.max(name.length + 2, 15)
 
   sheet.columns = [
     ...fixedCols,
@@ -229,7 +229,7 @@ export async function GET(req: NextRequest) {
       if (requiredActivityNames.length > 0) {
         for (const name of requiredActivityNames) {
           const found = ev.requiredActivities.find((a) => a.name === name)
-          row.getCell(c++).value = found?.joined ? "ผ่าน" : "ไม่ผ่าน"
+          row.getCell(c++).value = found?.joined ? "100%" : "0%"
         }
       } else {
         row.getCell(c++).value = "-"

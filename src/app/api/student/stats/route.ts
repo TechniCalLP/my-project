@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { requiredActivityFilter } from "@/lib/evaluation"
 import { resolveDepartmentVariants } from "@/lib/department"
+import { SEMESTERS } from "@/lib/constants"
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -15,7 +16,9 @@ export async function GET() {
   const studentDept = session.user.department ?? ""
 
   const departmentVariants = await resolveDepartmentVariants(studentDept)
-  const activityFilter = requiredActivityFilter(studentYear, departmentVariants)
+  // No per-student "current semester" selector exists yet — default to the same
+  // period every admin-facing period picker in the app defaults to.
+  const activityFilter = requiredActivityFilter(studentYear, SEMESTERS[0], departmentVariants)
 
   const [joined, total] = await Promise.all([
     prisma.participation.count({ where: { studentId: studentDbId, activity: activityFilter } }),

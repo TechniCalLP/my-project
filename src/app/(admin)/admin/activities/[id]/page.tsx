@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
 import Link from "next/link"
@@ -33,7 +34,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { FileOutput, FileSpreadsheet, FileText, ChevronLeft, ChevronRight, Search } from "lucide-react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import AddParticipantDialog from "@/components/admin/add-participant-dialog"
+import { FileOutput, FileSpreadsheet, FileText, ChevronLeft, ChevronRight, Search, UserPlus } from "lucide-react"
 
 const PARTICIPANTS_PER_PAGE = 10
 const ALL_DEPARTMENTS = "all"
@@ -77,6 +80,8 @@ interface Activity {
   participations: Array<{
     id: string
     joinedAt: string
+    addNote: string | null
+    addedBy: { name: string } | null
     student: {
       id: string
       studentId: string
@@ -91,6 +96,8 @@ interface Activity {
 export default function ActivityDetailPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
+  const { data: session } = useSession()
+  const isSuperAdmin = session?.user.adminRole === "SUPER_ADMIN"
   const [activity, setActivity] = useState<Activity | null>(null)
   const [loading, setLoading] = useState(true)
   const [editOpen, setEditOpen] = useState(false)
@@ -268,10 +275,19 @@ export default function ActivityDetailPage() {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
           <CardTitle className="font-thai">
             ผู้เข้าร่วม ({activity.participations.length} คน)
           </CardTitle>
+          {isSuperAdmin && (
+            <AddParticipantDialog
+              activityId={activity.id}
+              activityTargetYear={activity.targetYear}
+              activityTargetDepartments={activity.targetDepartments}
+              existingStudentIds={activity.participations.map((p) => p.student.id)}
+              onAdded={fetchActivity}
+            />
+          )}
         </CardHeader>
         <CardContent>
           {activity.participations.length === 0 ? (
@@ -338,6 +354,7 @@ export default function ActivityDetailPage() {
                           <TableHead className="font-thai">ระดับชั้น</TableHead>
                           <TableHead className="font-thai">แผนก</TableHead>
                           <TableHead className="font-thai">วันที่เข้าร่วม</TableHead>
+                          <TableHead className="font-thai"></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -349,6 +366,30 @@ export default function ActivityDetailPage() {
                             <TableCell className="font-thai">{p.student.department}</TableCell>
                             <TableCell className="font-thai">
                               {new Date(p.joinedAt).toLocaleDateString("th-TH")}
+                            </TableCell>
+                            <TableCell>
+                              {p.addedBy && (
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <button type="button">
+                                      <Badge
+                                        variant="outline"
+                                        className="font-thai text-xs font-normal gap-1 text-primary-600 border-primary-200 hover:bg-primary-50 cursor-pointer"
+                                      >
+                                        <UserPlus className="w-3 h-3" />
+                                        เพิ่มด้วยตนเอง
+                                      </Badge>
+                                    </button>
+                                  </PopoverTrigger>
+                                  <PopoverContent align="end" className="w-64">
+                                    <div className="space-y-1 text-xs font-thai">
+                                      <p><span className="text-gray-500">เพิ่มโดย:</span> {p.addedBy.name}</p>
+                                      <p><span className="text-gray-500">เมื่อ:</span> {new Date(p.joinedAt).toLocaleString("th-TH")}</p>
+                                      {p.addNote && <p><span className="text-gray-500">เหตุผล:</span> {p.addNote}</p>}
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))}

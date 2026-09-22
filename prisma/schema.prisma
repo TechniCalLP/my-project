@@ -100,7 +100,10 @@ model Participation {
   activityId String?
   activity   Activity? @relation(fields: [activityId], references: [id], onDelete: SetNull)
   joinedAt   DateTime  @default(now())
-  codeUsed   String
+  codeUsed   String?
+  addedById  String?
+  addedBy    Admin?    @relation("ManuallyAddedParticipations", fields: [addedById], references: [id], onDelete: SetNull)
+  addNote    String?
 
   @@unique([studentId, activityId])
   @@index([studentId])
@@ -108,20 +111,21 @@ model Participation {
 }
 
 model Admin {
-  id                      String                             @id @default(cuid())
-  username                String                             @unique
-  password                String
-  name                    String
-  role                    AdminRole                          @default(ADMIN)
-  isFirstLogin            Boolean                            @default(true)
-  clubId                  String?
-  club                    Club?                              @relation(fields: [clubId], references: [id])
-  activities              Activity[]
-  vocationalScoresEntered VocationalActivityScore[]
-  requestedCorrections    VocationalScoreCorrectionRequest[] @relation("RequestedCorrections")
-  reviewedCorrections     VocationalScoreCorrectionRequest[] @relation("ReviewedCorrections")
-  createdAt               DateTime                           @default(now())
-  updatedAt               DateTime                           @updatedAt
+  id                          String                             @id @default(cuid())
+  username                    String                             @unique
+  password                    String
+  name                        String
+  role                        AdminRole                          @default(ADMIN)
+  isFirstLogin                Boolean                            @default(true)
+  clubId                      String?
+  club                        Club?                              @relation(fields: [clubId], references: [id])
+  activities                  Activity[]
+  manuallyAddedParticipations Participation[]                    @relation("ManuallyAddedParticipations")
+  vocationalScoresEntered     VocationalActivityScore[]
+  requestedCorrections        VocationalScoreCorrectionRequest[] @relation("RequestedCorrections")
+  reviewedCorrections         VocationalScoreCorrectionRequest[] @relation("ReviewedCorrections")
+  createdAt                   DateTime                           @default(now())
+  updatedAt                   DateTime                           @updatedAt
 
   @@index([role])
   @@index([clubId])

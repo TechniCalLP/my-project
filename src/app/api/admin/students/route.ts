@@ -4,6 +4,32 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 
+export async function GET(req: NextRequest) {
+  const session = await getServerSession(authOptions)
+  if (!session || (session.user as { role?: string }).role !== "admin") {
+    return Response.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  const search = req.nextUrl.searchParams.get("search")?.trim() ?? ""
+  if (search.length < 2) return Response.json([])
+
+  const students = await prisma.student.findMany({
+    where: {
+      isActive: true,
+      OR: [
+        { studentId: { contains: search } },
+        { firstName: { contains: search } },
+        { lastName: { contains: search } },
+      ],
+    },
+    select: { id: true, studentId: true, prefix: true, firstName: true, lastName: true, year: true, department: true },
+    orderBy: { studentId: "asc" },
+    take: 20,
+  })
+
+  return Response.json(students)
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)

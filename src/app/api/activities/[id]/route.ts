@@ -28,6 +28,7 @@ export async function GET(
               department: true,
             },
           },
+          addedBy: { select: { name: true } },
         },
         orderBy: { joinedAt: "desc" },
       },

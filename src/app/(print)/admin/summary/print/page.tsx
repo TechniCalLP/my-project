@@ -70,6 +70,9 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
 
   return (
     <div className="min-h-screen bg-white font-thai">
+      {formType === "15" && (
+        <style>{"@media print { @page { size: landscape; } }"}</style>
+      )}
       <AutoPrint />
 
       {[...pages.values()].map((pageGroup, pageIndex) => {
@@ -98,7 +101,7 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
         return (
           <div
             key={pageIndex}
-            className={`max-w-4xl mx-auto p-10 print:p-8 ${pageIndex > 0 ? "print:break-before-page" : ""}`}
+            className={`${formType === "15" ? "max-w-[1400px]" : "max-w-4xl"} mx-auto p-10 print:p-8 ${pageIndex > 0 ? "print:break-before-page" : ""}`}
           >
             <p className="text-right text-xs text-gray-400 mb-2">แบบ อวท.{formType}</p>
 
@@ -138,14 +141,14 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
                       <th className="border border-gray-800 px-2 py-1.5 w-28">-</th>
                     ) : (
                       requiredActivityColumns.map((col) => (
-                        <th key={col.id} className="border border-gray-800 px-2 py-1.5">{col.name}</th>
+                        <th key={col.id} className="border border-gray-800 px-2 py-1.5 min-w-[110px]">{col.name}</th>
                       ))
                     )}
                     {activityColumns.length === 0 ? (
                       <th className="border border-gray-800 px-2 py-1.5">-</th>
                     ) : (
                       activityColumns.map((col) => (
-                        <th key={col.id} className="border border-gray-800 px-2 py-1.5">{col.name}</th>
+                        <th key={col.id} className="border border-gray-800 px-2 py-1.5 min-w-[110px]">{col.name}</th>
                       ))
                     )}
                   </tr>

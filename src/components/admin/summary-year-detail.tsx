@@ -16,9 +16,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Loader2, Search, ChevronLeft, ChevronRight, X } from "lucide-react"
+import { PaginationControls } from "@/components/ui/pagination-controls"
+import { Loader2, Search, X } from "lucide-react"
 import { toast } from "sonner"
 import type { PartStatus } from "@/lib/evaluation"
+
+const PAGE_SIZE = 30 // must match PAGE_SIZE in /api/admin/summary/students/route.ts
 
 interface SummaryYearDetailProps {
   year: string
@@ -271,35 +274,14 @@ export default function SummaryYearDetail({
                 </Table>
               </div>
 
-              {data.totalPages > 1 && (
-                <div className="flex items-center justify-between gap-3 px-4 py-3 border-t">
-                  <p className="text-xs text-gray-500 font-thai">
-                    หน้า {data.page}/{data.totalPages} · ทั้งหมด {data.total} คน
-                  </p>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={page <= 1 || loading}
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      className="gap-1 font-thai"
-                    >
-                      <ChevronLeft className="w-3.5 h-3.5" />
-                      ก่อนหน้า
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={page >= data.totalPages || loading}
-                      onClick={() => setPage((p) => Math.min(data.totalPages, p + 1))}
-                      className="gap-1 font-thai"
-                    >
-                      ถัดไป
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <PaginationControls
+                currentPage={page}
+                totalPages={data.totalPages}
+                totalItems={data.total}
+                itemsPerPage={PAGE_SIZE}
+                onPageChange={setPage}
+                disabled={loading}
+              />
             </>
           )}
         </CardContent>

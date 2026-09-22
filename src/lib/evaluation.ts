@@ -27,11 +27,20 @@ export interface StudentEvaluation {
   overall: PartStatus
 }
 
-export function requiredActivityFilter(studentYear: string, departmentVariants: string[]): Prisma.ActivityWhereInput {
+export function requiredActivityFilter(
+  studentYear: string,
+  semester: string,
+  departmentVariants: string[]
+): Prisma.ActivityWhereInput {
   return {
     isDeleted: false,
     targetYear: studentYear,
-    status: ActivityStatus.ACTIVE,
+    targetSemester: semester,
+    // ACTIVE (currently open) and COMPLETED (already happened) both still count toward
+    // the requirement — only DRAFT (not published yet) and CANCELLED (never happened)
+    // should be excluded. Filtering to ACTIVE-only would silently drop an activity from
+    // everyone's required total the moment staff mark it COMPLETED after the event ends.
+    status: { in: [ActivityStatus.ACTIVE, ActivityStatus.COMPLETED] },
     type: ActivityType.MANDATORY,
     OR: [
       { targetDepartments: { isEmpty: true } },
@@ -51,7 +60,7 @@ export async function getStudentEvaluation(
   })
 
   const departmentVariants = await resolveDepartmentVariants(student.department)
-  const activityFilter = requiredActivityFilter(student.year, departmentVariants)
+  const activityFilter = requiredActivityFilter(student.year, semester, departmentVariants)
   const club = await resolveClubForDepartment(student.department)
 
   const [joinedActivities, requiredActivities, vocationalActivities] = await Promise.all([
@@ -128,7 +137,7 @@ export async function getStudentEvaluations(
   await Promise.all(
     [...groups.values()].map(async ({ year, department, ids }) => {
       const departmentVariants = await resolveDepartmentVariants(department)
-      const activityFilter = requiredActivityFilter(year, departmentVariants)
+      const activityFilter = requiredActivityFilter(year, semester, departmentVariants)
       const club = await resolveClubForDepartment(department)
 
       const [requiredActivities, participations, vocationalActivities] = await Promise.all([

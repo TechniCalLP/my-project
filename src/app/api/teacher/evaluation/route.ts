@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get("search")?.trim() ?? ""
     const status = searchParams.get("status") ?? "all"
     const group = searchParams.get("group")
+    const department = searchParams.get("department")
     const activityId = searchParams.get("activityId")
     const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"))
 
@@ -52,8 +53,11 @@ export async function GET(req: NextRequest) {
 
     const activityIds = activities.map((a) => a.id)
 
+    const clubVariants = clubDepartmentVariants(teacher.club)
+    const departmentFilter = department && clubVariants.includes(department) ? department : undefined
+
     const baseWhere = {
-      department: { in: clubDepartmentVariants(teacher.club) },
+      department: departmentFilter ?? { in: clubVariants },
       isActive: true,
       year,
       ...(group ? { group } : {}),

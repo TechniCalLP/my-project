@@ -35,8 +35,9 @@ import {
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { PaginationControls } from "@/components/ui/pagination-controls"
 import AddParticipantDialog from "@/components/admin/add-participant-dialog"
-import { FileOutput, FileSpreadsheet, FileText, ChevronLeft, ChevronRight, Search, UserPlus } from "lucide-react"
+import { FileOutput, FileSpreadsheet, FileText, Search, UserPlus } from "lucide-react"
 
 const PARTICIPANTS_PER_PAGE = 10
 const ALL_DEPARTMENTS = "all"
@@ -395,46 +396,13 @@ export default function ActivityDetailPage() {
                         ))}
                       </TableBody>
                     </Table>
-                    {totalParticipantPages > 1 && (
-                      <div className="flex flex-col items-center gap-2 pt-4">
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setParticipantsPage((p) => p - 1)}
-                            disabled={currentPage === 1}
-                            className="font-thai gap-1"
-                          >
-                            <ChevronLeft className="w-4 h-4" />
-                            ก่อนหน้า
-                          </Button>
-                          {Array.from({ length: totalParticipantPages }, (_, i) => i + 1).map((pageNum) => (
-                            <Button
-                              key={pageNum}
-                              variant={currentPage === pageNum ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => setParticipantsPage(pageNum)}
-                              className="w-9 h-9"
-                            >
-                              {pageNum}
-                            </Button>
-                          ))}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setParticipantsPage((p) => p + 1)}
-                            disabled={currentPage === totalParticipantPages}
-                            className="font-thai gap-1"
-                          >
-                            ถัดไป
-                            <ChevronRight className="w-4 h-4" />
-                          </Button>
-                        </div>
-                        <p className="text-xs text-gray-500 font-thai">
-                          แสดง {(currentPage - 1) * PARTICIPANTS_PER_PAGE + 1}–{Math.min(currentPage * PARTICIPANTS_PER_PAGE, filtered.length)} จาก {filtered.length} คน
-                        </p>
-                      </div>
-                    )}
+                    <PaginationControls
+                      currentPage={currentPage}
+                      totalPages={totalParticipantPages}
+                      totalItems={filtered.length}
+                      itemsPerPage={PARTICIPANTS_PER_PAGE}
+                      onPageChange={setParticipantsPage}
+                    />
                   </>
                 )}
               </>

@@ -16,7 +16,7 @@ const THIN_BORDER = { style: "thin" as const, color: { argb: "FF000000" } }
 const BORDER_ALL = { top: THIN_BORDER, left: THIN_BORDER, bottom: THIN_BORDER, right: THIN_BORDER }
 
 function overallLabel(status: PartStatus) {
-  return status === "PASS" ? "100%" : status === "FAIL" ? "0%" : "รอดำเนินการ"
+  return status === "PASS" ? "ผ่าน" : status === "FAIL" ? "ไม่ผ่าน" : "รอดำเนินการ"
 }
 
 /** Loads the college logo as embeddable image bytes — the custom uploaded logo when it's a

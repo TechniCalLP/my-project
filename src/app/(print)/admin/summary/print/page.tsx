@@ -193,7 +193,7 @@ export default async function PrintSummaryPage({ searchParams }: PageProps) {
                           })
                         )}
                         <td className="border border-gray-800 px-2 py-1 text-center">
-                          {overall === "PASS" ? "100%" : overall === "FAIL" ? "0%" : statusLabel(overall)}
+                          {statusLabel(overall)}
                         </td>
                       </tr>
                     )

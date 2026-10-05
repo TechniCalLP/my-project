@@ -56,7 +56,7 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
         where: { isDeleted: false },
         select: { name: true, _count: { select: { participations: true } } },
         orderBy: { participations: { _count: "desc" } },
-        take: 5,
+        take: 8,
       }),
       prisma.student.findMany({
         select: { year: true, _count: { select: { participations: true } } },

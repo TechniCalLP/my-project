@@ -82,26 +82,25 @@ export default function DashboardEvaluationChart({
 
       <Card>
         <CardHeader>
-          <CardTitle className="font-thai text-base">กิจกรรมที่มีผู้เข้าร่วมมากที่สุด 5 อันดับ</CardTitle>
+          <CardTitle className="font-thai text-base">กิจกรรมที่มีผู้เข้าร่วมมากที่สุด</CardTitle>
         </CardHeader>
         <CardContent>
           {topActivities.length === 0 ? (
             <p className="text-center text-gray-400 font-thai py-16 text-sm">ยังไม่มีผู้เข้าร่วมกิจกรรม</p>
           ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={topActivities} margin={{ top: 8, bottom: 56, left: 0, right: 8 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={topActivities} layout="vertical" margin={{ left: 10, right: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                <YAxis
+                  type="category"
                   dataKey="name"
+                  width={120}
                   tick={{ fontSize: 11 }}
-                  tickFormatter={(value: string) => truncateLabel(value)}
-                  angle={-25}
-                  textAnchor="end"
-                  interval={0}
+                  tickFormatter={(value: string) => truncateLabel(value, 16)}
                 />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                 <Tooltip />
-                <Bar dataKey="participants" name="ผู้เข้าร่วม" fill="#2E3192" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="participants" name="ผู้เข้าร่วม" fill="#2E3192" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}

@@ -6,7 +6,7 @@ import { Printer } from "lucide-react"
 
 export default function AutoPrint() {
   useEffect(() => {
-    const t = setTimeout(() => window.print(), 400)
+    const t = setTimeout(() => window.print(), 700)
     return () => clearTimeout(t)
   }, [])
 

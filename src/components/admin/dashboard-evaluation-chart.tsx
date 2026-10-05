@@ -20,6 +20,7 @@ interface DashboardEvaluationChartProps {
   failCount: number
   pendingCount: number
   topActivities: { name: string; participants: number }[]
+  participationByYear: { year: string; participants: number }[]
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -28,7 +29,7 @@ const STATUS_COLORS: Record<string, string> = {
   "รอดำเนินการ": "#9CA3AF",
 }
 
-function truncateLabel(name: string, max = 16) {
+function truncateLabel(name: string, max = 12) {
   return name.length > max ? `${name.slice(0, max)}…` : name
 }
 
@@ -37,6 +38,7 @@ export default function DashboardEvaluationChart({
   failCount,
   pendingCount,
   topActivities,
+  participationByYear,
 }: DashboardEvaluationChartProps) {
   const total = passCount + failCount + pendingCount
   const pieData = [
@@ -80,28 +82,46 @@ export default function DashboardEvaluationChart({
 
       <Card>
         <CardHeader>
-          <CardTitle className="font-thai text-base">กิจกรรมที่มีผู้เข้าร่วมมากที่สุด</CardTitle>
+          <CardTitle className="font-thai text-base">กิจกรรมที่มีผู้เข้าร่วมมากที่สุด 5 อันดับ</CardTitle>
         </CardHeader>
         <CardContent>
           {topActivities.length === 0 ? (
             <p className="text-center text-gray-400 font-thai py-16 text-sm">ยังไม่มีผู้เข้าร่วมกิจกรรม</p>
           ) : (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={topActivities} layout="vertical" margin={{ left: 10, right: 16 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                <YAxis
-                  type="category"
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={topActivities} margin={{ top: 8, bottom: 56, left: 0, right: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis
                   dataKey="name"
-                  width={120}
                   tick={{ fontSize: 11 }}
                   tickFormatter={(value: string) => truncateLabel(value)}
+                  angle={-25}
+                  textAnchor="end"
+                  interval={0}
                 />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                 <Tooltip />
-                <Bar dataKey="participants" name="ผู้เข้าร่วม" fill="#2E3192" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="participants" name="ผู้เข้าร่วม" fill="#2E3192" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="lg:col-span-2">
+        <CardHeader>
+          <CardTitle className="font-thai text-base">แนวโน้มชั้นปีที่เข้าร่วมกิจกรรมมากที่สุด</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={participationByYear} margin={{ top: 8, bottom: 8, left: 0, right: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="year" tick={{ fontSize: 12 }} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+              <Tooltip />
+              <Bar dataKey="participants" name="ผู้เข้าร่วม" fill="#676FBF" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </CardContent>
       </Card>
     </div>

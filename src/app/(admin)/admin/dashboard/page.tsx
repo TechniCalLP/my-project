@@ -11,7 +11,7 @@ import DashboardEvaluationChart from "@/components/admin/dashboard-evaluation-ch
 import EvaluationPeriodSelect from "@/components/admin/evaluation-period-select"
 import { Suspense } from "react"
 import ExportDropdown from "@/components/admin/export-dropdown"
-import { ACADEMIC_YEARS, SEMESTERS } from "@/lib/constants"
+import { ACADEMIC_YEARS, SEMESTERS, YEARS } from "@/lib/constants"
 import { getStudentEvaluations } from "@/lib/evaluation"
 
 interface PageProps {
@@ -50,13 +50,16 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
 
   let evaluationChart = null
   if (isManagement) {
-    const [activeStudents, topActivitiesRaw] = await Promise.all([
+    const [activeStudents, topActivitiesRaw, studentsWithParticipationCounts] = await Promise.all([
       prisma.student.findMany({ where: { isActive: true }, select: { id: true } }),
       prisma.activity.findMany({
         where: { isDeleted: false },
         select: { name: true, _count: { select: { participations: true } } },
         orderBy: { participations: { _count: "desc" } },
-        take: 8,
+        take: 5,
+      }),
+      prisma.student.findMany({
+        select: { year: true, _count: { select: { participations: true } } },
       }),
     ])
 
@@ -74,7 +77,13 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
       .filter((a) => a._count.participations > 0)
       .map((a) => ({ name: a.name, participants: a._count.participations }))
 
-    evaluationChart = { passCount, failCount, pendingCount, topActivities }
+    const participationByYearMap = new Map<string, number>()
+    for (const s of studentsWithParticipationCounts) {
+      participationByYearMap.set(s.year, (participationByYearMap.get(s.year) ?? 0) + s._count.participations)
+    }
+    const participationByYear = YEARS.map((year) => ({ year, participants: participationByYearMap.get(year) ?? 0 }))
+
+    evaluationChart = { passCount, failCount, pendingCount, topActivities, participationByYear }
   }
 
   return (
@@ -106,6 +115,7 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
             failCount={evaluationChart.failCount}
             pendingCount={evaluationChart.pendingCount}
             topActivities={evaluationChart.topActivities}
+            participationByYear={evaluationChart.participationByYear}
           />
         </div>
       )}

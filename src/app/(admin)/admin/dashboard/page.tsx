@@ -59,6 +59,7 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
         take: 8,
       }),
       prisma.student.findMany({
+        where: { isActive: true },
         select: { year: true, _count: { select: { participations: true } } },
       }),
     ])
@@ -77,11 +78,21 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
       .filter((a) => a._count.participations > 0)
       .map((a) => ({ name: a.name, participants: a._count.participations }))
 
-    const participationByYearMap = new Map<string, number>()
+    // Participation RATE per year level (% of that year's own students who joined at
+    // least one activity) — not a raw total, since year levels have different student
+    // counts and activity loads, so raw totals aren't directly comparable.
+    const yearTotals = new Map<string, { total: number; participated: number }>()
     for (const s of studentsWithParticipationCounts) {
-      participationByYearMap.set(s.year, (participationByYearMap.get(s.year) ?? 0) + s._count.participations)
+      const entry = yearTotals.get(s.year) ?? { total: 0, participated: 0 }
+      entry.total++
+      if (s._count.participations > 0) entry.participated++
+      yearTotals.set(s.year, entry)
     }
-    const participationByYear = YEARS.map((year) => ({ year, participants: participationByYearMap.get(year) ?? 0 }))
+    const participationByYear = YEARS.map((year) => {
+      const entry = yearTotals.get(year) ?? { total: 0, participated: 0 }
+      const rate = entry.total > 0 ? Math.round((entry.participated / entry.total) * 100) : 0
+      return { year, rate, participated: entry.participated, total: entry.total }
+    })
 
     evaluationChart = { passCount, failCount, pendingCount, topActivities, participationByYear }
   }

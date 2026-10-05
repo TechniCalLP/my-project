@@ -20,7 +20,7 @@ interface DashboardEvaluationChartProps {
   failCount: number
   pendingCount: number
   topActivities: { name: string; participants: number }[]
-  participationByYear: { year: string; participants: number }[]
+  participationByYear: { year: string; rate: number; participated: number; total: number }[]
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -109,16 +109,21 @@ export default function DashboardEvaluationChart({
 
       <Card className="lg:col-span-2">
         <CardHeader>
-          <CardTitle className="font-thai text-base">แนวโน้มชั้นปีที่เข้าร่วมกิจกรรมมากที่สุด</CardTitle>
+          <CardTitle className="font-thai text-base">อัตราการเข้าร่วมกิจกรรมแยกตามชั้นปี (% ของนักศึกษาในชั้นปีนั้น)</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={participationByYear} margin={{ top: 8, bottom: 8, left: 0, right: 8 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="year" tick={{ fontSize: 12 }} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Bar dataKey="participants" name="ผู้เข้าร่วม" fill="#676FBF" radius={[4, 4, 0, 0]} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} domain={[0, 100]} unit="%" />
+              <Tooltip
+                formatter={(value, _name, item) => {
+                  const payload = item?.payload as { participated?: number; total?: number } | undefined
+                  return [`${value}% (${payload?.participated ?? 0}/${payload?.total ?? 0} คน)`, "อัตราเข้าร่วม"]
+                }}
+              />
+              <Bar dataKey="rate" name="อัตราเข้าร่วม" fill="#676FBF" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>

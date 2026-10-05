@@ -1,15 +1,19 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import * as XLSX from "xlsx"
-import { CATEGORY_NAMES } from "@/lib/constants"
+import { CATEGORY_NAMES, ACADEMIC_YEARS, SEMESTERS } from "@/lib/constants"
+import { getStudentEvaluations } from "@/lib/evaluation"
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as { role?: string }).role !== "admin") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
+
+  const academicYear = req.nextUrl.searchParams.get("academicYear") ?? ACADEMIC_YEARS[0]
+  const semester = req.nextUrl.searchParams.get("semester") ?? SEMESTERS[0]
 
   const [students, activities, participations] = await Promise.all([
     prisma.student.findMany({
@@ -66,6 +70,39 @@ export async function GET() {
   const wsCat = XLSX.utils.json_to_sheet(catRows)
   wsCat["!cols"] = [{ wch: 20 }, { wch: 14 }, { wch: 14 }]
   XLSX.utils.book_append_sheet(wb, wsCat, "กิจกรรมแยกประเภท")
+
+  // Sheet 4: Pass/fail evaluation summary for the selected period
+  const activeStudentIds = (
+    await prisma.student.findMany({ where: { isActive: true }, select: { id: true } })
+  ).map((s) => s.id)
+  const evaluations = await getStudentEvaluations(activeStudentIds, academicYear, semester)
+  let passCount = 0
+  let failCount = 0
+  let pendingCount = 0
+  for (const ev of evaluations.values()) {
+    if (ev.overall === "PASS") passCount++
+    else if (ev.overall === "FAIL") failCount++
+    else pendingCount++
+  }
+  const wsEval = XLSX.utils.json_to_sheet([
+    { "หัวข้อ": "ปีการศึกษา", "ค่า": academicYear },
+    { "หัวข้อ": "ภาคเรียน", "ค่า": semester },
+    { "หัวข้อ": "ผ่าน", "ค่า": passCount },
+    { "หัวข้อ": "ไม่ผ่าน", "ค่า": failCount },
+    { "หัวข้อ": "รอดำเนินการ", "ค่า": pendingCount },
+  ])
+  wsEval["!cols"] = [{ wch: 20 }, { wch: 20 }]
+  XLSX.utils.book_append_sheet(wb, wsEval, "ผลการประเมิน")
+
+  // Sheet 5: Top activities by participant count
+  const topActivityRows = [...activities]
+    .sort((a, b) => b._count.participations - a._count.participations)
+    .filter((a) => a._count.participations > 0)
+    .slice(0, 20)
+    .map((a, i) => ({ "ลำดับ": i + 1, "ชื่อกิจกรรม": a.name, "ผู้เข้าร่วม": a._count.participations }))
+  const wsTopActivities = XLSX.utils.json_to_sheet(topActivityRows)
+  wsTopActivities["!cols"] = [{ wch: 6 }, { wch: 50 }, { wch: 12 }]
+  XLSX.utils.book_append_sheet(wb, wsTopActivities, "กิจกรรมยอดนิยม")
 
   const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" })
   const fileName = `dashboard_${new Date().toISOString().slice(0, 10)}.xlsx`

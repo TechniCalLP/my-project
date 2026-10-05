@@ -7,12 +7,25 @@ import { Button } from "@/components/ui/button"
 import { ActivityStatus } from "@/generated/prisma"
 import StatsCards from "@/components/admin/stats-cards"
 import RecentActivities from "@/components/admin/recent-activities"
+import DashboardEvaluationChart from "@/components/admin/dashboard-evaluation-chart"
+import EvaluationPeriodSelect from "@/components/admin/evaluation-period-select"
 import { Suspense } from "react"
 import ExportDropdown from "@/components/admin/export-dropdown"
+import { ACADEMIC_YEARS, SEMESTERS } from "@/lib/constants"
+import { getStudentEvaluations } from "@/lib/evaluation"
 
-export default async function AdminDashboardPage() {
+interface PageProps {
+  searchParams: Promise<{ academicYear?: string; semester?: string }>
+}
+
+export default async function AdminDashboardPage({ searchParams }: PageProps) {
   const session = await getServerSession(authOptions)
   if (!session || session.user.role !== "admin") redirect("/admin/login")
+
+  const isManagement = session.user.adminRole !== "TEACHER"
+  const params = await searchParams
+  const academicYear = params.academicYear ?? ACADEMIC_YEARS[0]
+  const semester = params.semester ?? SEMESTERS[0]
 
   const [totalActivities, activeActivities, totalStudents, totalParticipations, recentActivities] =
     await Promise.all([
@@ -35,6 +48,35 @@ export default async function AdminDashboardPage() {
     { label: "การเข้าร่วมทั้งหมด", value: totalParticipations, icon: "clipboard" as const },
   ]
 
+  let evaluationChart = null
+  if (isManagement) {
+    const [activeStudents, topActivitiesRaw] = await Promise.all([
+      prisma.student.findMany({ where: { isActive: true }, select: { id: true } }),
+      prisma.activity.findMany({
+        where: { isDeleted: false },
+        select: { name: true, _count: { select: { participations: true } } },
+        orderBy: { participations: { _count: "desc" } },
+        take: 8,
+      }),
+    ])
+
+    const evaluations = await getStudentEvaluations(activeStudents.map((s) => s.id), academicYear, semester)
+    let passCount = 0
+    let failCount = 0
+    let pendingCount = 0
+    for (const ev of evaluations.values()) {
+      if (ev.overall === "PASS") passCount++
+      else if (ev.overall === "FAIL") failCount++
+      else pendingCount++
+    }
+
+    const topActivities = topActivitiesRaw
+      .filter((a) => a._count.participations > 0)
+      .map((a) => ({ name: a.name, participants: a._count.participations }))
+
+    evaluationChart = { passCount, failCount, pendingCount, topActivities }
+  }
+
   return (
     <div className="p-4 md:p-8 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -42,7 +84,7 @@ export default async function AdminDashboardPage() {
         <div className="flex gap-2">
           <Suspense>
             <ExportDropdown
-              excelUrl="/api/admin/export/dashboard"
+              excelUrl={`/api/admin/export/dashboard?academicYear=${encodeURIComponent(academicYear)}&semester=${encodeURIComponent(semester)}`}
               printUrl="/admin/print/dashboard"
             />
           </Suspense>
@@ -53,6 +95,20 @@ export default async function AdminDashboardPage() {
       </div>
 
       <StatsCards stats={stats} />
+
+      {evaluationChart && (
+        <div className="space-y-4">
+          <Suspense>
+            <EvaluationPeriodSelect academicYear={academicYear} semester={semester} basePath="/admin/dashboard" />
+          </Suspense>
+          <DashboardEvaluationChart
+            passCount={evaluationChart.passCount}
+            failCount={evaluationChart.failCount}
+            pendingCount={evaluationChart.pendingCount}
+            topActivities={evaluationChart.topActivities}
+          />
+        </div>
+      )}
 
       <RecentActivities activities={recentActivities} />
     </div>

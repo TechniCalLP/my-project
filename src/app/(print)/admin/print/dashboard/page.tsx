@@ -2,16 +2,28 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
-import { CATEGORY_NAMES } from "@/lib/constants"
+import { CATEGORY_NAMES, ACADEMIC_YEARS, SEMESTERS, YEARS } from "@/lib/constants"
+import { getStudentEvaluations } from "@/lib/evaluation"
 import AutoPrint from "@/components/admin/auto-print"
+import DashboardEvaluationChart from "@/components/admin/dashboard-evaluation-chart"
 
-export default async function PrintDashboardPage() {
+interface PageProps {
+  searchParams: Promise<{ academicYear?: string; semester?: string }>
+}
+
+export default async function PrintDashboardPage({ searchParams }: PageProps) {
   const session = await getServerSession(authOptions)
   if (!session || (session.user as { role?: string }).role !== "admin") redirect("/admin/login")
 
+  const isManagement = (session.user as { adminRole?: string }).adminRole !== "TEACHER"
+  const params = await searchParams
+  const academicYear = params.academicYear ?? ACADEMIC_YEARS[0]
+  const semester = params.semester ?? SEMESTERS[0]
+
   const [students, activities, participations] = await Promise.all([
-    prisma.student.findMany({ select: { department: true, year: true, isActive: true } }),
+    prisma.student.findMany({ select: { id: true, department: true, year: true, isActive: true } }),
     prisma.activity.findMany({
+      where: { isDeleted: false },
       include: { _count: { select: { participations: true } } },
     }),
     prisma.participation.count(),
@@ -28,6 +40,49 @@ export default async function PrintDashboardPage() {
     byCat[name].total++
     byCat[name].participants += a._count.participations
   })
+
+  let evaluationChart = null
+  if (isManagement) {
+    const activeStudents = students.filter((s) => s.isActive)
+
+    const [evaluations, studentsWithParticipationCounts] = await Promise.all([
+      getStudentEvaluations(activeStudents.map((s) => s.id), academicYear, semester),
+      prisma.student.findMany({
+        where: { isActive: true },
+        select: { year: true, _count: { select: { participations: true } } },
+      }),
+    ])
+
+    let passCount = 0
+    let failCount = 0
+    let pendingCount = 0
+    for (const ev of evaluations.values()) {
+      if (ev.overall === "PASS") passCount++
+      else if (ev.overall === "FAIL") failCount++
+      else pendingCount++
+    }
+
+    const topActivities = [...activities]
+      .sort((a, b) => b._count.participations - a._count.participations)
+      .filter((a) => a._count.participations > 0)
+      .slice(0, 8)
+      .map((a) => ({ name: a.name, participants: a._count.participations }))
+
+    const yearTotals = new Map<string, { total: number; participated: number }>()
+    for (const s of studentsWithParticipationCounts) {
+      const entry = yearTotals.get(s.year) ?? { total: 0, participated: 0 }
+      entry.total++
+      if (s._count.participations > 0) entry.participated++
+      yearTotals.set(s.year, entry)
+    }
+    const participationByYear = YEARS.map((year) => {
+      const entry = yearTotals.get(year) ?? { total: 0, participated: 0 }
+      const rate = entry.total > 0 ? Math.round((entry.participated / entry.total) * 100) : 0
+      return { year, rate, participated: entry.participated, total: entry.total }
+    })
+
+    evaluationChart = { passCount, failCount, pendingCount, topActivities, participationByYear }
+  }
 
   const printedAt = new Date().toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" })
 
@@ -58,6 +113,22 @@ export default async function PrintDashboardPage() {
             ))}
           </div>
         </div>
+
+        {/* Evaluation charts */}
+        {evaluationChart && (
+          <div>
+            <h2 className="font-semibold text-blue-800 mb-3">
+              สถิติการเข้าร่วมกิจกรรม (ปีการศึกษา {academicYear} ภาคเรียนที่ {semester})
+            </h2>
+            <DashboardEvaluationChart
+              passCount={evaluationChart.passCount}
+              failCount={evaluationChart.failCount}
+              pendingCount={evaluationChart.pendingCount}
+              topActivities={evaluationChart.topActivities}
+              participationByYear={evaluationChart.participationByYear}
+            />
+          </div>
+        )}
 
         {/* By department */}
         <div>

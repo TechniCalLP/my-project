@@ -105,7 +105,7 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
           <Suspense>
             <ExportDropdown
               excelUrl={`/api/admin/export/dashboard?academicYear=${encodeURIComponent(academicYear)}&semester=${encodeURIComponent(semester)}`}
-              printUrl="/admin/print/dashboard"
+              printUrl={`/admin/print/dashboard?academicYear=${encodeURIComponent(academicYear)}&semester=${encodeURIComponent(semester)}`}
             />
           </Suspense>
           <Link href="/admin/activities/new">

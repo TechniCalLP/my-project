@@ -116,7 +116,12 @@ export default function DashboardEvaluationChart({
             <BarChart data={participationByYear} margin={{ top: 8, bottom: 8, left: 0, right: 8 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="year" tick={{ fontSize: 12 }} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} domain={[0, 100]} unit="%" />
+              <YAxis
+                allowDecimals={false}
+                tick={{ fontSize: 11 }}
+                domain={[(dataMin: number) => Math.max(0, Math.floor(dataMin / 10) * 10), 100]}
+                unit="%"
+              />
               <Tooltip
                 formatter={(value, _name, item) => {
                   const payload = item?.payload as { participated?: number; total?: number } | undefined

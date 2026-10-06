@@ -27,6 +27,23 @@ export interface StudentEvaluation {
   overall: PartStatus
 }
 
+export function summarizeRequiredActivities(
+  evaluations: Map<string, StudentEvaluation>
+): { name: string; passed: number; failed: number }[] {
+  const byName = new Map<string, { passed: number; failed: number }>()
+  for (const ev of evaluations.values()) {
+    for (const act of ev.requiredActivities) {
+      const entry = byName.get(act.name) ?? { passed: 0, failed: 0 }
+      if (act.joined) entry.passed++
+      else entry.failed++
+      byName.set(act.name, entry)
+    }
+  }
+  return [...byName.entries()]
+    .map(([name, counts]) => ({ name, ...counts }))
+    .sort((a, b) => a.name.localeCompare(b.name, "th"))
+}
+
 export function requiredActivityFilter(
   studentYear: string,
   semester: string,

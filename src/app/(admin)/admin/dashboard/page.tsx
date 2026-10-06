@@ -12,7 +12,7 @@ import EvaluationPeriodSelect from "@/components/admin/evaluation-period-select"
 import { Suspense } from "react"
 import ExportDropdown from "@/components/admin/export-dropdown"
 import { ACADEMIC_YEARS, SEMESTERS, YEARS } from "@/lib/constants"
-import { getStudentEvaluations } from "@/lib/evaluation"
+import { getStudentEvaluations, summarizeRequiredActivities } from "@/lib/evaluation"
 
 interface PageProps {
   searchParams: Promise<{ academicYear?: string; semester?: string }>
@@ -94,7 +94,9 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
       return { year, rate, participated: entry.participated, total: entry.total }
     })
 
-    evaluationChart = { passCount, failCount, pendingCount, topActivities, participationByYear }
+    const activityPassFail = summarizeRequiredActivities(evaluations)
+
+    evaluationChart = { passCount, failCount, pendingCount, topActivities, participationByYear, activityPassFail }
   }
 
   return (
@@ -127,6 +129,7 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
             pendingCount={evaluationChart.pendingCount}
             topActivities={evaluationChart.topActivities}
             participationByYear={evaluationChart.participationByYear}
+            activityPassFail={evaluationChart.activityPassFail}
           />
         </div>
       )}

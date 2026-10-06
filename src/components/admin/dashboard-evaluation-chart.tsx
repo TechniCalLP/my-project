@@ -21,11 +21,12 @@ interface DashboardEvaluationChartProps {
   pendingCount: number
   topActivities: { name: string; participants: number }[]
   participationByYear: { year: string; rate: number; participated: number; total: number }[]
+  activityPassFail: { name: string; passed: number; failed: number }[]
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  "ผ่าน": "#2E9283",
-  "ไม่ผ่าน": "#EF4444",
+  "ผ่าน": "#15803D",
+  "ไม่ผ่าน": "#DC2626",
   "รอดำเนินการ": "#9CA3AF",
 }
 
@@ -39,6 +40,7 @@ export default function DashboardEvaluationChart({
   pendingCount,
   topActivities,
   participationByYear,
+  activityPassFail,
 }: DashboardEvaluationChartProps) {
   const total = passCount + failCount + pendingCount
   const pieData = [
@@ -131,6 +133,35 @@ export default function DashboardEvaluationChart({
               <Bar dataKey="rate" name="อัตราเข้าร่วม" fill="#676FBF" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      <Card className="lg:col-span-2">
+        <CardHeader>
+          <CardTitle className="font-thai text-base">จำนวนผ่าน / ไม่ผ่าน แยกตามกิจกรรมบังคับ</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {activityPassFail.length === 0 ? (
+            <p className="text-center text-gray-400 font-thai py-16 text-sm">ยังไม่มีกิจกรรมบังคับสำหรับภาคเรียนนี้</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={Math.max(280, activityPassFail.length * 44 + 80)}>
+              <BarChart data={activityPassFail} layout="vertical" margin={{ left: 10, right: 16 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  width={160}
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={(value: string) => truncateLabel(value, 22)}
+                />
+                <Tooltip />
+                <Legend wrapperStyle={{ fontFamily: "inherit" }} />
+                <Bar dataKey="passed" name="ผ่าน" fill={STATUS_COLORS["ผ่าน"]} radius={[0, 4, 4, 0]} />
+                <Bar dataKey="failed" name="ไม่ผ่าน" fill={STATUS_COLORS["ไม่ผ่าน"]} radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </CardContent>
       </Card>
     </div>

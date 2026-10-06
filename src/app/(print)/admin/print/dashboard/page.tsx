@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { CATEGORY_NAMES, ACADEMIC_YEARS, SEMESTERS, YEARS } from "@/lib/constants"
-import { getStudentEvaluations } from "@/lib/evaluation"
+import { getStudentEvaluations, summarizeRequiredActivities } from "@/lib/evaluation"
 import AutoPrint from "@/components/admin/auto-print"
 import DashboardEvaluationChart from "@/components/admin/dashboard-evaluation-chart"
 
@@ -81,7 +81,9 @@ export default async function PrintDashboardPage({ searchParams }: PageProps) {
       return { year, rate, participated: entry.participated, total: entry.total }
     })
 
-    evaluationChart = { passCount, failCount, pendingCount, topActivities, participationByYear }
+    const activityPassFail = summarizeRequiredActivities(evaluations)
+
+    evaluationChart = { passCount, failCount, pendingCount, topActivities, participationByYear, activityPassFail }
   }
 
   const printedAt = new Date().toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" })
@@ -126,6 +128,7 @@ export default async function PrintDashboardPage({ searchParams }: PageProps) {
               pendingCount={evaluationChart.pendingCount}
               topActivities={evaluationChart.topActivities}
               participationByYear={evaluationChart.participationByYear}
+              activityPassFail={evaluationChart.activityPassFail}
             />
           </div>
         )}

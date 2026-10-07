@@ -11,8 +11,8 @@ import DashboardEvaluationChart from "@/components/admin/dashboard-evaluation-ch
 import EvaluationPeriodSelect from "@/components/admin/evaluation-period-select"
 import { Suspense } from "react"
 import ExportDropdown from "@/components/admin/export-dropdown"
-import { ACADEMIC_YEARS, SEMESTERS, YEARS } from "@/lib/constants"
-import { getStudentEvaluations, summarizeRequiredActivities } from "@/lib/evaluation"
+import { ACADEMIC_YEARS, SEMESTERS } from "@/lib/constants"
+import { getStudentEvaluations, buildDashboardBreakdown } from "@/lib/evaluation"
 
 interface PageProps {
   searchParams: Promise<{ academicYear?: string; semester?: string }>
@@ -50,53 +50,13 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
 
   let evaluationChart = null
   if (isManagement) {
-    const [activeStudents, topActivitiesRaw, studentsWithParticipationCounts] = await Promise.all([
-      prisma.student.findMany({ where: { isActive: true }, select: { id: true } }),
-      prisma.activity.findMany({
-        where: { isDeleted: false },
-        select: { name: true, _count: { select: { participations: true } } },
-        orderBy: { participations: { _count: "desc" } },
-        take: 8,
-      }),
-      prisma.student.findMany({
-        where: { isActive: true },
-        select: { year: true, _count: { select: { participations: true } } },
-      }),
-    ])
-
-    const evaluations = await getStudentEvaluations(activeStudents.map((s) => s.id), academicYear, semester)
-    let passCount = 0
-    let failCount = 0
-    let pendingCount = 0
-    for (const ev of evaluations.values()) {
-      if (ev.overall === "PASS") passCount++
-      else if (ev.overall === "FAIL") failCount++
-      else pendingCount++
-    }
-
-    const topActivities = topActivitiesRaw
-      .filter((a) => a._count.participations > 0)
-      .map((a) => ({ name: a.name, participants: a._count.participations }))
-
-    // Participation RATE per year level (% of that year's own students who joined at
-    // least one activity) — not a raw total, since year levels have different student
-    // counts and activity loads, so raw totals aren't directly comparable.
-    const yearTotals = new Map<string, { total: number; participated: number }>()
-    for (const s of studentsWithParticipationCounts) {
-      const entry = yearTotals.get(s.year) ?? { total: 0, participated: 0 }
-      entry.total++
-      if (s._count.participations > 0) entry.participated++
-      yearTotals.set(s.year, entry)
-    }
-    const participationByYear = YEARS.map((year) => {
-      const entry = yearTotals.get(year) ?? { total: 0, participated: 0 }
-      const rate = entry.total > 0 ? Math.round((entry.participated / entry.total) * 100) : 0
-      return { year, rate, participated: entry.participated, total: entry.total }
+    const activeStudents = await prisma.student.findMany({
+      where: { isActive: true },
+      select: { id: true, year: true },
     })
 
-    const activityPassFail = summarizeRequiredActivities(evaluations)
-
-    evaluationChart = { passCount, failCount, pendingCount, topActivities, participationByYear, activityPassFail }
+    const evaluations = await getStudentEvaluations(activeStudents.map((s) => s.id), academicYear, semester)
+    evaluationChart = buildDashboardBreakdown(activeStudents, evaluations)
   }
 
   return (
@@ -124,12 +84,12 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
             <EvaluationPeriodSelect academicYear={academicYear} semester={semester} basePath="/admin/dashboard" />
           </Suspense>
           <DashboardEvaluationChart
+            totalStudents={evaluationChart.totalStudents}
             passCount={evaluationChart.passCount}
             failCount={evaluationChart.failCount}
-            pendingCount={evaluationChart.pendingCount}
-            topActivities={evaluationChart.topActivities}
-            participationByYear={evaluationChart.participationByYear}
-            activityPassFail={evaluationChart.activityPassFail}
+            byYear={evaluationChart.byYear}
+            categoryFailCounts={evaluationChart.categoryFailCounts}
+            heatmap={evaluationChart.heatmap}
           />
         </div>
       )}

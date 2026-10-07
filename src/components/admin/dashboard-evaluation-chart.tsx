@@ -12,156 +12,285 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
+  LabelList,
 } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 interface DashboardEvaluationChartProps {
+  totalStudents: number
   passCount: number
   failCount: number
-  pendingCount: number
-  topActivities: { name: string; participants: number }[]
-  participationByYear: { year: string; rate: number; participated: number; total: number }[]
-  activityPassFail: { name: string; passed: number; failed: number }[]
+  byYear: { year: string; total: number; passed: number; failed: number; rateLabel: string }[]
+  categoryFailCounts: { category: string; passed: number; failed: number }[]
+  heatmap: { year: string; category: string; failRate: number }[]
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  "ผ่าน": "#15803D",
-  "ไม่ผ่าน": "#DC2626",
-  "รอดำเนินการ": "#9CA3AF",
-}
+const PASS_COLOR = "#15803D"
+const FAIL_COLOR = "#DC2626"
+const NEUTRAL_COLOR = "#9CA3AF"
 
 function truncateLabel(name: string, max = 12) {
   return name.length > max ? `${name.slice(0, max)}…` : name
 }
 
+function heatCellStyle(failRate: number) {
+  // Single-hue sequential ramp (same red as FAIL_COLOR) — opacity rises with
+  // the fail rate so 0% reads as white and 100% reads as solid red.
+  const alpha = 0.06 + (failRate / 100) * 0.78
+  return {
+    backgroundColor: `rgba(220, 38, 38, ${alpha.toFixed(2)})`,
+    color: failRate >= 55 ? "#ffffff" : "#7f1d1d",
+  }
+}
+
 export default function DashboardEvaluationChart({
+  totalStudents,
   passCount,
   failCount,
-  pendingCount,
-  topActivities,
-  participationByYear,
-  activityPassFail,
+  byYear,
+  categoryFailCounts,
+  heatmap,
 }: DashboardEvaluationChartProps) {
-  const total = passCount + failCount + pendingCount
+  if (totalStudents === 0) {
+    return <p className="text-center text-gray-400 font-thai py-16 text-sm">ยังไม่มีข้อมูลสำหรับภาคเรียนนี้</p>
+  }
+
+  const passRate = Math.round((passCount / totalStudents) * 1000) / 10
+  const failRate = Math.round((failCount / totalStudents) * 1000) / 10
+
   const pieData = [
     { name: "ผ่าน", value: passCount },
     { name: "ไม่ผ่าน", value: failCount },
-    { name: "รอดำเนินการ", value: pendingCount },
   ]
 
+  const rankedCategories = [...categoryFailCounts].sort((a, b) => b.failed - a.failed)
+  const worstCategory = rankedCategories[0]
+
+  const categories = categoryFailCounts.map((c) => c.category)
+  const heatmapByYear = byYear.map(({ year }) => ({
+    year,
+    cells: categories.map((category) => heatmap.find((h) => h.year === year && h.category === category)),
+  }))
+
   return (
-    <div className="font-thai grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-thai text-base">สัดส่วนผลการประเมินกิจกรรมบังคับ ({total.toLocaleString("th-TH")} คน)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {total === 0 ? (
-            <p className="text-center text-gray-400 font-thai py-16 text-sm">ยังไม่มีข้อมูลสำหรับภาคเรียนนี้</p>
-          ) : (
+    <div className="font-thai space-y-4">
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-gray-500">นักศึกษาทั้งหมด</p>
+            <p className="text-3xl font-bold mt-1">{totalStudents.toLocaleString("th-TH")}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-gray-500">ผ่าน <span className="text-xs">({passRate}%)</span></p>
+            <p className="text-3xl font-bold mt-1" style={{ color: PASS_COLOR }}>
+              {passCount.toLocaleString("th-TH")}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-sm text-gray-500">ไม่ผ่าน <span className="text-xs">({failRate}%)</span></p>
+            <p className="text-3xl font-bold mt-1" style={{ color: FAIL_COLOR }}>
+              {failCount.toLocaleString("th-TH")}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-amber-300 bg-amber-50">
+          <CardContent className="pt-6">
+            <p className="text-sm text-amber-700">ประเภทที่ตกมากที่สุด</p>
+            <p className="text-lg font-bold mt-1 text-amber-900">{worstCategory?.category ?? "-"}</p>
+            <p className="text-sm text-amber-700">{(worstCategory?.failed ?? 0).toLocaleString("th-TH")} คน</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-thai text-base">ภาพรวมทั้งวิทยาลัย</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="relative">
+              <ResponsiveContainer width="100%" height={280}>
+                <PieChart>
+                  <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="48%" innerRadius={70} outerRadius={100}>
+                    {pieData.map((entry) => (
+                      <Cell key={entry.name} fill={entry.name === "ผ่าน" ? PASS_COLOR : FAIL_COLOR} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend wrapperStyle={{ fontFamily: "inherit" }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-x-0 top-[38%] -translate-y-1/2 flex flex-col items-center pointer-events-none">
+                <span className="text-3xl font-bold">{passRate}%</span>
+                <span className="text-xs text-gray-500">ผ่าน</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-thai text-base">ผ่าน / ไม่ผ่าน แยกตามชั้นปี</CardTitle>
+          </CardHeader>
+          <CardContent>
             <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={90}
-                  label={(entry: { name?: string; value?: number }) => `${entry.name ?? ""} ${entry.value ?? 0}`}
-                >
-                  {pieData.map((entry) => (
-                    <Cell key={entry.name} fill={STATUS_COLORS[entry.name]} />
+              <BarChart data={byYear} margin={{ top: 24, bottom: 8, left: 0, right: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="year" tick={{ fontSize: 12 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                <Tooltip
+                  formatter={(value, name) => [`${value} คน`, name === "passed" ? "ผ่าน" : "ไม่ผ่าน"]}
+                />
+                <Legend
+                  wrapperStyle={{ fontFamily: "inherit" }}
+                  formatter={(value) => (value === "passed" ? "ผ่าน" : "ไม่ผ่าน")}
+                />
+                <Bar dataKey="passed" name="passed" stackId="status" fill={PASS_COLOR} radius={[0, 0, 0, 0]} />
+                <Bar dataKey="failed" name="failed" stackId="status" fill={FAIL_COLOR} radius={[4, 4, 0, 0]}>
+                  <LabelList dataKey="rateLabel" position="top" style={{ fontSize: 11, fill: "#374151" }} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-thai text-base">จำนวนผู้ไม่ผ่าน แยกตามประเภทกิจกรรม</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={rankedCategories} layout="vertical" margin={{ left: 10, right: 24 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                <YAxis type="category" dataKey="category" width={90} tick={{ fontSize: 12 }} />
+                <Tooltip formatter={(value) => [`${value} คน`, "ไม่ผ่าน"]} />
+                <Bar dataKey="failed" radius={[0, 4, 4, 0]}>
+                  {rankedCategories.map((entry, i) => (
+                    <Cell key={entry.category} fill={i === 0 ? FAIL_COLOR : NEUTRAL_COLOR} />
                   ))}
-                </Pie>
-                <Tooltip />
-                <Legend wrapperStyle={{ fontFamily: "inherit" }} />
-              </PieChart>
+                  <LabelList dataKey="failed" position="right" style={{ fontSize: 12, fill: "#374151" }} />
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
+            {worstCategory && worstCategory.failed > 0 && (
+              <p className="text-xs text-red-600 mt-1">
+                &ldquo;{worstCategory.category}&rdquo; มีผู้ไม่ผ่านมากที่สุด ({worstCategory.failed.toLocaleString("th-TH")} คน)
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-thai text-base">ชั้นปี × ประเภทกิจกรรม (% ไม่ผ่าน)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr>
+                  <th className="text-left px-2 py-1.5 text-gray-500 font-normal">ชั้นปี</th>
+                  {categories.map((c) => (
+                    <th key={c} className="px-2 py-1.5 text-gray-500 font-normal text-center">
+                      {truncateLabel(c, 10)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {heatmapByYear.map(({ year, cells }) => (
+                  <tr key={year}>
+                    <td className="px-2 py-1.5 font-medium">{year}</td>
+                    {cells.map((cell, i) => (
+                      <td
+                        key={categories[i]}
+                        className="px-2 py-1.5 text-center rounded"
+                        style={heatCellStyle(cell?.failRate ?? 0)}
+                      >
+                        {cell?.failRate ?? 0}%
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="flex items-center gap-2 mt-3 text-xs text-gray-500">
+              <span>ไม่ผ่านต่ำ</span>
+              <div
+                className="flex-1 h-2 rounded"
+                style={{ background: "linear-gradient(to right, rgba(220,38,38,0.06), rgba(220,38,38,0.84))" }}
+              />
+              <span>ไม่ผ่านสูง</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="font-thai text-base">กิจกรรมที่มีผู้เข้าร่วมมากที่สุด</CardTitle>
+          <CardTitle className="font-thai text-base">ตารางสรุปผลกิจกรรมรายชั้นปี</CardTitle>
         </CardHeader>
         <CardContent>
-          {topActivities.length === 0 ? (
-            <p className="text-center text-gray-400 font-thai py-16 text-sm">ยังไม่มีผู้เข้าร่วมกิจกรรม</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={topActivities} layout="vertical" margin={{ left: 10, right: 16 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  width={120}
-                  tick={{ fontSize: 11 }}
-                  tickFormatter={(value: string) => truncateLabel(value, 16)}
-                />
-                <Tooltip />
-                <Bar dataKey="participants" name="ผู้เข้าร่วม" fill="#2E3192" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle className="font-thai text-base">อัตราการเข้าร่วมกิจกรรมแยกตามชั้นปี (% ของนักศึกษาในชั้นปีนั้น)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={260}>
-            <BarChart data={participationByYear} margin={{ top: 8, bottom: 8, left: 0, right: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="year" tick={{ fontSize: 12 }} />
-              <YAxis
-                allowDecimals={false}
-                tick={{ fontSize: 11 }}
-                domain={[(dataMin: number) => Math.max(0, Math.floor(dataMin / 10) * 10), 100]}
-                unit="%"
-              />
-              <Tooltip
-                formatter={(value, _name, item) => {
-                  const payload = item?.payload as { participated?: number; total?: number } | undefined
-                  return [`${value}% (${payload?.participated ?? 0}/${payload?.total ?? 0} คน)`, "อัตราเข้าร่วม"]
-                }}
-              />
-              <Bar dataKey="rate" name="อัตราเข้าร่วม" fill="#676FBF" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle className="font-thai text-base">จำนวนผ่าน / ไม่ผ่าน แยกตามกิจกรรมบังคับ</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {activityPassFail.length === 0 ? (
-            <p className="text-center text-gray-400 font-thai py-16 text-sm">ยังไม่มีกิจกรรมบังคับสำหรับภาคเรียนนี้</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={Math.max(280, activityPassFail.length * 44 + 80)}>
-              <BarChart data={activityPassFail} layout="vertical" margin={{ left: 10, right: 16 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  width={160}
-                  tick={{ fontSize: 11 }}
-                  tickFormatter={(value: string) => truncateLabel(value, 22)}
-                />
-                <Tooltip />
-                <Legend wrapperStyle={{ fontFamily: "inherit" }} />
-                <Bar dataKey="passed" name="ผ่าน" fill={STATUS_COLORS["ผ่าน"]} radius={[0, 4, 4, 0]} />
-                <Bar dataKey="failed" name="ไม่ผ่าน" fill={STATUS_COLORS["ไม่ผ่าน"]} radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left px-2 py-2">ชั้นปี</th>
+                <th className="px-2 py-2 text-right">ทั้งหมด</th>
+                <th className="px-2 py-2 text-right">ผ่าน</th>
+                <th className="px-2 py-2 text-right">ไม่ผ่าน</th>
+                <th className="px-2 py-2 text-right">% ผ่าน</th>
+                <th className="px-2 py-2 text-left w-1/3">สัดส่วนผ่าน</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byYear.map((row) => {
+                const rate = row.total > 0 ? Math.round((row.passed / row.total) * 1000) / 10 : 0
+                return (
+                  <tr key={row.year} className="border-b last:border-b-0">
+                    <td className="px-2 py-2 font-medium">{row.year}</td>
+                    <td className="px-2 py-2 text-right">{row.total.toLocaleString("th-TH")}</td>
+                    <td className="px-2 py-2 text-right" style={{ color: PASS_COLOR }}>
+                      {row.passed.toLocaleString("th-TH")}
+                    </td>
+                    <td className="px-2 py-2 text-right" style={{ color: FAIL_COLOR }}>
+                      {row.failed.toLocaleString("th-TH")}
+                    </td>
+                    <td className="px-2 py-2 text-right">{rate}%</td>
+                    <td className="px-2 py-2">
+                      <div className="h-2 bg-gray-100 rounded overflow-hidden">
+                        <div className="h-full rounded" style={{ width: `${rate}%`, backgroundColor: PASS_COLOR }} />
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="font-semibold bg-gray-50">
+                <td className="px-2 py-2">รวมทั้งหมด</td>
+                <td className="px-2 py-2 text-right">{totalStudents.toLocaleString("th-TH")}</td>
+                <td className="px-2 py-2 text-right" style={{ color: PASS_COLOR }}>
+                  {passCount.toLocaleString("th-TH")}
+                </td>
+                <td className="px-2 py-2 text-right" style={{ color: FAIL_COLOR }}>
+                  {failCount.toLocaleString("th-TH")}
+                </td>
+                <td className="px-2 py-2 text-right">{passRate}%</td>
+                <td className="px-2 py-2">
+                  <div className="h-2 bg-gray-100 rounded overflow-hidden">
+                    <div className="h-full rounded" style={{ width: `${passRate}%`, backgroundColor: PASS_COLOR }} />
+                  </div>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
         </CardContent>
       </Card>
     </div>

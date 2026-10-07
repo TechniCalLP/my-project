@@ -20,6 +20,15 @@ export const ACTIVITY_TYPE_NAMES = {
   OPTIONAL: "กิจกรรมเลือกเข้าร่วม",
 } as const
 
+// VocationalActivity (club-scored) names treated as "เข้าแถว" in the dashboard's
+// 3-category breakdown (เข้าแถว / กิจกรรมบังคับ / ชมรม). Matched by name since
+// there's no dedicated field for this yet — update here if the real activity
+// names change, or if this needs to become a proper schema field later.
+export const ROLL_CALL_VOCATIONAL_ACTIVITY_NAMES = [
+  "กิจกรรมชาติ ศาสนา พระมหากษัตริย์",
+  "กิจกรรมลูกเสือวิสามัญ 1",
+] as const
+
 export const ADMIN_ROLE_NAMES = {
   SUPER_ADMIN: "ผู้ดูแลระบบสูงสุด",
   ADMIN: "เจ้าหน้าที่",

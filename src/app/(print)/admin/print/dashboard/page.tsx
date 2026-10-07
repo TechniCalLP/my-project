@@ -2,8 +2,8 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
-import { CATEGORY_NAMES, ACADEMIC_YEARS, SEMESTERS, YEARS } from "@/lib/constants"
-import { getStudentEvaluations, summarizeRequiredActivities } from "@/lib/evaluation"
+import { CATEGORY_NAMES, ACADEMIC_YEARS, SEMESTERS } from "@/lib/constants"
+import { getStudentEvaluations, buildDashboardBreakdown } from "@/lib/evaluation"
 import AutoPrint from "@/components/admin/auto-print"
 import DashboardEvaluationChart from "@/components/admin/dashboard-evaluation-chart"
 
@@ -44,46 +44,8 @@ export default async function PrintDashboardPage({ searchParams }: PageProps) {
   let evaluationChart = null
   if (isManagement) {
     const activeStudents = students.filter((s) => s.isActive)
-
-    const [evaluations, studentsWithParticipationCounts] = await Promise.all([
-      getStudentEvaluations(activeStudents.map((s) => s.id), academicYear, semester),
-      prisma.student.findMany({
-        where: { isActive: true },
-        select: { year: true, _count: { select: { participations: true } } },
-      }),
-    ])
-
-    let passCount = 0
-    let failCount = 0
-    let pendingCount = 0
-    for (const ev of evaluations.values()) {
-      if (ev.overall === "PASS") passCount++
-      else if (ev.overall === "FAIL") failCount++
-      else pendingCount++
-    }
-
-    const topActivities = [...activities]
-      .sort((a, b) => b._count.participations - a._count.participations)
-      .filter((a) => a._count.participations > 0)
-      .slice(0, 8)
-      .map((a) => ({ name: a.name, participants: a._count.participations }))
-
-    const yearTotals = new Map<string, { total: number; participated: number }>()
-    for (const s of studentsWithParticipationCounts) {
-      const entry = yearTotals.get(s.year) ?? { total: 0, participated: 0 }
-      entry.total++
-      if (s._count.participations > 0) entry.participated++
-      yearTotals.set(s.year, entry)
-    }
-    const participationByYear = YEARS.map((year) => {
-      const entry = yearTotals.get(year) ?? { total: 0, participated: 0 }
-      const rate = entry.total > 0 ? Math.round((entry.participated / entry.total) * 100) : 0
-      return { year, rate, participated: entry.participated, total: entry.total }
-    })
-
-    const activityPassFail = summarizeRequiredActivities(evaluations)
-
-    evaluationChart = { passCount, failCount, pendingCount, topActivities, participationByYear, activityPassFail }
+    const evaluations = await getStudentEvaluations(activeStudents.map((s) => s.id), academicYear, semester)
+    evaluationChart = buildDashboardBreakdown(activeStudents, evaluations)
   }
 
   const printedAt = new Date().toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" })
@@ -123,12 +85,12 @@ export default async function PrintDashboardPage({ searchParams }: PageProps) {
               สถิติการเข้าร่วมกิจกรรม (ปีการศึกษา {academicYear} ภาคเรียนที่ {semester})
             </h2>
             <DashboardEvaluationChart
+              totalStudents={evaluationChart.totalStudents}
               passCount={evaluationChart.passCount}
               failCount={evaluationChart.failCount}
-              pendingCount={evaluationChart.pendingCount}
-              topActivities={evaluationChart.topActivities}
-              participationByYear={evaluationChart.participationByYear}
-              activityPassFail={evaluationChart.activityPassFail}
+              byYear={evaluationChart.byYear}
+              categoryFailCounts={evaluationChart.categoryFailCounts}
+              heatmap={evaluationChart.heatmap}
             />
           </div>
         )}

@@ -29,10 +29,6 @@ const PASS_COLOR = "#15803D"
 const FAIL_COLOR = "#DC2626"
 const NEUTRAL_COLOR = "#9CA3AF"
 
-function truncateLabel(name: string, max = 12) {
-  return name.length > max ? `${name.slice(0, max)}…` : name
-}
-
 function heatCellStyle(failRate: number) {
   // Single-hue sequential ramp (same red as FAIL_COLOR) — opacity rises with
   // the fail rate so 0% reads as white and 100% reads as solid red.
@@ -173,8 +169,8 @@ export default function DashboardEvaluationChart({
                 <tr>
                   <th className="text-left px-2 py-1.5 text-gray-500 font-normal">ชั้นปี</th>
                   {categories.map((c) => (
-                    <th key={c} className="px-2 py-1.5 text-gray-500 font-normal text-center">
-                      {truncateLabel(c, 10)}
+                    <th key={c} className="px-1 py-1.5 text-gray-500 font-normal text-center whitespace-nowrap">
+                      {c}
                     </th>
                   ))}
                 </tr>

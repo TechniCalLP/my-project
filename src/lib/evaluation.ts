@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { ActivityStatus, ActivityType, Prisma } from "@/generated/prisma"
 import { resolveDepartmentVariants } from "@/lib/department"
 import { resolveClubForDepartment } from "@/lib/club"
+import { YEARS, ROLL_CALL_VOCATIONAL_ACTIVITY_NAMES } from "@/lib/constants"
 
 export type PartStatus = "PASS" | "FAIL" | "PENDING"
 
@@ -27,21 +28,91 @@ export interface StudentEvaluation {
   overall: PartStatus
 }
 
-export function summarizeRequiredActivities(
+export interface DashboardBreakdown {
+  totalStudents: number
+  passCount: number
+  failCount: number
+  byYear: { year: string; total: number; passed: number; failed: number; rateLabel: string }[]
+  categoryFailCounts: { category: string; passed: number; failed: number }[]
+  heatmap: { year: string; category: string; failRate: number }[]
+}
+
+const DASHBOARD_CATEGORIES = ["เข้าแถว", "กิจกรรมบังคับ", "ชมรม"] as const
+
+// Headline pass/fail for the dashboard counts only required (participation)
+// activities and the "เข้าแถว" subset of vocational activities — the rest of
+// the club-scored activities ("ชมรม") are tracked separately and don't gate
+// this overall number.
+function passesDashboardOverall(ev: StudentEvaluation): boolean {
+  if (ev.participation.status !== "PASS") return false
+  return ev.vocationalActivities
+    .filter((v) => (ROLL_CALL_VOCATIONAL_ACTIVITY_NAMES as readonly string[]).includes(v.name))
+    .every((v) => v.status === "PASS")
+}
+
+function bump(map: Map<string, { passed: number; failed: number }>, key: string, passed: boolean) {
+  const entry = map.get(key) ?? { passed: 0, failed: 0 }
+  if (passed) entry.passed++
+  else entry.failed++
+  map.set(key, entry)
+}
+
+export function buildDashboardBreakdown(
+  students: { id: string; year: string }[],
   evaluations: Map<string, StudentEvaluation>
-): { name: string; passed: number; failed: number }[] {
-  const byName = new Map<string, { passed: number; failed: number }>()
-  for (const ev of evaluations.values()) {
+): DashboardBreakdown {
+  const overallByYear = new Map<string, { passed: number; failed: number }>()
+  const categoryTotals = new Map<string, { passed: number; failed: number }>()
+  const heatmapCounts = new Map<string, { passed: number; failed: number }>()
+
+  let passCount = 0
+  let failCount = 0
+
+  for (const s of students) {
+    const ev = evaluations.get(s.id)
+    if (!ev) continue
+
+    const overallPassed = passesDashboardOverall(ev)
+    if (overallPassed) passCount++
+    else failCount++
+    bump(overallByYear, s.year, overallPassed)
+
     for (const act of ev.requiredActivities) {
-      const entry = byName.get(act.name) ?? { passed: 0, failed: 0 }
-      if (act.joined) entry.passed++
-      else entry.failed++
-      byName.set(act.name, entry)
+      bump(categoryTotals, "กิจกรรมบังคับ", act.joined)
+      bump(heatmapCounts, `${s.year}|กิจกรรมบังคับ`, act.joined)
+    }
+
+    for (const va of ev.vocationalActivities) {
+      const isRollCall = (ROLL_CALL_VOCATIONAL_ACTIVITY_NAMES as readonly string[]).includes(va.name)
+      const category = isRollCall ? "เข้าแถว" : "ชมรม"
+      const passed = va.status === "PASS"
+      bump(categoryTotals, category, passed)
+      bump(heatmapCounts, `${s.year}|${category}`, passed)
     }
   }
-  return [...byName.entries()]
-    .map(([name, counts]) => ({ name, ...counts }))
-    .sort((a, b) => a.name.localeCompare(b.name, "th"))
+
+  const byYear = YEARS.map((year) => {
+    const e = overallByYear.get(year) ?? { passed: 0, failed: 0 }
+    const total = e.passed + e.failed
+    const rate = total > 0 ? Math.round((e.passed / total) * 1000) / 10 : 0
+    return { year, total, passed: e.passed, failed: e.failed, rateLabel: `${rate}%` }
+  })
+
+  const categoryFailCounts = DASHBOARD_CATEGORIES.map((category) => {
+    const e = categoryTotals.get(category) ?? { passed: 0, failed: 0 }
+    return { category, passed: e.passed, failed: e.failed }
+  })
+
+  const heatmap = YEARS.flatMap((year) =>
+    DASHBOARD_CATEGORIES.map((category) => {
+      const e = heatmapCounts.get(`${year}|${category}`) ?? { passed: 0, failed: 0 }
+      const total = e.passed + e.failed
+      const failRate = total > 0 ? Math.round((e.failed / total) * 100) : 0
+      return { year, category, failRate }
+    })
+  )
+
+  return { totalStudents: students.length, passCount, failCount, byYear, categoryFailCounts, heatmap }
 }
 
 export function requiredActivityFilter(

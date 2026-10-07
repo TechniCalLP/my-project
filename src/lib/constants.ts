@@ -26,7 +26,6 @@ export const ACTIVITY_TYPE_NAMES = {
 // names change, or if this needs to become a proper schema field later.
 export const ROLL_CALL_VOCATIONAL_ACTIVITY_NAMES = [
   "กิจกรรมชาติ ศาสนา พระมหากษัตริย์",
-  "กิจกรรมลูกเสือวิสามัญ 1",
 ] as const
 
 export const ADMIN_ROLE_NAMES = {

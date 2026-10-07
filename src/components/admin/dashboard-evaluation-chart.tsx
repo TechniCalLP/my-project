@@ -56,7 +56,6 @@ export default function DashboardEvaluationChart({
   }
 
   const passRate = Math.round((passCount / totalStudents) * 1000) / 10
-  const failRate = Math.round((failCount / totalStudents) * 1000) / 10
 
   const pieData = [
     { name: "ผ่าน", value: passCount },
@@ -74,39 +73,6 @@ export default function DashboardEvaluationChart({
 
   return (
     <div className="font-thai space-y-4">
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-gray-500">นักศึกษาทั้งหมด</p>
-            <p className="text-3xl font-bold mt-1">{totalStudents.toLocaleString("th-TH")}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-gray-500">ผ่าน <span className="text-xs">({passRate}%)</span></p>
-            <p className="text-3xl font-bold mt-1" style={{ color: PASS_COLOR }}>
-              {passCount.toLocaleString("th-TH")}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-gray-500">ไม่ผ่าน <span className="text-xs">({failRate}%)</span></p>
-            <p className="text-3xl font-bold mt-1" style={{ color: FAIL_COLOR }}>
-              {failCount.toLocaleString("th-TH")}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="border-amber-300 bg-amber-50">
-          <CardContent className="pt-6">
-            <p className="text-sm text-amber-700">ประเภทที่ตกมากที่สุด</p>
-            <p className="text-lg font-bold mt-1 text-amber-900">{worstCategory?.category ?? "-"}</p>
-            <p className="text-sm text-amber-700">{(worstCategory?.failed ?? 0).toLocaleString("th-TH")} คน</p>
-          </CardContent>
-        </Card>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
@@ -114,21 +80,30 @@ export default function DashboardEvaluationChart({
           </CardHeader>
           <CardContent>
             <div className="relative">
-              <ResponsiveContainer width="100%" height={280}>
+              <ResponsiveContainer width="100%" height={240}>
                 <PieChart>
-                  <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="48%" innerRadius={70} outerRadius={100}>
+                  <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={70} outerRadius={100}>
                     {pieData.map((entry) => (
                       <Cell key={entry.name} fill={entry.name === "ผ่าน" ? PASS_COLOR : FAIL_COLOR} />
                     ))}
                   </Pie>
                   <Tooltip />
-                  <Legend wrapperStyle={{ fontFamily: "inherit" }} />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="absolute inset-x-0 top-[38%] -translate-y-1/2 flex flex-col items-center pointer-events-none">
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <span className="text-3xl font-bold">{passRate}%</span>
                 <span className="text-xs text-gray-500">ผ่าน</span>
               </div>
+            </div>
+            <div className="flex items-center justify-center gap-6 mt-2 text-sm">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: PASS_COLOR }} />
+                ผ่าน ({passCount.toLocaleString("th-TH")})
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: FAIL_COLOR }} />
+                ไม่ผ่าน ({failCount.toLocaleString("th-TH")})
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -193,7 +168,7 @@ export default function DashboardEvaluationChart({
             <CardTitle className="font-thai text-base">ชั้นปี × ประเภทกิจกรรม (% ไม่ผ่าน)</CardTitle>
           </CardHeader>
           <CardContent>
-            <table className="w-full text-sm border-collapse">
+            <table className="w-full text-sm" style={{ borderCollapse: "separate", borderSpacing: "6px" }}>
               <thead>
                 <tr>
                   <th className="text-left px-2 py-1.5 text-gray-500 font-normal">ชั้นปี</th>
@@ -207,11 +182,11 @@ export default function DashboardEvaluationChart({
               <tbody>
                 {heatmapByYear.map(({ year, cells }) => (
                   <tr key={year}>
-                    <td className="px-2 py-1.5 font-medium">{year}</td>
+                    <td className="px-2 py-2.5 font-medium">{year}</td>
                     {cells.map((cell, i) => (
                       <td
                         key={categories[i]}
-                        className="px-2 py-1.5 text-center rounded"
+                        className="px-2 py-2.5 text-center rounded-md"
                         style={heatCellStyle(cell?.failRate ?? 0)}
                       >
                         {cell?.failRate ?? 0}%

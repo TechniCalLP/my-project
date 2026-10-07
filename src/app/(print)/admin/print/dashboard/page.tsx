@@ -6,6 +6,7 @@ import { CATEGORY_NAMES, ACADEMIC_YEARS, SEMESTERS } from "@/lib/constants"
 import { getStudentEvaluations, buildDashboardBreakdown } from "@/lib/evaluation"
 import AutoPrint from "@/components/admin/auto-print"
 import DashboardEvaluationChart from "@/components/admin/dashboard-evaluation-chart"
+import DashboardKpiCards from "@/components/admin/dashboard-kpi-cards"
 
 interface PageProps {
   searchParams: Promise<{ academicYear?: string; semester?: string }>
@@ -84,14 +85,22 @@ export default async function PrintDashboardPage({ searchParams }: PageProps) {
             <h2 className="font-semibold text-blue-800 mb-3">
               สถิติการเข้าร่วมกิจกรรม (ปีการศึกษา {academicYear} ภาคเรียนที่ {semester})
             </h2>
-            <DashboardEvaluationChart
+            <DashboardKpiCards
               totalStudents={evaluationChart.totalStudents}
               passCount={evaluationChart.passCount}
               failCount={evaluationChart.failCount}
-              byYear={evaluationChart.byYear}
               categoryFailCounts={evaluationChart.categoryFailCounts}
-              heatmap={evaluationChart.heatmap}
             />
+            <div className="mt-4">
+              <DashboardEvaluationChart
+                totalStudents={evaluationChart.totalStudents}
+                passCount={evaluationChart.passCount}
+                failCount={evaluationChart.failCount}
+                byYear={evaluationChart.byYear}
+                categoryFailCounts={evaluationChart.categoryFailCounts}
+                heatmap={evaluationChart.heatmap}
+              />
+            </div>
           </div>
         )}
 

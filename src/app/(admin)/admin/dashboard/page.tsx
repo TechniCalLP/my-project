@@ -8,6 +8,7 @@ import { ActivityStatus } from "@/generated/prisma"
 import StatsCards from "@/components/admin/stats-cards"
 import RecentActivities from "@/components/admin/recent-activities"
 import DashboardEvaluationChart from "@/components/admin/dashboard-evaluation-chart"
+import DashboardKpiCards from "@/components/admin/dashboard-kpi-cards"
 import EvaluationPeriodSelect from "@/components/admin/evaluation-period-select"
 import { Suspense } from "react"
 import ExportDropdown from "@/components/admin/export-dropdown"
@@ -76,13 +77,20 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
         </div>
       </div>
 
+      <Suspense>
+        <EvaluationPeriodSelect academicYear={academicYear} semester={semester} basePath="/admin/dashboard" />
+      </Suspense>
+
       <StatsCards stats={stats} />
 
       {evaluationChart && (
-        <div className="space-y-4">
-          <Suspense>
-            <EvaluationPeriodSelect academicYear={academicYear} semester={semester} basePath="/admin/dashboard" />
-          </Suspense>
+        <>
+          <DashboardKpiCards
+            totalStudents={evaluationChart.totalStudents}
+            passCount={evaluationChart.passCount}
+            failCount={evaluationChart.failCount}
+            categoryFailCounts={evaluationChart.categoryFailCounts}
+          />
           <DashboardEvaluationChart
             totalStudents={evaluationChart.totalStudents}
             passCount={evaluationChart.passCount}
@@ -91,7 +99,7 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
             categoryFailCounts={evaluationChart.categoryFailCounts}
             heatmap={evaluationChart.heatmap}
           />
-        </div>
+        </>
       )}
 
       <RecentActivities activities={recentActivities} />
